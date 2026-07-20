@@ -1,0 +1,18 @@
+{
+  "name": "trisafe",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:api": "npm --workspace apps/api run start:dev",
+    "build:api": "npm --workspace apps/api run build",
+    "test:api": "npm --workspace apps/api run test",
+    "dev:admin": "npm --workspace apps/admin run dev",
+    "build:admin": "npm --workspace apps/admin run build",
+    "db:generate": "npm --workspace apps/api run prisma:generate",
+    "db:migrate": "npm --workspace apps/api run prisma:migrate",
+    "build:contracts": "npm --workspace packages/contracts run build",
+    "build:all": "npm run build:contracts && npm run build:api && npm run build:admin",
+    "verify:api": "powershell -ExecutionPolicy Bypass -File scripts/verify-api.ps1",
+    "verify:workflow": "powershell -ExecutionPolicy Bypass -File scripts/verify-workflow.ps1"
+  }
+}

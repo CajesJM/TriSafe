@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+*.log
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.packages

@@ -1,0 +1,30 @@
+.registration-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(250px, .8fr); align-items: start; gap: 18px; }
+.registration-form, .form-help { margin-top: 0; }
+.form-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding-bottom: 22px; border-bottom: 1px solid #edf2ef; }
+.form-heading h3 { margin: 0; font-size: 22px; }
+.form-heading p { margin: 8px 0 0; color: #759087; font-size: 13px; }
+.close-button { width: 32px; height: 32px; border: 0; border-radius: 50%; color: #55766d; background: #f1f6f3; font-size: 22px; line-height: 1; }
+.close-button:hover { background: #e1eee8; }
+.form-error { margin: 18px 0 0; }
+.form-section { padding-top: 24px; }
+.form-section + .form-section { margin-top: 24px; border-top: 1px solid #edf2ef; }
+.form-section h4 { margin: 0 0 16px; color: #2b554b; font-size: 13px; letter-spacing: .03em; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.field { display: grid; gap: 7px; }
+.field span { color: #466c62; font-size: 12px; font-weight: 700; }
+.field em { margin-left: 3px; color: #c85b4d; font-style: normal; }
+.field input, .field select { width: 100%; border: 1px solid #cfdfd8; border-radius: 8px; outline: none; padding: 12px 13px; color: #17332e; background: #fbfdfc; }
+.field input:focus, .field select:focus { border-color: #4f9b87; box-shadow: 0 0 0 3px #d9eee6; }
+.field input::placeholder { color: #a4b6af; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #edf2ef; }
+.submit-button { min-width: 190px; }
+.form-help { padding: 24px; border-color: #d4e9d0; background: #eaf5e8; }
+.help-icon { display: grid; place-items: center; width: 36px; height: 36px; margin-bottom: 20px; border-radius: 11px; color: #fff; background: #72ad68; font-weight: 900; }
+.form-help h3 { margin-bottom: 9px; font-size: 19px; letter-spacing: -.02em; }
+.form-help > p { color: #55766d; font-size: 13px; line-height: 1.55; }
+.help-step { display: flex; align-items: center; gap: 10px; margin-top: 16px; color: #315e50; font-size: 12px; }
+.help-step b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #477246; background: #d2e8cc; font-size: 10px; }
+.announcement-body { margin-top: 18px; }
+.announcement-body textarea { width: 100%; resize: vertical; border: 1px solid #cfdfd8; border-radius: 8px; outline: none; padding: 12px 13px; color: #17332e; background: #fbfdfc; font: inherit; }
+.announcement-body textarea:focus { border-color: #4f9b87; box-shadow: 0 0 0 3px #d9eee6; }
+.franchise-editor { margin-top: 18px; border-color: #cfe5d0; background: #f7fbf6; }

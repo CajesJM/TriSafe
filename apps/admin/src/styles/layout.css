@@ -1,0 +1,18 @@
+.shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+.sidebar { display: flex; flex-direction: column; padding: 28px 18px; color: #d9ebe3; background: #103b36; }
+.brand { display: flex; gap: 11px; align-items: center; padding: 0 10px 42px; }
+.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; color: #16433b; background: #e3f5b8; font-weight: 900; }
+.brand strong { display: block; color: #fff; font-size: 20px; letter-spacing: -.03em; }
+.brand small { color: #9bc1b2; font-size: 11px; }
+.main-nav { display: grid; gap: 8px; }
+.main-nav button { display: flex; align-items: center; gap: 10px; border: 0; border-radius: 9px; padding: 13px 12px; color: #a5c7bb; background: transparent; text-align: left; }
+.main-nav button.active, .main-nav button:hover { color: #fff; background: #1d5148; }
+.nav-icon { width: 19px; text-align: center; font-size: 17px; }
+.aside-note { display: grid; gap: 5px; margin-top: auto; border-top: 1px solid #326258; padding: 20px 10px; font-size: 12px; }
+.aside-note span { color: #9bc1b2; }
+.logout-button { width: fit-content; margin-top: 8px; padding: 0; border: 0; color: #d9ebe3; background: transparent; font-size: 12px; text-decoration: underline; }
+.content { width: 100%; max-width: 1420px; margin: auto; padding: 38px 5vw; }
+.page-header, .section-heading, .incident-top { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.page-header h1 { margin-bottom: 34px; font-size: 29px; letter-spacing: -.04em; }
+.profile { display: flex; align-items: center; gap: 12px; color: #55766d; font-size: 12px; }
+.profile span { padding: 9px; border-radius: 50%; color: #246356; background: #d4eadc; font-weight: 800; }

@@ -1,0 +1,5 @@
+@media (max-width: 950px) { .registration-layout { grid-template-columns: 1fr; } .form-help { display: none; } }
+@media (max-width: 850px) { .shell { grid-template-columns: 1fr; } .sidebar { min-height: auto; padding: 18px; } .brand { padding-bottom: 18px; } .main-nav { display: flex; } .main-nav button { flex: 1; } .aside-note { display: none; } .content { padding: 25px 18px; } .stat-grid { grid-template-columns: repeat(2, 1fr); } .hero h2 { font-size: 32px; } .hero-art { display: none; } .quick { display: grid; } .quick > div { margin: 0; } .page-header { align-items: flex-start; } .profile { display: none; } }
+@media (max-width: 700px) { .qr-panel { grid-template-columns: 1fr; } .qr-preview { justify-self: start; } }
+@media (max-width: 700px) { .incident-evidence, .incident-review-fields { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } .section-heading { display: grid; } .row { align-items: flex-start; flex-wrap: wrap; } .row .grow { min-width: calc(100% - 50px); } }

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trisafe
+      POSTGRES_PASSWORD: trisafe
+      POSTGRES_DB: trisafe
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    ports:
+      - "55432:5432"
+    volumes:
+      - trisafe-postgres:/var/lib/postgresql/data
+
+volumes:
+  trisafe-postgres:

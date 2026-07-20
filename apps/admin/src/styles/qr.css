@@ -1,0 +1,11 @@
+.qr-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 28px; margin-top: 18px; border-color: #cfe5d0; background: #f3faef; }
+.qr-copy h3 { margin: 0; font-size: 23px; letter-spacing: -.03em; }
+.qr-copy > p { max-width: 610px; margin: 9px 0 20px; color: #55766d; font-size: 13px; line-height: 1.55; }
+.qr-details { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 16px; }
+.qr-details div { display: grid; gap: 5px; }
+.qr-details span { color: #719187; font-size: 11px; }
+.qr-details b { color: #28574b; font-size: 13px; }
+.qr-token { display: inline-block; overflow: hidden; max-width: 100%; padding: 8px 10px; border: 1px solid #d3e8d0; border-radius: 6px; color: #568065; background: #e8f4e3; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.qr-actions { display: flex; gap: 9px; margin-top: 18px; }
+.qr-preview { display: grid; place-items: center; padding: 13px; border: 1px solid #dceadd; border-radius: 14px; background: #fff; box-shadow: 0 12px 30px rgba(30, 80, 60, .08); }
+.qr-preview canvas { display: block; max-width: 100%; height: auto; }

@@ -1,0 +1,11 @@
+.audit-panel { margin-top: 10px; }
+.audit-count { padding: 7px 10px; border-radius: 20px; color: #397566; background: #e0f0e4; font-size: 11px; font-weight: 800; }
+.audit-list { display: grid; }
+.audit-event { display: flex; gap: 13px; border-top: 1px solid #edf2ef; padding: 15px 4px; }
+.audit-event-marker { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: #fff; background: #4f9b87; font-size: 20px; line-height: 1; }
+.audit-event-main { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.audit-event-heading { display: flex; justify-content: space-between; gap: 15px; }
+.audit-event-heading strong { color: #1c594c; font-size: 13px; }
+.audit-event-heading time { color: #78928a; font-size: 11px; }
+.audit-event-main p { margin: 0; color: #55766d; font-size: 12px; }
+.audit-event-main code { overflow: auto; color: #52756a; font-size: 11px; white-space: pre-wrap; }

@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PASSENGER
+  DRIVER
+  LGU_ADMIN
+}
+
+enum DriverVerificationStatus {
+  PENDING
+  VERIFIED
+  SUSPENDED
+  EXPIRED
+}
+
+enum RideStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum IncidentCategory {
+  SAFETY
+  OVERCHARGING
+  HARASSMENT
+  VEHICLE
+  OTHER
+}
+
+enum IncidentStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id              String    @id @default(cuid())
+  role            UserRole
+    fullName        String
+    email           String?   @unique
+    phone           String?
+    passwordHash    String?
+    createdAt       DateTime  @default(now())
+  driverProfile   Driver?
+  passengerRides  Ride[]    @relation("PassengerRides")
+  incidents       Incident[]
+}
+
+model Driver {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  verification    DriverVerificationStatus @default(PENDING)
+  licenseNumber   String
+  renewalDate     DateTime
+  user            User     @relation(fields: [userId], references: [id])
+  franchise       Franchise?
+  vehicles        Vehicle[]
+  announcements   AnnouncementRecipient[]
+  createdAt       DateTime @default(now())
+}
+
+model Franchise {
+  id              String   @id @default(cuid())
+  driverId        String   @unique
+  franchiseNumber String   @unique
+  issuedAt        DateTime
+  expiresAt       DateTime
+  status          DriverVerificationStatus @default(PENDING)
+  driver          Driver   @relation(fields: [driverId], references: [id])
+}
+
+model Vehicle {
+  id              String   @id @default(cuid())
+  driverId        String
+  plateNumber     String   @unique
+  vehicleType     String
+  makeModel       String?
+  isActive        Boolean  @default(true)
+  driver          Driver   @relation(fields: [driverId], references: [id])
+  qrCode          QrCode?
+  rides           Ride[]
+}
+
+model QrCode {
+  id              String   @id @default(cuid())
+  vehicleId       String   @unique
+  token           String   @unique
+  generatedAt     DateTime @default(now())
+  revokedAt       DateTime?
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Location {
+  id              String   @id @default(cuid())
+  name            String
+  latitude        Decimal  @db.Decimal(10, 7)
+  longitude       Decimal  @db.Decimal(10, 7)
+  active          Boolean  @default(true)
+  fromFares       FareRule[] @relation("FromLocation")
+  toFares         FareRule[] @relation("ToLocation")
+}
+
+model FareRule {
+  id                  String   @id @default(cuid())
+  fromLocationId      String
+  toLocationId        String
+  baseFare            Decimal  @db.Decimal(10, 2)
+  distanceKm          Decimal  @db.Decimal(10, 2)
+  perKm               Decimal  @db.Decimal(10, 2)
+  passengerSurcharge  Decimal  @db.Decimal(10, 2) @default(0)
+  minimumFare         Decimal  @db.Decimal(10, 2) @default(0)
+  version             String
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?
+  active              Boolean  @default(true)
+  fromLocation        Location @relation("FromLocation", fields: [fromLocationId], references: [id])
+  toLocation          Location @relation("ToLocation", fields: [toLocationId], references: [id])
+  @@index([fromLocationId, toLocationId, active])
+}
+
+model Ride {
+  id              String   @id @default(cuid())
+  passengerId     String
+  vehicleId       String
+  fromLocationId  String
+  toLocationId    String
+  estimatedFare   Decimal  @db.Decimal(10, 2)
+  fareVersion     String
+  status          RideStatus @default(ACTIVE)
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  startLatitude   Decimal? @db.Decimal(10, 7)
+  startLongitude  Decimal? @db.Decimal(10, 7)
+  endLatitude     Decimal? @db.Decimal(10, 7)
+  endLongitude    Decimal? @db.Decimal(10, 7)
+  passenger       User     @relation("PassengerRides", fields: [passengerId], references: [id])
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
+  incident        Incident?
+  @@index([passengerId, status])
+}
+
+model Incident {
+  id              String   @id @default(cuid())
+  passengerId     String
+  rideId          String?  @unique
+  rawDescription  String
+  aiDraft         String?
+  category        IncidentCategory @default(OTHER)
+  status          IncidentStatus @default(DRAFT)
+  reviewerNotes   String?
+  createdAt       DateTime @default(now())
+  submittedAt     DateTime?
+  passenger       User     @relation(fields: [passengerId], references: [id])
+  ride            Ride?    @relation(fields: [rideId], references: [id])
+  @@index([status, createdAt])
+}
+
+model EmergencyContact {
+  id          String  @id @default(cuid())
+  name        String
+  phone       String
+  description String?
+    active      Boolean @default(true)
+    @@unique([name, phone])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  publishedAt DateTime @default(now())
+  expiresAt   DateTime?
+  recipients  AnnouncementRecipient[]
+}
+
+model AnnouncementRecipient {
+  announcementId String
+  driverId       String
+  readAt         DateTime?
+  announcement   Announcement @relation(fields: [announcementId], references: [id])
+  driver         Driver       @relation(fields: [driverId], references: [id])
+  @@id([announcementId, driverId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}

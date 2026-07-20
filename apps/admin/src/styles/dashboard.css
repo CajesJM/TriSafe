@@ -1,0 +1,15 @@
+.hero { display: flex; justify-content: space-between; align-items: center; overflow: hidden; padding: 34px 40px; border-radius: 20px; background: #dceebf1; }
+.hero h2 { margin: 14px 0; font-size: 42px; line-height: 1.03; letter-spacing: -.06em; }
+.hero p { max-width: 420px; color: #55766d; }
+.pill { color: #3e7768; font-size: 10px; letter-spacing: .1em; font-weight: 800; }
+.hero-art { width: 130px; height: 130px; margin-right: 8%; padding-top: 22px; border: 8px solid #a6d6c4; border-radius: 27px; color: #568d7d; background: #e8f6ea; text-align: center; font-size: 18px; font-weight: 900; transform: rotate(12deg); }
+.hero-art span { color: #8eb554; font-size: 45px; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0; }
+.stat { padding: 19px; border: 1px solid #e2ece7; border-radius: 15px; background: #fff; }
+.stat span, .stat small { display: block; color: #719187; font-size: 12px; }
+.stat strong { display: block; margin: 13px 0 4px; font-size: 29px; letter-spacing: -.05em; }
+.quick { display: flex; align-items: center; gap: 12px; }
+.quick h3 { margin: 0; }
+.quick > div { margin-right: auto; }
+.quick button { border: 1px solid #c9ded5; border-radius: 8px; padding: 11px 14px; color: #1c594c; background: #f3f8f4; font-weight: 700; }
+.quick button span { margin-left: 4px; }
