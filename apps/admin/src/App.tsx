@@ -1,88 +1,286 @@
-import { useEffect, useState } from 'react';
-import { api, AuditLog, Dashboard, Driver, FareRule, Incident, IncidentReviewInput, LocationOption, UpdateFranchiseInput, hasAuthToken, logout } from './api';
-import { LoginScreen } from './components/auth/LoginScreen';
-import { DashboardHome } from './components/dashboard/DashboardHome';
-import { DriverList, QrCodePanel } from './components/drivers/DriverList';
-import { DriverRegistrationForm } from './components/drivers/DriverRegistrationForm';
-import { FranchiseEditor } from './components/drivers/FranchiseEditor';
-import { FareMatrixPanel } from './components/fares/FareMatrixPanel';
-import { AnnouncementComposer } from './components/announcements/AnnouncementComposer';
-import { IncidentReview } from './components/incidents/IncidentReview';
-import { AuditLogPanel } from './components/audit/AuditLogPanel';
-import { PageHeader } from './components/layout/PageHeader';
-import { Sidebar } from './components/layout/Sidebar';
-import { ErrorMessage, SuccessMessage } from './components/shared/Feedback';
-import { Tab } from './types/admin';
+import { useCallback, useEffect, useState } from "react";
+import {
+  api,
+  AuditLog,
+  Dashboard,
+  Driver,
+  DriverStatus,
+  FareRule,
+  Incident,
+  IncidentReviewInput,
+  LocationOption,
+  SessionUser,
+  UpdateFranchiseInput,
+  getSessionUser,
+  hasAuthToken,
+  logout,
+} from "./api";
+import { LoginScreen } from "./components/auth/LoginScreen";
+import { DashboardHome } from "./components/dashboard/DashboardHome";
+import { DriverList, QrCodePanel } from "./components/drivers/DriverList";
+import { DriverRegistrationForm } from "./components/drivers/DriverRegistrationForm";
+import { FranchiseEditor } from "./components/drivers/FranchiseEditor";
+import { FareMatrixPanel } from "./components/fares/FareMatrixPanel";
+import { AnnouncementComposer } from "./components/announcements/AnnouncementComposer";
+import { IncidentReview } from "./components/incidents/IncidentReview";
+import { AuditLogPanel } from "./components/audit/AuditLogPanel";
+import { UserDirectory } from "./components/users/UserDirectory";
+import { PageHeader } from "./components/layout/PageHeader";
+import { Sidebar } from "./components/layout/Sidebar";
+import {
+  ErrorMessage,
+  LoadingState,
+  SuccessMessage,
+} from "./components/shared/Feedback";
+import { Tab } from "./types/admin";
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>("overview");
   const [dashboard, setDashboard] = useState<Dashboard>();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [fareRules, setFareRules] = useState<FareRule[]>([]);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(hasAuthToken());
+  const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [registrationNotice, setRegistrationNotice] = useState('');
-  const [announcementNotice, setAnnouncementNotice] = useState('');
+  const [registrationNotice, setRegistrationNotice] = useState("");
+  const [announcementNotice, setAnnouncementNotice] = useState("");
   const [qrDriver, setQrDriver] = useState<Driver | null>(null);
   const [franchiseDriver, setFranchiseDriver] = useState<Driver | null>(null);
   const [authenticated, setAuthenticated] = useState(hasAuthToken());
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(
+    getSessionUser(),
+  );
 
-  useEffect(() => {
-    if (!authenticated) return;
-    void Promise.all([api.dashboard().then(setDashboard), api.drivers().then(setDrivers), api.incidents().then(setIncidents), api.fareRules().then(setFareRules), api.locations().then(setLocations), api.auditLogs().then(setAuditLogs)]).catch((requestError: Error) => setError(requestError.message));
-  }, [authenticated]);
-
-  useEffect(() => {
-    const expireSession = () => setAuthenticated(false);
-    window.addEventListener('trisafe-auth-expired', expireSession);
-    return () => window.removeEventListener('trisafe-auth-expired', expireSession);
+  const loadData = useCallback(async (quiet = false) => {
+    quiet ? setRefreshing(true) : setLoading(true);
+    setError("");
+    try {
+      const [
+        nextDashboard,
+        nextDrivers,
+        nextIncidents,
+        nextRules,
+        nextLocations,
+        nextLogs,
+      ] = await Promise.all([
+        api.dashboard(),
+        api.drivers(),
+        api.incidents(),
+        api.fareRules(),
+        api.locations(),
+        api.auditLogs(),
+      ]);
+      setDashboard(nextDashboard);
+      setDrivers(nextDrivers);
+      setIncidents(nextIncidents);
+      setFareRules(nextRules);
+      setLocations(nextLocations);
+      setAuditLogs(nextLogs);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load admin data.",
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  if (!authenticated) return <LoginScreen onSuccess={() => setAuthenticated(true)} />;
+  useEffect(() => {
+    if (authenticated) void loadData();
+  }, [authenticated, loadData]);
+  useEffect(() => {
+    const expireSession = () => {
+      setAuthenticated(false);
+      setSessionUser(null);
+    };
+    window.addEventListener("trisafe-auth-expired", expireSession);
+    return () =>
+      window.removeEventListener("trisafe-auth-expired", expireSession);
+  }, []);
 
-  function openRegistration() { setError(''); setRegistrationNotice(''); setTab('drivers'); setShowRegistration(true); }
+  if (!authenticated)
+    return (
+      <LoginScreen
+        onSuccess={(user) => {
+          setSessionUser(user);
+          setAuthenticated(true);
+        }}
+      />
+    );
 
+  function changeTab(nextTab: Tab) {
+    setTab(nextTab);
+    setRegistrationNotice("");
+    setAnnouncementNotice("");
+  }
+  function openRegistration() {
+    setError("");
+    setRegistrationNotice("");
+    setTab("drivers");
+    setShowRegistration(true);
+  }
   function handleDriverCreated(driver: Driver) {
     setDrivers((current) => [driver, ...current]);
     setShowRegistration(false);
     setQrDriver(driver);
-    setRegistrationNotice(`${driver.fullName} was registered and approved successfully.`);
-    setDashboard((current) => current ? { ...current, drivers: current.drivers + 1, verifiedDrivers: current.verifiedDrivers + 1 } : current);
+    setRegistrationNotice(
+      `${driver.fullName} was registered and approved successfully.`,
+    );
+    void Promise.all([
+      api.dashboard().then(setDashboard),
+      api.auditLogs().then(setAuditLogs),
+    ]);
   }
-
   async function reviewIncident(id: string, review: IncidentReviewInput) {
     await api.reviewIncident(id, review);
-    setIncidents((items) => items.map((item) => item.id === id ? { ...item, status: review.status, category: review.category ?? item.category, reviewerNotes: review.reviewerNotes ?? item.reviewerNotes } : item));
-    setAuditLogs(await api.auditLogs());
+    setIncidents((items) =>
+      items.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: review.status,
+              category: review.category ?? item.category,
+              reviewerNotes: review.reviewerNotes ?? item.reviewerNotes,
+            }
+          : item,
+      ),
+    );
+    const [nextDashboard, nextLogs] = await Promise.all([
+      api.dashboard(),
+      api.auditLogs(),
+    ]);
+    setDashboard(nextDashboard);
+    setAuditLogs(nextLogs);
   }
-
   async function refreshFareData() {
-    const [nextRules, nextLocations] = await Promise.all([api.fareRules(), api.locations()]);
+    const [nextRules, nextLocations, nextLogs] = await Promise.all([
+      api.fareRules(),
+      api.locations(),
+      api.auditLogs(),
+    ]);
     setFareRules(nextRules);
     setLocations(nextLocations);
+    setAuditLogs(nextLogs);
   }
-
   async function updateFranchise(input: UpdateFranchiseInput) {
     if (!franchiseDriver) return;
     const updated = await api.updateFranchise(franchiseDriver.id, input);
-    setDrivers((items) => items.map((driver) => driver.id === updated.id ? updated : driver));
+    setDrivers((items) =>
+      items.map((driver) => (driver.id === updated.id ? updated : driver)),
+    );
     setFranchiseDriver(null);
     setAuditLogs(await api.auditLogs());
-    setRegistrationNotice(`${updated.fullName}'s franchise record was updated.`);
+    setRegistrationNotice(
+      `${updated.fullName}'s franchise record was updated.`,
+    );
   }
 
-  return <main className="shell"><Sidebar tab={tab} onChange={setTab} onLogout={() => { logout(); setAuthenticated(false); }} /><section className="content"><PageHeader tab={tab} />{error && <ErrorMessage message={error} />}{registrationNotice && <SuccessMessage message={registrationNotice} />}
-    {tab === 'overview' && dashboard && <DashboardHome dashboard={dashboard} onRegister={openRegistration} onReview={() => setTab('incidents')} />}
-    {tab === 'drivers' && (showRegistration ? <DriverRegistrationForm onCancel={() => setShowRegistration(false)} onCreated={handleDriverCreated} /> : <DriverList drivers={drivers} onRegister={openRegistration} onViewQr={setQrDriver} onUpdateFranchise={setFranchiseDriver} />)}
-    {tab === 'drivers' && franchiseDriver && <FranchiseEditor driver={franchiseDriver} onCancel={() => setFranchiseDriver(null)} onSave={updateFranchise} />}
-    {tab === 'drivers' && qrDriver && <QrCodePanel driver={qrDriver} onClose={() => setQrDriver(null)} />}
-    {tab === 'fares' && <FareMatrixPanel rules={fareRules} locations={locations} onChanged={refreshFareData} />}
-    {tab === 'announcements' && <AnnouncementComposer onPublished={setAnnouncementNotice} />}
-    {tab === 'announcements' && announcementNotice && <SuccessMessage message={announcementNotice} />}
-    {tab === 'incidents' && <IncidentReview incidents={incidents} onReview={reviewIncident} />}
-    {tab === 'audit' && <AuditLogPanel logs={auditLogs} />}
-  </section></main>;
+  async function updateDriverStatus(driver: Driver, status: DriverStatus) {
+    const updated = await api.updateDriverStatus(driver.id, status);
+    setDrivers((items) =>
+      items.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    setAuditLogs(await api.auditLogs());
+    setRegistrationNotice(`${updated.fullName} is now ${status.toLowerCase()}.`);
+  }
+
+  return (
+    <main className="shell">
+      <Sidebar
+        tab={tab}
+        open={sidebarOpen}
+        incidentCount={dashboard?.openIncidents ?? 0}
+        onChange={changeTab}
+        onClose={() => setSidebarOpen(false)}
+        onLogout={() => {
+          logout();
+          setAuthenticated(false);
+          setSessionUser(null);
+        }}
+      />
+      <section className="content">
+        <PageHeader
+          tab={tab}
+          user={sessionUser}
+          openIncidents={dashboard?.openIncidents ?? 0}
+          refreshing={refreshing}
+          onMenu={() => setSidebarOpen(true)}
+          onRefresh={() => void loadData(true)}
+        />
+        {error && (
+          <ErrorMessage message={error} onRetry={() => void loadData()} />
+        )}
+        {registrationNotice && <SuccessMessage message={registrationNotice} />}
+        {loading ? (
+          <LoadingState label="Loading TriSafe operations…" rows={6} />
+        ) : (
+          <>
+            {tab === "overview" && dashboard && (
+              <DashboardHome
+                dashboard={dashboard}
+                drivers={drivers}
+                auditLogs={auditLogs}
+                onNavigate={changeTab}
+                onRegister={openRegistration}
+              />
+            )}
+            {tab === "users" && <UserDirectory />}
+            {tab === "drivers" &&
+              (showRegistration ? (
+                <DriverRegistrationForm
+                  onCancel={() => setShowRegistration(false)}
+                  onCreated={handleDriverCreated}
+                />
+              ) : (
+                <DriverList
+                  drivers={drivers}
+                  onRegister={openRegistration}
+                  onViewQr={setQrDriver}
+                  onUpdateFranchise={setFranchiseDriver}
+                  onUpdateStatus={updateDriverStatus}
+                />
+              ))}
+            {tab === "drivers" && franchiseDriver && (
+              <FranchiseEditor
+                driver={franchiseDriver}
+                onCancel={() => setFranchiseDriver(null)}
+                onSave={updateFranchise}
+              />
+            )}
+            {tab === "drivers" && qrDriver && (
+              <QrCodePanel
+                driver={qrDriver}
+                onClose={() => setQrDriver(null)}
+              />
+            )}
+            {tab === "fares" && (
+              <FareMatrixPanel
+                rules={fareRules}
+                locations={locations}
+                onChanged={refreshFareData}
+              />
+            )}
+            {tab === "announcements" && (
+              <AnnouncementComposer onPublished={setAnnouncementNotice} />
+            )}
+            {tab === "announcements" && announcementNotice && (
+              <SuccessMessage message={announcementNotice} />
+            )}
+            {tab === "incidents" && (
+              <IncidentReview incidents={incidents} onReview={reviewIncident} />
+            )}
+            {tab === "audit" && <AuditLogPanel logs={auditLogs} />}
+          </>
+        )}
+      </section>
+    </main>
+  );
 }

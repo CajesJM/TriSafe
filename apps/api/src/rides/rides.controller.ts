@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
-import { RequestWithUser } from '../auth/auth.types';
+import type { RequestWithUser } from '../auth/auth.types';
 import { Roles } from '../auth/roles.decorator';
 import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
 import { RidesService } from './rides.service';

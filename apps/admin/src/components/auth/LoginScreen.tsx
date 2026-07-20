@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
-import { login } from '../../api';
+import { login, logout, SessionUser } from '../../api';
 
-export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
+export function LoginScreen({ onSuccess }: { onSuccess: (user: SessionUser) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,8 +12,12 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     setError('');
     setSubmitting(true);
     try {
-      await login(email, password);
-      onSuccess();
+      const user = await login(email, password);
+      if (user.role !== 'LGU_ADMIN') {
+        logout();
+        throw new Error('This portal is restricted to LGU administrator accounts.');
+      }
+      onSuccess(user);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to sign in.');
     } finally {

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { DriverVerificationStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,12 +7,15 @@ import { UpdateDriverContactDto } from './dto/update-driver-contact.dto';
 import { hashPassword } from '../auth/password';
 import { AuditService } from '../audit/audit.service';
 import { UpdateFranchiseDto } from './dto/update-franchise.dto';
+import { UpdateDriverStatusDto } from './dto/update-driver-status.dto';
+import { DriverStatusService } from './driver-status.service';
 
 @Injectable()
 export class DriversService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly statuses: DriverStatusService) {}
 
   async registerApprovedDriver(actorId: string, dto: RegisterDriverDto) {
+    if (new Date(dto.franchiseExpiresAt) <= new Date()) throw new BadRequestException('The franchise expiration date must be in the future.');
     const identityFilters = [{ phone: dto.phone }, ...(dto.email ? [{ email: dto.email }] : [])];
     const [existingUser, existingFranchise, existingVehicle] = await Promise.all([
       this.prisma.user.findFirst({ where: { OR: identityFilters } }),
@@ -54,6 +57,7 @@ export class DriversService {
   }
 
   async verifyQr(token: string) {
+    await this.statuses.syncExpiredDrivers();
     const qr = await this.prisma.qrCode.findUnique({ where: { token }, include: { vehicle: { include: { driver: { include: { user: true, franchise: true } } } } } });
     const franchise = qr?.vehicle.driver.franchise;
     const valid = Boolean(qr && !qr.revokedAt && qr.vehicle.isActive && qr.vehicle.driver.verification === 'VERIFIED' && franchise?.status === 'VERIFIED' && franchise.expiresAt > new Date());
@@ -62,12 +66,14 @@ export class DriversService {
   }
 
   async getDriver(id: string) {
+    await this.statuses.syncExpiredDrivers();
     const driver = await this.prisma.driver.findUnique({ where: { id }, include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } } });
     if (!driver) throw new NotFoundException('Driver not found');
     return this.toAdminDriver(driver);
   }
 
   async getByUserId(userId: string) {
+    await this.statuses.syncExpiredDrivers();
     const driver = await this.prisma.driver.findUnique({ where: { userId }, include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } } });
     if (!driver) throw new NotFoundException('Driver profile not found');
     const renewalTimes = [driver.renewalDate.getTime(), ...(driver.franchise ? [driver.franchise.expiresAt.getTime()] : [])];
@@ -96,26 +102,41 @@ export class DriversService {
     if (!driver) throw new NotFoundException('Driver not found');
     if (!driver.franchise) throw new NotFoundException('Franchise record not found');
 
-    const franchise = await this.prisma.franchise.update({
-      where: { id: driver.franchise.id },
-      data: { status: dto.status, expiresAt: new Date(dto.expiresAt) },
-    });
+    const expiresAt = new Date(dto.expiresAt);
+    const effectiveStatus = expiresAt <= new Date() ? DriverVerificationStatus.EXPIRED : dto.status;
+    const [franchise] = await this.prisma.$transaction([
+      this.prisma.franchise.update({ where: { id: driver.franchise.id }, data: { status: effectiveStatus, expiresAt } }),
+      this.prisma.driver.update({ where: { id: driverId }, data: { verification: effectiveStatus } }),
+    ]);
     await this.audit.record({
       actorId,
       action: 'FRANCHISE_UPDATED',
       entityType: 'Franchise',
       entityId: franchise.id,
-      details: { driverId, status: dto.status, expiresAt: dto.expiresAt },
+      details: { driverId, previousStatus: driver.verification, requestedStatus: dto.status, status: effectiveStatus, expiresAt: dto.expiresAt },
     });
     return this.getDriver(driverId);
   }
 
   async list() {
+    await this.statuses.syncExpiredDrivers();
     const drivers = await this.prisma.driver.findMany({ include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } }, orderBy: { createdAt: 'desc' } });
     return drivers.map((driver) => this.toAdminDriver(driver));
   }
 
+  async updateStatus(actorId: string, driverId: string, dto: UpdateDriverStatusDto) {
+    const driver = await this.prisma.driver.findUnique({ where: { id: driverId }, include: { franchise: true } });
+    if (!driver) throw new NotFoundException('Driver not found');
+    if (dto.status === DriverVerificationStatus.VERIFIED && (!driver.franchise || driver.franchise.expiresAt <= new Date())) throw new BadRequestException('Renew the franchise before verifying this driver.');
+    await this.prisma.$transaction([
+      this.prisma.driver.update({ where: { id: driverId }, data: { verification: dto.status } }),
+      ...(driver.franchise ? [this.prisma.franchise.update({ where: { id: driver.franchise.id }, data: { status: dto.status } })] : []),
+    ]);
+    await this.audit.record({ actorId, action: 'DRIVER_STATUS_CHANGED', entityType: 'Driver', entityId: driverId, details: { previousStatus: driver.verification, status: dto.status } });
+    return this.getDriver(driverId);
+  }
+
   private toAdminDriver(driver: Prisma.DriverGetPayload<{ include: { user: true; franchise: true; vehicles: { include: { qrCode: true } } } }>) {
-    return { id: driver.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
+    return { id: driver.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
   }
 }

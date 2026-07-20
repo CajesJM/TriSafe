@@ -5,7 +5,7 @@ import { CreateFareRuleDto } from './dto/create-fare-rule.dto';
 import { FareEstimateDto } from './dto/fare-estimate.dto';
 import { FaresService } from './fares.service';
 import { Public } from '../auth/public.decorator';
-import { RequestWithUser } from '../auth/auth.types';
+import type { RequestWithUser } from '../auth/auth.types';
 
 @Controller()
 export class FaresController {

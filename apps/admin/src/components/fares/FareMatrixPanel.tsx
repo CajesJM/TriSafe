@@ -1,55 +1,220 @@
-import { useState } from 'react';
-import { api, FareRule, FareRuleInput, LocationOption } from '../../api';
-import { EmptyState } from '../shared/Feedback';
-import { FareRuleForm } from './FareRuleForm';
+import { useMemo, useState } from "react";
+import { api, FareRule, FareRuleInput, LocationOption } from "../../api";
+import { DataToolbar, Pagination } from "../shared/DataControls";
+import { EmptyState } from "../shared/Feedback";
+import { FareRuleForm } from "./FareRuleForm";
 
-type Props = { rules: FareRule[]; locations: LocationOption[]; onChanged: () => Promise<void> };
+type Props = {
+  rules: FareRule[];
+  locations: LocationOption[];
+  onChanged: () => Promise<void>;
+};
+const pageSize = 8;
 
 export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
   const [editing, setEditing] = useState<FareRule>();
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState('');
-  const [deactivating, setDeactivating] = useState('');
+  const [error, setError] = useState("");
+  const [changing, setChanging] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const filtered = useMemo(
+    () =>
+      rules.filter((rule) => {
+        const text =
+          `${rule.fromLocation.name} ${rule.toLocation.name} ${rule.version}`.toLowerCase();
+        return (
+          (!search || text.includes(search.toLowerCase())) &&
+          (!status || (status === "ACTIVE") === rule.active)
+        );
+      }),
+    [rules, search, status],
+  );
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   async function save(input: FareRuleInput) {
-    if (editing) {
-      await api.updateFareRule(editing.id, input);
-    } else {
-      await api.createFareRule(input);
-    }
+    editing
+      ? await api.updateFareRule(editing.id, input)
+      : await api.createFareRule(input);
     await onChanged();
     setEditing(undefined);
     setShowForm(false);
   }
-
-  async function deactivate(rule: FareRule) {
-    if (!window.confirm(`Deactivate the rule for ${rule.fromLocation.name} to ${rule.toLocation.name}?`)) return;
-    setError('');
-    setDeactivating(rule.id);
+  async function setRuleActive(rule: FareRule, active: boolean) {
+    if (
+      !active &&
+      !window.confirm(
+        `Deactivate the rule for ${rule.fromLocation.name} to ${rule.toLocation.name}?`,
+      )
+    )
+      return;
+    setError("");
+    setChanging(rule.id);
     try {
-      await api.deactivateFareRule(rule.id);
+      active
+        ? await api.activateFareRule(rule.id)
+        : await api.deactivateFareRule(rule.id);
       await onChanged();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to deactivate the fare rule.');
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to update the fare rule.",
+      );
     } finally {
-      setDeactivating('');
+      setChanging("");
     }
   }
-
-  async function activate(rule: FareRule) {
-    setError('');
-    setDeactivating(rule.id);
-    try {
-      await api.activateFareRule(rule.id);
-      await onChanged();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to activate the fare rule.');
-    } finally {
-      setDeactivating('');
-    }
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
   }
+  function updateStatus(value: string) {
+    setStatus(value);
+    setPage(1);
+  }
+  if (showForm || editing)
+    return (
+      <FareRuleForm
+        locations={locations}
+        rule={editing}
+        onCancel={() => {
+          setEditing(undefined);
+          setShowForm(false);
+        }}
+        onSave={save}
+      />
+    );
 
-  if (showForm || editing) return <FareRuleForm locations={locations} rule={editing} onCancel={() => { setEditing(undefined); setShowForm(false); }} onSave={save} />;
-
-  return <section className="card fare-matrix"><div className="section-heading"><div><span className="eyebrow">FARE TRANSPARENCY</span><h3>Official fare matrix</h3><p className="section-description">Manage the route rules used by passenger fare estimates.</p></div><button className="primary" onClick={() => { setError(''); setShowForm(true); }} type="button">+ Add fare rule</button></div>{error && <div className="error" role="alert">{error}</div>}<div className="fare-table"><div className="fare-table-head"><span>Route</span><span>Calculation</span><span>Version</span><span>Status</span><span>Actions</span></div>{rules.map((rule) => <div className="fare-table-row" key={rule.id}><div><b>{rule.fromLocation.name}</b><span>to {rule.toLocation.name}</span></div><div><b>PHP {Number(rule.baseFare).toFixed(2)} base</b><span>+ PHP {Number(rule.perKm).toFixed(2)} / km · min PHP {Number(rule.minimumFare).toFixed(2)}</span></div><div><b>{rule.version}</b><span>{new Date(rule.effectiveFrom).toLocaleDateString()}</span></div><span className={`status ${rule.active ? 'verified' : 'dismissed'}`}>{rule.active ? 'ACTIVE' : 'INACTIVE'}</span><div className="fare-actions"><button className="row-action" onClick={() => setEditing(rule)} type="button">Edit</button>{rule.active ? <button className="row-action danger-action" disabled={deactivating === rule.id} onClick={() => void deactivate(rule)} type="button">{deactivating === rule.id ? '…' : 'Deactivate'}</button> : <button className="row-action" disabled={deactivating === rule.id} onClick={() => void activate(rule)} type="button">{deactivating === rule.id ? '…' : 'Activate'}</button>}</div></div>)}{rules.length === 0 && <EmptyState text="No fare rules have been published yet." />}</div></section>;
+  return (
+    <section className="card data-card fare-matrix">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">FARE TRANSPARENCY</span>
+          <h3>Published route rules</h3>
+          <p className="section-description">
+            These live rules determine the official estimate shown to passengers
+            before a ride.
+          </p>
+        </div>
+        <button
+          className="primary"
+          onClick={() => {
+            setError("");
+            setShowForm(true);
+          }}
+          type="button"
+        >
+          ＋ Add fare rule
+        </button>
+      </div>
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
+      <DataToolbar
+        search={search}
+        onSearch={updateSearch}
+        searchLabel="Search route or matrix version"
+        filter={status}
+        onFilter={updateStatus}
+        filterLabel="Status"
+        options={[
+          { value: "", label: "All rules" },
+          { value: "ACTIVE", label: "Active" },
+          { value: "INACTIVE", label: "Inactive" },
+        ]}
+        resultCount={filtered.length}
+      />
+      {visible.length === 0 ? (
+        <EmptyState
+          title="No matching fare rules"
+          text={
+            rules.length
+              ? "Try changing your filters."
+              : "Publish the first official LGU route rule."
+          }
+        />
+      ) : (
+        <div className="responsive-table">
+          <div className="data-row fare-table-head data-head">
+            <span>Route</span>
+            <span>Fare calculation</span>
+            <span>Version</span>
+            <span>Effective date</span>
+            <span>Status</span>
+            <span>Actions</span>
+          </div>
+          {visible.map((rule) => (
+            <div className="data-row fare-table-row" key={rule.id}>
+              <span>
+                <b>{rule.fromLocation.name}</b>
+                <small>
+                  to {rule.toLocation.name} ·{" "}
+                  {Number(rule.distanceKm).toFixed(1)} km
+                </small>
+              </span>
+              <span>
+                <b>₱{Number(rule.baseFare).toFixed(2)} base</b>
+                <small>
+                  + ₱{Number(rule.perKm).toFixed(2)}/km · minimum ₱
+                  {Number(rule.minimumFare).toFixed(2)}
+                </small>
+              </span>
+              <span>
+                <b>{rule.version}</b>
+                <small>Official matrix</small>
+              </span>
+              <span>
+                <b>
+                  {new Date(rule.effectiveFrom).toLocaleDateString("en-PH")}
+                </b>
+                <small>
+                  {rule.effectiveTo
+                    ? `Until ${new Date(rule.effectiveTo).toLocaleDateString("en-PH")}`
+                    : "No end date"}
+                </small>
+              </span>
+              <span
+                className={`status ${rule.active ? "verified" : "dismissed"}`}
+              >
+                {rule.active ? "ACTIVE" : "INACTIVE"}
+              </span>
+              <span className="row-menu">
+                <button
+                  className="row-action"
+                  onClick={() => setEditing(rule)}
+                  type="button"
+                >
+                  Edit
+                </button>
+                <button
+                  className={`row-action ${rule.active ? "danger-action" : ""}`}
+                  disabled={changing === rule.id}
+                  onClick={() => void setRuleActive(rule, !rule.active)}
+                  type="button"
+                >
+                  {changing === rule.id
+                    ? "Updating…"
+                    : rule.active
+                      ? "Deactivate"
+                      : "Activate"}
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {filtered.length > 0 && (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filtered.length}
+          onPageChange={setPage}
+        />
+      )}
+    </section>
+  );
 }

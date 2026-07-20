@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { UserRole, UserStatus } from '@prisma/client';
 
 export type AuthenticatedUser = { id: string; role: UserRole };
 
@@ -9,5 +9,5 @@ export type RequestWithUser = {
 
 export type LoginResponse = {
   accessToken: string;
-  user: AuthenticatedUser & { fullName: string; email: string };
+  user: AuthenticatedUser & { status: UserStatus; fullName: string; email: string };
 };

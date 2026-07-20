@@ -5,8 +5,9 @@ import { DriversService } from './drivers.service';
 import { RegisterDriverDto } from './dto/register-driver.dto';
 import { UpdateDriverContactDto } from './dto/update-driver-contact.dto';
 import { Public } from '../auth/public.decorator';
-import { RequestWithUser } from '../auth/auth.types';
+import type { RequestWithUser } from '../auth/auth.types';
 import { UpdateFranchiseDto } from './dto/update-franchise.dto';
+import { UpdateDriverStatusDto } from './dto/update-driver-status.dto';
 
 @Controller()
 export class DriversController {
@@ -22,6 +23,9 @@ export class DriversController {
 
   @Roles(UserRole.LGU_ADMIN)
   @Patch('admin/drivers/:id/franchise') updateFranchise(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: UpdateFranchiseDto) { return this.service.updateFranchise(req.user.id, id, dto); }
+
+  @Roles(UserRole.LGU_ADMIN)
+  @Patch('admin/drivers/:id/status') updateStatus(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: UpdateDriverStatusDto) { return this.service.updateStatus(req.user.id, id, dto); }
 
   @Roles(UserRole.LGU_ADMIN)
   @Post('admin/vehicles/:vehicleId/qr') rotateQr(@Req() req: RequestWithUser, @Param('vehicleId') vehicleId: string) { return this.service.rotateQr(req.user.id, vehicleId); }

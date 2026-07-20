@@ -1,6 +1,19 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 const TOKEN_KEY = "trisafe.accessToken";
+const USER_KEY = "trisafe.adminUser";
 let accessToken = localStorage.getItem(TOKEN_KEY);
+
+export type SessionUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: "LGU_ADMIN" | "DRIVER" | "PASSENGER";
+  status?: UserStatus;
+};
+
+export type UserRole = "PASSENGER" | "DRIVER" | "LGU_ADMIN";
+export type UserStatus = "ACTIVE" | "INACTIVE";
+export type DriverStatus = "VERIFIED" | "PENDING" | "SUSPENDED" | "EXPIRED";
 
 export function hasAuthToken() {
   return Boolean(accessToken);
@@ -9,6 +22,18 @@ export function hasAuthToken() {
 export function logout() {
   accessToken = null;
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export function getSessionUser(): SessionUser | null {
+  const stored = localStorage.getItem(USER_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as SessionUser;
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -60,9 +85,10 @@ export async function login(email: string, password: string) {
   }
   const body = (await response.json().catch(() => null)) as {
     accessToken?: string;
+    user?: SessionUser;
     message?: string | string[];
   } | null;
-  if (!response.ok || !body?.accessToken) {
+  if (!response.ok || !body?.accessToken || !body.user) {
     const message = Array.isArray(body?.message)
       ? body.message.join(" ")
       : body?.message;
@@ -72,6 +98,8 @@ export async function login(email: string, password: string) {
   }
   accessToken = body.accessToken;
   localStorage.setItem(TOKEN_KEY, accessToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(body.user));
+  return body.user;
 }
 
 export type Dashboard = {
@@ -80,12 +108,58 @@ export type Dashboard = {
   activeRides: number;
   openIncidents: number;
   generatedAt: string;
+  users: { total: number; passengers: number; drivers: number; administrators: number; inactive?: number };
+  rides: { total: number; active: number; completed: number; cancelled: number };
+  incidents: { submitted: number; underReview: number; resolved: number; dismissed: number };
+  rideActivity: { date: string; label: string; count: number }[];
 };
+
+type DashboardResponse = Partial<Dashboard> & Pick<Dashboard, 'drivers' | 'verifiedDrivers' | 'activeRides' | 'openIncidents' | 'generatedAt'>;
+
+function normalizeDashboard(value: DashboardResponse): Dashboard {
+  const rideActivity = Array.isArray(value.rideActivity)
+    ? value.rideActivity
+    : Array.from({ length: 7 }, (_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - index));
+        return { date: date.toISOString().slice(0, 10), label: date.toLocaleDateString('en-PH', { weekday: 'short' }), count: 0 };
+      });
+  return {
+    drivers: Number(value.drivers ?? 0),
+    verifiedDrivers: Number(value.verifiedDrivers ?? 0),
+    activeRides: Number(value.activeRides ?? 0),
+    openIncidents: Number(value.openIncidents ?? 0),
+    generatedAt: value.generatedAt ?? new Date().toISOString(),
+    users: value.users ?? { total: Number(value.drivers ?? 0), passengers: 0, drivers: Number(value.drivers ?? 0), administrators: 0 },
+    rides: value.rides ?? { total: Number(value.activeRides ?? 0), active: Number(value.activeRides ?? 0), completed: 0, cancelled: 0 },
+    incidents: value.incidents ?? { submitted: Number(value.openIncidents ?? 0), underReview: 0, resolved: 0, dismissed: 0 },
+    rideActivity,
+  };
+}
+export type AdminUser = {
+  id: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+  updatedAt: string;
+  roleDefinition: { name: string };
+  driverProfile?: { id?: string; verification: DriverStatus; licenseNumber: string } | null;
+};
+export type UserPage = { items: AdminUser[]; total: number; page: number; pageSize: number };
+export type RoleDefinition = { id: string; key: UserRole; name: string; description?: string | null; permissions: string[]; active: boolean; createdAt: string; updatedAt: string; _count: { users: number } };
+export type CreateUserInput = { fullName: string; email: string; phone?: string; role: UserRole; status: UserStatus; temporaryPassword: string };
+export type UpdateUserInput = { fullName?: string; email?: string; phone?: string; role?: UserRole; status?: UserStatus; newPassword?: string };
+export type RoleInput = { key: UserRole; name: string; description?: string; permissions: string[]; active?: boolean };
 export type Driver = {
   id: string;
   fullName: string;
+  email?: string | null;
   phone?: string;
-  verification: string;
+  accountStatus?: UserStatus;
+  verification: DriverStatus;
   licenseNumber: string;
   renewalDate: string;
   franchise?: { franchiseNumber: string; issuedAt: string; expiresAt: string; status: string };
@@ -169,7 +243,24 @@ export type RegisterDriverInput = {
 export type UpdateFranchiseInput = { status: 'PENDING' | 'VERIFIED' | 'SUSPENDED' | 'EXPIRED'; expiresAt: string };
 
 export const api = {
-  dashboard: () => request<Dashboard>("/admin/dashboard"),
+  dashboard: () => request<DashboardResponse>("/admin/dashboard").then(normalizeDashboard),
+  users: (options: { search?: string; role?: string; status?: string; page?: number; pageSize?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (options.search) params.set('search', options.search);
+    if (options.role) params.set('role', options.role);
+    if (options.status) params.set('status', options.status);
+    if (options.page) params.set('page', String(options.page));
+    if (options.pageSize) params.set('pageSize', String(options.pageSize));
+    return request<UserPage>(`/admin/users?${params.toString()}`);
+  },
+  user: (id: string) => request<AdminUser>(`/admin/users/${id}`),
+  createUser: (body: CreateUserInput) => request<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
+  updateUser: (id: string, body: UpdateUserInput) => request<AdminUser>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteUser: (id: string) => request<{ deleted: true }>(`/admin/users/${id}`, { method: 'DELETE' }),
+  roles: () => request<RoleDefinition[]>('/admin/roles'),
+  createRole: (body: RoleInput) => request<RoleDefinition>('/admin/roles', { method: 'POST', body: JSON.stringify(body) }),
+  updateRole: (id: string, body: Omit<RoleInput, 'key'>) => request<RoleDefinition>(`/admin/roles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteRole: (id: string) => request<{ deleted: true }>(`/admin/roles/${id}`, { method: 'DELETE' }),
   drivers: () => request<Driver[]>("/admin/drivers"),
   incidents: () => request<Incident[]>("/incidents/admin/all"),
   auditLogs: (limit = 100) => request<AuditLog[]>(`/admin/audit-logs?limit=${limit}`),
@@ -185,6 +276,7 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  updateDriverStatus: (driverId: string, status: DriverStatus) => request<Driver>(`/admin/drivers/${driverId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   reviewIncident: (id: string, body: IncidentReviewInput) =>
     request(`/incidents/admin/${id}/review`, {
       method: "PATCH",

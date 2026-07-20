@@ -4,6 +4,11 @@ import { hashPassword } from '../src/auth/password';
 const prisma = new PrismaClient();
 
 async function main() {
+  await Promise.all([
+    prisma.roleDefinition.upsert({ where: { key: 'PASSENGER' }, update: {}, create: { id: 'role-passenger', key: 'PASSENGER', name: 'Passenger', description: 'Commuter access to verification, fares, rides, sharing, SOS, and reports.', permissions: ['rides:self', 'incidents:self', 'drivers:verify'] } }),
+    prisma.roleDefinition.upsert({ where: { key: 'DRIVER' }, update: {}, create: { id: 'role-driver', key: 'DRIVER', name: 'Driver', description: 'Approved operator access to profile, franchise, reminders, and announcements.', permissions: ['profile:self', 'announcements:self'] } }),
+    prisma.roleDefinition.upsert({ where: { key: 'LGU_ADMIN' }, update: {}, create: { id: 'role-lgu-admin', key: 'LGU_ADMIN', name: 'LGU Administrator', description: 'Administrative access to registry, fares, users, incidents, announcements, and audit records.', permissions: ['admin:all'] } }),
+  ]);
   const [market, terminal] = await Promise.all([
     prisma.location.upsert({ where: { id: 'loc-trinidad-market' }, update: {}, create: { id: 'loc-trinidad-market', name: 'Trinidad Public Market', latitude: 9.8108, longitude: 124.1435 } }),
     prisma.location.upsert({ where: { id: 'loc-trinidad-terminal' }, update: {}, create: { id: 'loc-trinidad-terminal', name: 'Trinidad Transport Terminal', latitude: 9.8170, longitude: 124.1451 } }),

@@ -1,1 +1,8 @@
-export type Tab = 'overview' | 'drivers' | 'fares' | 'announcements' | 'incidents' | 'audit';
+export type Tab =
+  | "overview"
+  | "users"
+  | "drivers"
+  | "fares"
+  | "announcements"
+  | "incidents"
+  | "audit";
