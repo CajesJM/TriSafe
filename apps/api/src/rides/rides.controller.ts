@@ -4,6 +4,7 @@ import type { RequestWithUser } from '../auth/auth.types';
 import { Roles } from '../auth/roles.decorator';
 import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
 import { RidesService } from './rides.service';
+import { RecordRideLocationDto } from './dto/record-ride-location.dto';
 
 @Roles(UserRole.PASSENGER)
 @Controller('rides')
@@ -14,5 +15,12 @@ export class RidesController {
   @Post() start(@Req() req: RequestWithUser, @Body() dto: StartRideDto) { return this.service.start(req.user.id, dto); }
   @Get() history(@Req() req: RequestWithUser) { return this.service.history(req.user.id); }
   @Post(':id/end') end(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: EndRideDto) { return this.service.end(req.user.id, id, dto); }
+  @Post(':id/location') location(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+    @Body() dto: RecordRideLocationDto,
+  ) {
+    return this.service.recordLocation(req.user.id, id, dto);
+  }
   @Get(':id/share') share(@Req() req: RequestWithUser, @Param('id') id: string, @Query('liveLocationUrl') liveLocationUrl?: string) { return this.service.share(req.user.id, id, liveLocationUrl); }
 }

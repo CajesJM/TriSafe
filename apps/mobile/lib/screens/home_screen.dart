@@ -4,6 +4,8 @@ import '../models/ride_models.dart';
 import '../models/fare_models.dart';
 import '../services/trisafe_api.dart';
 import '../services/ride_sharing_service.dart';
+import '../services/location_tracking_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../widgets/action_card.dart';
 import '../widgets/active_ride_card.dart';
 import '../widgets/emergency_contacts_sheet.dart';
@@ -28,6 +30,37 @@ class _HomeScreenState extends State<HomeScreen> {
   bool startingRide = false;
   String? error;
   final rideSharing = const RideSharingService();
+  late final LocationTrackingService locationTracking;
+
+  @override
+  void initState() {
+    super.initState();
+    locationTracking = LocationTrackingService(api: widget.api);
+    locationTracking.start(_handlePosition).then((enabled) {
+      if (!enabled && mounted) {
+        setState(() => error = locationTracking.permissionMessage);
+      }
+    });
+  }
+
+  Future<void> _handlePosition(Position position) async {
+    final ride = activeRide;
+    if (ride == null) {
+      await locationTracking.reportPresence(position);
+      return;
+    }
+    final progress = await widget.api.recordRideLocation(
+      ride.id,
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracy: position.accuracy,
+      heading: position.heading,
+      speed: position.speed,
+    );
+    if (mounted && activeRide?.id == ride.id) {
+      setState(() => activeRide = ride.withProgress(progress));
+    }
+  }
 
   Future<void> scanVehicle() async {
     setState(() {
@@ -88,7 +121,9 @@ class _HomeScreenState extends State<HomeScreen> {
           vehicleId: vehicle.vehicleId,
           fromLocationId: plan.from.id,
           toLocationId: plan.to.id,
-          passengerCount: plan.passengerCount);
+          passengerCount: plan.passengerCount,
+          startLatitude: locationTracking.latestPosition?.latitude,
+          startLongitude: locationTracking.latestPosition?.longitude);
       if (mounted) {
         setState(() => activeRide = ride);
       }
@@ -124,9 +159,29 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     try {
-      await widget.api.endRide(ride.id);
+      final completed = await widget.api.endRide(
+        ride.id,
+        endLatitude: locationTracking.latestPosition?.latitude,
+        endLongitude: locationTracking.latestPosition?.longitude,
+      );
       if (mounted) {
         setState(() => activeRide = null);
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Ride completed'),
+            content: Text(
+              'Tracked distance: ${(completed.actualDistanceMeters / 1000).toStringAsFixed(2)} km\n'
+              'Final official fare: PHP ${(completed.finalFare ?? completed.estimatedFare).toStringAsFixed(2)}',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -219,9 +274,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
   void _signOut() {
+    locationTracking.stop();
     widget.api.logout();
     Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => LoginScreen(api: widget.api)),
         (_) => false);
+  }
+
+  @override
+  void dispose() {
+    locationTracking.stop();
+    super.dispose();
   }
 }

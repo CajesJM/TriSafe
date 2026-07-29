@@ -3,6 +3,8 @@ import { api, FareRule, FareRuleInput, LocationOption } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState } from "../shared/Feedback";
 import { FareRuleForm } from "./FareRuleForm";
+import { LiveTransportMap } from "./LiveTransportMap";
+import { VehicleFarePolicyPanel } from "./VehicleFarePolicyPanel";
 
 type Props = {
   rules: FareRule[];
@@ -88,14 +90,17 @@ export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
     );
 
   return (
-    <section className="card data-card fare-matrix">
+    <div className="fare-workspace">
+      <LiveTransportMap />
+      <VehicleFarePolicyPanel />
+      <section className="card data-card fare-matrix">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">FARE TRANSPARENCY</span>
-          <h3>Published route rules</h3>
+          <span className="eyebrow">ROUTE PLANNING</span>
+          <h3>Published route estimates</h3>
           <p className="section-description">
-            These live rules determine the official estimate shown to passengers
-            before a ride.
+            Route distances provide a pre-ride estimate. The completed fare is
+            recalculated from tracked GPS distance using the vehicle rates above.
           </p>
         </div>
         <button
@@ -215,6 +220,7 @@ export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
           onPageChange={setPage}
         />
       )}
-    </section>
+      </section>
+    </div>
   );
 }

@@ -144,15 +144,50 @@ class TriSafeApi {
           {required String vehicleId,
           required String fromLocationId,
           required String toLocationId,
-          int passengerCount = 1}) async =>
+          int passengerCount = 1,
+          double? startLatitude,
+          double? startLongitude}) async =>
       Ride.fromJson(await _post('/rides', {
         'vehicleId': vehicleId,
         'fromLocationId': fromLocationId,
         'toLocationId': toLocationId,
-        'passengerCount': passengerCount
+        'passengerCount': passengerCount,
+        if (startLatitude != null) 'startLatitude': startLatitude,
+        if (startLongitude != null) 'startLongitude': startLongitude,
       }));
-  Future<Ride> endRide(String rideId) async =>
-      Ride.fromJson(await _post('/rides/$rideId/end', {}));
+  Future<Ride> endRide(String rideId,
+          {double? endLatitude, double? endLongitude}) async =>
+      Ride.fromJson(await _post('/rides/$rideId/end', {
+        if (endLatitude != null) 'endLatitude': endLatitude,
+        if (endLongitude != null) 'endLongitude': endLongitude,
+      }));
+  Future<void> updatePresence(
+      {required double latitude,
+      required double longitude,
+      double? accuracy,
+      double? heading,
+      double? speed}) async {
+    await _post('/presence/me', {
+      'latitude': latitude,
+      'longitude': longitude,
+      if (accuracy != null) 'accuracy': accuracy,
+      if (heading != null) 'heading': heading,
+      if (speed != null) 'speed': speed,
+    });
+  }
+  Future<RideProgress> recordRideLocation(String rideId,
+          {required double latitude,
+          required double longitude,
+          double? accuracy,
+          double? heading,
+          double? speed}) async =>
+      RideProgress.fromJson(await _post('/rides/$rideId/location', {
+        'latitude': latitude,
+        'longitude': longitude,
+        if (accuracy != null) 'accuracy': accuracy,
+        if (heading != null) 'heading': heading,
+        if (speed != null) 'speed': speed,
+      }));
   Future<List<Ride>> rideHistory() async => (await _get('/rides'))
       .map<Ride>((item) => Ride.fromJson(item as Map<String, dynamic>))
       .toList();

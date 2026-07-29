@@ -76,7 +76,7 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Review your verified trips and official fare estimates.',
+                    'Review tracked trip distances and official final fares.',
                     style: TextStyle(color: Colors.grey.shade700),
                   ),
                   if (error != null) ...[

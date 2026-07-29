@@ -4,6 +4,7 @@ import { FaresService } from '../fares/fares.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
 import { AuditService } from '../audit/audit.service';
+import { RecordRideLocationDto } from './dto/record-ride-location.dto';
 
 @Injectable()
 export class RidesService {
@@ -11,25 +12,160 @@ export class RidesService {
 
   async preview(dto: StartRideDto) {
     const vehicle = await this.getEligibleVehicle(dto.vehicleId);
-    return { vehicleId: vehicle.id, ...(await this.fares.estimate(dto)), driverName: vehicle.driver.user.fullName, plateNumber: vehicle.plateNumber };
+    const routeRule = await this.fares.findActiveRule(
+      dto.fromLocationId,
+      dto.toLocationId,
+    );
+    const fare = await this.fares.calculateForVehicle(
+      vehicle.vehicleType,
+      Number(routeRule.distanceKm) * 1000,
+      dto.passengerCount,
+    );
+    return {
+      vehicleId: vehicle.id,
+      ...fare,
+      driverName: vehicle.driver.user.fullName,
+      plateNumber: vehicle.plateNumber,
+      estimateBasis: 'PLANNED_ROUTE',
+    };
   }
 
   async start(passengerId: string, dto: StartRideDto) {
     const vehicle = await this.getEligibleVehicle(dto.vehicleId);
-    const fare = await this.fares.estimate(dto);
+    const routeRule = await this.fares.findActiveRule(
+      dto.fromLocationId,
+      dto.toLocationId,
+    );
+    const fare = await this.fares.calculateForVehicle(
+      vehicle.vehicleType,
+      Number(routeRule.distanceKm) * 1000,
+      dto.passengerCount,
+    );
     const active = await this.prisma.ride.findFirst({ where: { passengerId, status: RideStatus.ACTIVE } });
     if (active) throw new ForbiddenException('Complete your active ride before starting another');
-    const ride = await this.prisma.ride.create({ data: { passengerId, vehicleId: vehicle.id, fromLocationId: dto.fromLocationId, toLocationId: dto.toLocationId, estimatedFare: fare.amount, fareVersion: fare.matrixVersion, startLatitude: dto.startLatitude, startLongitude: dto.startLongitude }, include: { vehicle: { include: { driver: { include: { user: true } } } } } });
+    const vehicleType = this.fares.normalizeVehicleType(vehicle.vehicleType);
+    const ride = await this.prisma.ride.create({
+      data: {
+        passengerId,
+        vehicleId: vehicle.id,
+        fromLocationId: dto.fromLocationId,
+        toLocationId: dto.toLocationId,
+        estimatedFare: fare.amount,
+        fareVersion: fare.matrixVersion,
+        passengerCount: dto.passengerCount,
+        vehicleType,
+        startLatitude: dto.startLatitude,
+        startLongitude: dto.startLongitude,
+        locationPoints:
+          dto.startLatitude != null && dto.startLongitude != null
+            ? {
+                create: {
+                  latitude: dto.startLatitude,
+                  longitude: dto.startLongitude,
+                },
+              }
+            : undefined,
+      },
+      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+    });
+    if (dto.startLatitude != null && dto.startLongitude != null) {
+      await this.updatePresence(passengerId, {
+        latitude: dto.startLatitude,
+        longitude: dto.startLongitude,
+      });
+    }
     await this.audit.record({ actorId: passengerId, action: 'RIDE_STARTED', entityType: 'Ride', entityId: ride.id, details: { vehicleId: dto.vehicleId, fromLocationId: dto.fromLocationId, toLocationId: dto.toLocationId } });
     return this.addLocationNames(ride);
   }
 
   async end(passengerId: string, id: string, dto: EndRideDto) {
-    const ride = await this.ownedRide(passengerId, id);
+    let ride = await this.ownedRide(passengerId, id);
     if (ride.status !== RideStatus.ACTIVE) throw new ForbiddenException('Ride is already closed');
-    const updatedRide = await this.prisma.ride.update({ where: { id }, data: { status: RideStatus.COMPLETED, endedAt: new Date(), endLatitude: dto.endLatitude, endLongitude: dto.endLongitude } });
+    if (dto.endLatitude != null && dto.endLongitude != null) {
+      await this.recordLocation(passengerId, id, {
+        latitude: dto.endLatitude,
+        longitude: dto.endLongitude,
+      });
+      ride = await this.ownedRide(passengerId, id);
+    }
+    const finalEstimate = await this.fares.calculateForVehicle(
+      ride.vehicleType,
+      ride.actualDistanceMeters,
+      ride.passengerCount,
+    );
+    const updatedRide = await this.prisma.ride.update({
+      where: { id },
+      data: {
+        status: RideStatus.COMPLETED,
+        endedAt: new Date(),
+        endLatitude: dto.endLatitude,
+        endLongitude: dto.endLongitude,
+        finalFare: finalEstimate.amount,
+      },
+      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+    });
     await this.audit.record({ actorId: passengerId, action: 'RIDE_COMPLETED', entityType: 'Ride', entityId: id });
     return this.addLocationNames(updatedRide);
+  }
+
+  async recordLocation(
+    passengerId: string,
+    id: string,
+    dto: RecordRideLocationDto,
+  ) {
+    const ride = await this.ownedRide(passengerId, id);
+    if (ride.status !== RideStatus.ACTIVE) {
+      throw new ForbiddenException('Location can only be added to an active ride');
+    }
+
+    const lastPoint = await this.prisma.rideLocationPoint.findFirst({
+      where: { rideId: id },
+      orderBy: { recordedAt: 'desc' },
+    });
+    const segmentMeters = lastPoint
+      ? this.haversineMeters(
+          Number(lastPoint.latitude),
+          Number(lastPoint.longitude),
+          dto.latitude,
+          dto.longitude,
+        )
+      : 0;
+    const elapsedSeconds = lastPoint
+      ? Math.max(1, (Date.now() - lastPoint.recordedAt.getTime()) / 1000)
+      : 1;
+    const plausible =
+      segmentMeters <= 5000 &&
+      segmentMeters / elapsedSeconds <= 60 &&
+      (dto.accuracy == null || dto.accuracy <= 100);
+    const acceptedMeters = plausible ? segmentMeters : 0;
+
+    const [, updatedRide] = await this.prisma.$transaction([
+      this.prisma.rideLocationPoint.create({
+        data: {
+          rideId: id,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          accuracy: dto.accuracy,
+        },
+      }),
+      this.prisma.ride.update({
+        where: { id },
+        data: { actualDistanceMeters: { increment: acceptedMeters } },
+      }),
+    ]);
+    await this.updatePresence(passengerId, dto);
+    const currentFare = await this.fares.calculateForVehicle(
+      updatedRide.vehicleType,
+      updatedRide.actualDistanceMeters,
+      updatedRide.passengerCount,
+    );
+    return {
+      rideId: id,
+      actualDistanceMeters: updatedRide.actualDistanceMeters,
+      segmentMeters: acceptedMeters,
+      pointAccepted: plausible,
+      currentFare,
+    };
   }
 
   async history(passengerId: string) {
@@ -54,6 +190,51 @@ export class RidesService {
     if (!ride) throw new NotFoundException('Ride not found');
     if (ride.passengerId !== passengerId) throw new ForbiddenException('Ride does not belong to this passenger');
     return ride;
+  }
+
+  private async updatePresence(
+    userId: string,
+    dto: Pick<
+      RecordRideLocationDto,
+      'latitude' | 'longitude' | 'accuracy' | 'heading' | 'speed'
+    >,
+  ) {
+    return this.prisma.livePresence.upsert({
+      where: { userId },
+      create: {
+        userId,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        accuracy: dto.accuracy,
+        heading: dto.heading,
+        speed: dto.speed,
+      },
+      update: {
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        accuracy: dto.accuracy,
+        heading: dto.heading,
+        speed: dto.speed,
+      },
+    });
+  }
+
+  private haversineMeters(
+    latitude1: number,
+    longitude1: number,
+    latitude2: number,
+    longitude2: number,
+  ) {
+    const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+    const earthRadiusMeters = 6371000;
+    const latitudeDelta = toRadians(latitude2 - latitude1);
+    const longitudeDelta = toRadians(longitude2 - longitude1);
+    const a =
+      Math.sin(latitudeDelta / 2) ** 2 +
+      Math.cos(toRadians(latitude1)) *
+        Math.cos(toRadians(latitude2)) *
+        Math.sin(longitudeDelta / 2) ** 2;
+    return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   private async addLocationNames<T extends { fromLocationId: string; toLocationId: string }>(ride: T) {

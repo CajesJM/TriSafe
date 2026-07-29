@@ -11,8 +11,9 @@ import { SafetyModule } from './safety/safety.module';
 import { HealthModule } from './health/health.module';
 import { AuditModule } from './audit/audit.module';
 import { validateEnvironment } from './config/environment';
+import { PresenceModule } from './presence/presence.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuditModule, AuthModule, DriversModule, FaresModule, RidesModule, IncidentsModule, AdminModule, SafetyModule, HealthModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuditModule, AuthModule, DriversModule, FaresModule, RidesModule, IncidentsModule, AdminModule, SafetyModule, HealthModule, PresenceModule],
 })
 export class AppModule {}

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="200" viewBox="0 0 560 200" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">TriSafe</title>
+  <desc id="description">TriSafe wordmark with a stylized Trinidad tricycle forming the letter T.</desc>
+
+  <!-- The tricycle canopy and center post form the capital T in TriSafe. -->
+  <path d="M37 48H134" stroke="#0F5C50" stroke-width="15" stroke-linecap="round"/>
+  <path d="M87 49V96" stroke="#0F5C50" stroke-width="13" stroke-linecap="round"/>
+
+  <!-- Passenger cabin. -->
+  <path d="M49 83C51 62 63 49 87 49H108C123 49 133 60 136 78L140 101H86L72 128H49V83Z" fill="#DFF1ED"/>
+  <path d="M49 83C51 62 63 49 87 49H108C123 49 133 60 136 78L140 101H86L72 128H49V83Z" stroke="#0F5C50" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M59 78H116L121 101H55L59 78Z" fill="white" stroke="#0F5C50" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M87 78V101" stroke="#0F5C50" stroke-width="6"/>
+
+  <!-- Chassis, fork, and handlebar flow toward the wordmark. -->
+  <path d="M68 129H127L148 101L159 132" stroke="#172B29" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M126 101C133 88 142 82 154 83" stroke="#172B29" stroke-width="7" stroke-linecap="round"/>
+  <path d="M149 82H165" stroke="#172B29" stroke-width="7" stroke-linecap="round"/>
+  <path d="M160 132H180" stroke="#0F5C50" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- Wheels. The front wheel visually bridges the tricycle into the lettering. -->
+  <circle cx="65" cy="133" r="22" fill="white" stroke="#172B29" stroke-width="8"/>
+  <circle cx="160" cy="133" r="22" fill="white" stroke="#172B29" stroke-width="8"/>
+  <circle cx="65" cy="133" r="6" fill="#F3B33D"/>
+  <circle cx="160" cy="133" r="6" fill="#F3B33D"/>
+
+  <!-- The front wheel and chassis connect directly into a fully legible wordmark. -->
+  <text x="181" y="145" fill="#172B29" font-family="Inter, Avenir Next, Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="-4">
+    <tspan>Tri</tspan><tspan fill="#0F5C50">Safe</tspan>
+  </text>
+
+  <!-- Safety accent, echoing a road marker and verification signal. -->
+  <path d="M508 55L518 65L537 43" stroke="#F3B33D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

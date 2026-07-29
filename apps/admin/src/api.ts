@@ -227,6 +227,44 @@ export type FareRuleInput = {
   effectiveFrom: string;
   effectiveTo?: string;
 };
+export type VehicleFarePolicy = {
+  id: string;
+  vehicleType: "TRICYCLE" | "HABAL_HABAL";
+  baseFare: number | string;
+  ratePerKm: number | string;
+  minimumFare: number | string;
+  passengerSurcharge: number | string;
+  version: string;
+  active: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  updatedAt: string;
+};
+export type VehicleFarePolicyInput = {
+  vehicleType: "TRICYCLE" | "HABAL_HABAL";
+  baseFare: number;
+  ratePerKm: number;
+  minimumFare: number;
+  passengerSurcharge: number;
+  version: string;
+  active: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string;
+};
+export type LivePresence = {
+  id: string;
+  userId: string;
+  role: "PASSENGER" | "DRIVER";
+  fullName: string;
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  heading?: number | null;
+  speed?: number | null;
+  updatedAt: string;
+  vehicle?: { plateNumber: string; vehicleType: string } | null;
+  activeRide?: { id: string; actualDistanceMeters: number } | null;
+};
 export type RegisterDriverInput = {
   fullName: string;
   phone: string;
@@ -266,6 +304,14 @@ export const api = {
   auditLogs: (limit = 100) => request<AuditLog[]>(`/admin/audit-logs?limit=${limit}`),
   locations: () => request<LocationOption[]>("/locations"),
   fareRules: () => request<FareRule[]>("/admin/fare-rules"),
+  vehicleFarePolicies: () =>
+    request<VehicleFarePolicy[]>("/admin/vehicle-fare-policies"),
+  saveVehicleFarePolicy: (body: VehicleFarePolicyInput) =>
+    request<VehicleFarePolicy>("/admin/vehicle-fare-policies", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  livePresence: () => request<LivePresence[]>("/admin/live-presence"),
   registerDriver: (body: RegisterDriverInput) =>
     request<Driver>("/admin/drivers", {
       method: "POST",

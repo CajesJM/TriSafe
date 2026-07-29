@@ -93,3 +93,36 @@ export const calculateFare = (input: {
     disclaimer: 'Estimate based on the active LGU fare matrix. Final fare may depend on approved local rules.',
   };
 };
+
+export const calculateDistanceFare = (input: {
+  baseFare: number;
+  distanceMeters: number;
+  ratePerKm: number;
+  passengerCount: number;
+  passengerSurcharge: number;
+  minimumFare?: number;
+}): FareEstimate & { distanceMeters: number; distanceKm: number; ratePerKm: number } => {
+  const distanceMeters = Math.max(0, input.distanceMeters);
+  const distanceKm = distanceMeters / 1000;
+  const distanceCharge = distanceKm * input.ratePerKm;
+  const surcharge =
+    Math.max(0, input.passengerCount - 1) * input.passengerSurcharge;
+  const amount = Math.max(
+    input.minimumFare ?? 0,
+    input.baseFare + distanceCharge + surcharge,
+  );
+
+  return {
+    currency: 'PHP',
+    amount: Number(amount.toFixed(2)),
+    baseFare: Number(input.baseFare.toFixed(2)),
+    distanceCharge: Number(distanceCharge.toFixed(2)),
+    passengerSurcharge: Number(surcharge.toFixed(2)),
+    distanceMeters: Number(distanceMeters.toFixed(1)),
+    distanceKm: Number(distanceKm.toFixed(3)),
+    ratePerKm: Number(input.ratePerKm.toFixed(2)),
+    matrixVersion: 'runtime',
+    disclaimer:
+      'Fare is calculated from tracked ride distance using the active LGU rate for this vehicle type.',
+  };
+};

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">TriSafe app mark</title>
+  <desc id="description">A compact tricycle shaped like the letter T with a safety check.</desc>
+
+  <rect width="256" height="256" rx="58" fill="#0F5C50"/>
+
+  <!-- Tricycle canopy doubles as the TriSafe T. -->
+  <path d="M48 57H155" stroke="white" stroke-width="17" stroke-linecap="round"/>
+  <path d="M101 58V113" stroke="white" stroke-width="15" stroke-linecap="round"/>
+  <path d="M58 95C61 72 75 58 101 58H121C139 58 150 72 153 91L158 121H100L84 158H58V95Z" fill="#77B9A9" stroke="white" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M70 90H132L138 121H65L70 90Z" fill="#0F5C50" stroke="white" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M101 90V121" stroke="white" stroke-width="7"/>
+
+  <!-- Chassis and handlebar. -->
+  <path d="M80 159H150L174 123L187 164" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M150 123C159 107 169 101 184 102" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <path d="M179 101H198" stroke="white" stroke-width="8" stroke-linecap="round"/>
+
+  <circle cx="76" cy="166" r="27" fill="#0F5C50" stroke="white" stroke-width="10"/>
+  <circle cx="190" cy="166" r="27" fill="#0F5C50" stroke="white" stroke-width="10"/>
+  <circle cx="76" cy="166" r="7" fill="#F3B33D"/>
+  <circle cx="190" cy="166" r="7" fill="#F3B33D"/>
+
+  <!-- Verified ride accent. -->
+  <circle cx="194" cy="62" r="28" fill="#F3B33D"/>
+  <path d="M181 62L190 71L207 52" stroke="#172B29" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

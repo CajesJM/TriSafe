@@ -25,9 +25,14 @@ class ActiveRideCard extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.bold))
             ]),
             const SizedBox(height: 8),
-            Text('Estimated fare: PHP ${ride.estimatedFare.toStringAsFixed(2)}',
+            Text(
+                'Current fare: PHP ${(ride.currentFare ?? ride.estimatedFare).toStringAsFixed(2)}',
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+                'Tracked distance: ${(ride.actualDistanceMeters / 1000).toStringAsFixed(2)} km',
+                style: TextStyle(color: Colors.grey.shade700)),
             const SizedBox(height: 12),
             Row(children: [
               Expanded(

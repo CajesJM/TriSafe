@@ -5,6 +5,8 @@ import '../widgets/driver_announcement_card.dart';
 import '../widgets/driver_contact_editor.dart';
 import '../widgets/driver_profile_card.dart';
 import 'login_screen.dart';
+import '../services/location_tracking_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   final TriSafeApi api;
@@ -20,12 +22,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   List<DriverAnnouncement> announcements = [];
   String? error;
   bool loading = true;
+  late final LocationTrackingService locationTracking;
 
   @override
   void initState() {
     super.initState();
+    locationTracking = LocationTrackingService(api: widget.api);
+    locationTracking.start(_reportLocation);
     _load();
   }
+
+  Future<void> _reportLocation(Position position) =>
+      locationTracking.reportPresence(position);
 
   Future<void> _load() async {
     setState(() {
@@ -124,9 +132,16 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       );
 
   void _signOut() {
+    locationTracking.stop();
     widget.api.logout();
     Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => LoginScreen(api: widget.api)),
         (_) => false);
+  }
+
+  @override
+  void dispose() {
+    locationTracking.stop();
+    super.dispose();
   }
 }

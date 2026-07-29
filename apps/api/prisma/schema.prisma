@@ -61,6 +61,7 @@ model User {
   driverProfile   Driver?
   passengerRides  Ride[]    @relation("PassengerRides")
   incidents       Incident[]
+  livePresence    LivePresence?
 }
 
 model RoleDefinition {
@@ -147,6 +148,23 @@ model FareRule {
   @@index([fromLocationId, toLocationId, active])
 }
 
+model VehicleFarePolicy {
+  id                  String   @id @default(cuid())
+  vehicleType         String   @unique
+  baseFare            Decimal  @db.Decimal(10, 2) @default(0)
+  ratePerKm            Decimal  @db.Decimal(10, 2)
+  minimumFare         Decimal  @db.Decimal(10, 2) @default(0)
+  passengerSurcharge  Decimal  @db.Decimal(10, 2) @default(0)
+  version             String
+  active              Boolean  @default(true)
+  effectiveFrom       DateTime @default(now())
+  effectiveTo         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([active, effectiveFrom])
+}
+
 model Ride {
   id              String   @id @default(cuid())
   passengerId     String
@@ -154,6 +172,10 @@ model Ride {
   fromLocationId  String
   toLocationId    String
   estimatedFare   Decimal  @db.Decimal(10, 2)
+  finalFare       Decimal? @db.Decimal(10, 2)
+  actualDistanceMeters Float @default(0)
+  passengerCount  Int      @default(1)
+  vehicleType     String   @default("TRICYCLE")
   fareVersion     String
   status          RideStatus @default(ACTIVE)
   startedAt       DateTime @default(now())
@@ -165,7 +187,34 @@ model Ride {
   passenger       User     @relation("PassengerRides", fields: [passengerId], references: [id])
   vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
   incident        Incident?
+  locationPoints  RideLocationPoint[]
   @@index([passengerId, status])
+}
+
+model RideLocationPoint {
+  id          String   @id @default(cuid())
+  rideId      String
+  latitude    Decimal  @db.Decimal(10, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+  accuracy    Float?
+  recordedAt  DateTime @default(now())
+  ride        Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@index([rideId, recordedAt])
+}
+
+model LivePresence {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  latitude    Decimal  @db.Decimal(10, 7)
+  longitude   Decimal  @db.Decimal(10, 7)
+  accuracy    Float?
+  heading     Float?
+  speed       Float?
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
 }
 
 model Incident {

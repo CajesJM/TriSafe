@@ -5,6 +5,10 @@ class FareEstimate {
   final double passengerSurcharge;
   final String matrixVersion;
   final String disclaimer;
+  final double? distanceMeters;
+  final double? distanceKm;
+  final double? ratePerKm;
+  final String? vehicleType;
 
   FareEstimate.fromJson(Map<String, dynamic> json)
       : amount = (json['amount'] as num).toDouble(),
@@ -12,7 +16,11 @@ class FareEstimate {
         distanceCharge = (json['distanceCharge'] as num).toDouble(),
         passengerSurcharge = (json['passengerSurcharge'] as num).toDouble(),
         matrixVersion = json['matrixVersion'],
-        disclaimer = json['disclaimer'];
+        disclaimer = json['disclaimer'],
+        distanceMeters = (json['distanceMeters'] as num?)?.toDouble(),
+        distanceKm = (json['distanceKm'] as num?)?.toDouble(),
+        ratePerKm = (json['ratePerKm'] as num?)?.toDouble(),
+        vehicleType = json['vehicleType'] as String?;
 }
 
 class LocationOption {

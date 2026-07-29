@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="200" viewBox="0 0 560 200" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">TriSafe monochrome logo</title>
+  <desc id="description">Monochrome TriSafe wordmark with a stylized tricycle forming the letter T.</desc>
+
+  <g stroke="#111827">
+    <path d="M37 48H134" stroke-width="15" stroke-linecap="round"/>
+    <path d="M87 49V96" stroke-width="13" stroke-linecap="round"/>
+    <path d="M49 83C51 62 63 49 87 49H108C123 49 133 60 136 78L140 101H86L72 128H49V83Z" fill="white" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M59 78H116L121 101H55L59 78Z" fill="white" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M87 78V101" stroke-width="6"/>
+    <path d="M68 129H127L148 101L159 132" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M126 101C133 88 142 82 154 83" stroke-width="7" stroke-linecap="round"/>
+    <path d="M149 82H165" stroke-width="7" stroke-linecap="round"/>
+    <path d="M160 132H180" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="65" cy="133" r="22" fill="white" stroke-width="8"/>
+    <circle cx="160" cy="133" r="22" fill="white" stroke-width="8"/>
+  </g>
+  <circle cx="65" cy="133" r="6" fill="#111827"/>
+  <circle cx="160" cy="133" r="6" fill="#111827"/>
+  <text x="181" y="145" fill="#111827" font-family="Inter, Avenir Next, Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="-4">TriSafe</text>
+  <path d="M508 55L518 65L537 43" stroke="#111827" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -42,14 +42,29 @@ class RideHistoryCard extends StatelessWidget {
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const Divider(height: 24),
+            if (ride.actualDistanceMeters > 0) ...[
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Tracked distance',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                  Text(
+                    '${(ride.actualDistanceMeters / 1000).toStringAsFixed(2)} km',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
+            ],
             Row(
               children: [
-                const Expanded(
-                  child: Text('Estimated fare',
+                Expanded(
+                  child: Text(ride.finalFare == null ? 'Estimated fare' : 'Final fare',
                       style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
                 Text(
-                  'PHP ${ride.estimatedFare.toStringAsFixed(2)}',
+                  'PHP ${(ride.finalFare ?? ride.estimatedFare).toStringAsFixed(2)}',
                   style: const TextStyle(
                       color: Color(0xff185449),
                       fontSize: 17,

@@ -70,7 +70,9 @@ class FareConfirmationScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _AmountRow(label: 'Base fare', value: fare.baseFare),
                       _AmountRow(
-                          label: 'Distance charge', value: fare.distanceCharge),
+                          label:
+                              'Planned distance charge${fare.ratePerKm == null ? '' : ' · PHP ${fare.ratePerKm!.toStringAsFixed(2)}/km'}',
+                          value: fare.distanceCharge),
                       _AmountRow(
                           label: 'Passenger surcharge',
                           value: fare.passengerSurcharge),
@@ -83,6 +85,14 @@ class FareConfirmationScreen extends StatelessWidget {
                       Text(fare.disclaimer,
                           style: TextStyle(
                               color: Colors.grey.shade700, fontSize: 12))
+                      ,
+                      const SizedBox(height: 8),
+                      const Text(
+                          'The final fare is recalculated from GPS distance when the ride ends.',
+                          style: TextStyle(
+                              color: Color(0xff185449),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700))
                     ]))),
         const SizedBox(height: 24),
         SizedBox(
