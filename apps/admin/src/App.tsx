@@ -14,6 +14,7 @@ import {
   getSessionUser,
   hasAuthToken,
   logout,
+  updateSessionUser,
 } from "./api";
 import { LoginScreen } from "./components/auth/LoginScreen";
 import { DashboardHome } from "./components/dashboard/DashboardHome";
@@ -33,6 +34,7 @@ import {
   SuccessMessage,
 } from "./components/shared/Feedback";
 import { Tab } from "./types/admin";
+import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -44,7 +46,6 @@ export function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(hasAuthToken());
-  const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [registrationNotice, setRegistrationNotice] = useState("");
@@ -55,9 +56,10 @@ export function App() {
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(
     getSessionUser(),
   );
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const loadData = useCallback(async (quiet = false) => {
-    quiet ? setRefreshing(true) : setLoading(true);
+    if (!quiet) setLoading(true);
     setError("");
     try {
       const [
@@ -89,12 +91,18 @@ export function App() {
       );
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     if (authenticated) void loadData();
+  }, [authenticated, loadData]);
+  useEffect(() => {
+    if (!authenticated) return;
+    const refreshSession = window.setInterval(() => {
+      void loadData(true);
+    }, 5 * 60 * 1000);
+    return () => window.clearInterval(refreshSession);
   }, [authenticated, loadData]);
   useEffect(() => {
     const expireSession = () => {
@@ -211,10 +219,10 @@ export function App() {
           tab={tab}
           user={sessionUser}
           openIncidents={dashboard?.openIncidents ?? 0}
-          refreshing={refreshing}
           onMenu={() => setSidebarOpen(true)}
-          onRefresh={() => void loadData(true)}
+          onProfile={() => setProfileOpen(true)}
         />
+        <AdminProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={(user) => { setSessionUser(user); updateSessionUser(user); }} />
         {error && (
           <ErrorMessage message={error} onRetry={() => void loadData()} />
         )}
@@ -228,6 +236,7 @@ export function App() {
                 dashboard={dashboard}
                 drivers={drivers}
                 auditLogs={auditLogs}
+                user={sessionUser}
                 onNavigate={changeTab}
                 onRegister={openRegistration}
               />

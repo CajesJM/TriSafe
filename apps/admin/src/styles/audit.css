@@ -11,4 +11,4 @@
 .audit-event-main > p { margin: 0; color: var(--muted); font-size: 10px; }
 .audit-details { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 5px; border-radius: 7px; padding: 8px 9px; background: var(--surface-soft); }
 .audit-details span { color: var(--muted); font-size: 9px; }
-.audit-details b { margin-right: 4px; color: #40524f; }
+.audit-details b { margin-right: 4px; color: var(--gray); }

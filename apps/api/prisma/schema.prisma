@@ -52,8 +52,10 @@ model User {
   role            UserRole
   status          UserStatus @default(ACTIVE)
   fullName        String
+  username        String?   @unique
   email           String?   @unique
   phone           String?
+  avatarData      String?   @db.Text
   passwordHash    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -272,4 +274,19 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
   @@index([createdAt])
+}
+
+model WeatherSnapshot {
+  id             String   @id
+  locationName   String
+  latitude       Decimal  @db.Decimal(10, 7)
+  longitude      Decimal  @db.Decimal(10, 7)
+  temperatureC   Decimal  @db.Decimal(5, 2)
+  apparentC      Decimal  @db.Decimal(5, 2)
+  humidity       Int
+  windKmh        Decimal  @db.Decimal(6, 2)
+  weatherCode    Int
+  isDay          Boolean
+  observedAt     DateTime
+  fetchedAt      DateTime @updatedAt
 }

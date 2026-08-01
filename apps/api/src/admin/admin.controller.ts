@@ -13,6 +13,9 @@ import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 export class AdminController {
   constructor(private readonly service: AdminService) {}
   @Get('dashboard') dashboard() { return this.service.dashboard(); }
+  @Get('weather') weather(@Query('latitude') latitude?: string, @Query('longitude') longitude?: string, @Query('locationName') locationName?: string) {
+    return this.service.weather(latitude, longitude, locationName);
+  }
   @Get('users') users(@Query() query: ListUsersQueryDto) { return this.service.users(query); }
   @Get('users/:id') user(@Param('id') id: string) { return this.service.user(id); }
   @Post('users') createUser(@Req() req: RequestWithUser, @Body() dto: CreateUserDto) { return this.service.createUser(req.user.id, dto); }

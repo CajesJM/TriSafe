@@ -1,11 +1,11 @@
-.qr-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 28px; margin-top: 18px; border-color: #bfded6; padding: 24px; background: linear-gradient(135deg, #fff, #eff9f6); }
+.qr-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 28px; margin-top: 18px; border-color: var(--gray); padding: 24px; background: linear-gradient(135deg, var(--gray), var(--gray)); }
 .qr-copy h3 { margin: 0; color: var(--ink); font-size: 20px; letter-spacing: -.03em; }
 .qr-copy > p { max-width: 650px; margin: 8px 0 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .qr-details { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 14px; }
 .qr-details div { display: grid; gap: 4px; }
 .qr-details span { color: var(--subtle); font-size: 9px; text-transform: uppercase; }
-.qr-details b { color: #334744; font-size: 11px; }
-.qr-token { display: inline-block; overflow: hidden; max-width: 100%; border: 1px solid #cce2dc; border-radius: 7px; padding: 7px 9px; color: var(--primary-700); background: #fff; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.qr-details b { color: var(--gray); font-size: 11px; }
+.qr-token { display: inline-block; overflow: hidden; max-width: 100%; border: 1px solid var(--gray); border-radius: 7px; padding: 7px 9px; color: var(--primary-700); background: var(--gray); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .qr-actions { display: flex; gap: 8px; margin-top: 16px; }
-.qr-preview { display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: #fff; box-shadow: var(--shadow-md); }
+.qr-preview { display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--gray); box-shadow: var(--shadow-md); }
 .qr-preview canvas { display: block; max-width: 100%; height: auto; }

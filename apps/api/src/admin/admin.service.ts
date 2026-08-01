@@ -18,7 +18,7 @@ export class AdminService {
     const activityStart = new Date(today);
     activityStart.setDate(activityStart.getDate() - 6);
 
-    const [drivers, verifiedDrivers, activeRides, openIncidents, usersByRole, inactiveUsers, ridesByStatus, incidentsByStatus, recentRides] = await Promise.all([
+    const [drivers, verifiedDrivers, activeRides, openIncidents, usersByRole, inactiveUsers, ridesByStatus, incidentsByStatus, recentRides, announcements, renewals] = await Promise.all([
       this.prisma.driver.count(),
       this.prisma.driver.count({ where: { verification: 'VERIFIED' } }),
       this.prisma.ride.count({ where: { status: 'ACTIVE' } }),
@@ -31,6 +31,18 @@ export class AdminService {
         where: { startedAt: { gte: activityStart } },
         select: { startedAt: true },
         orderBy: { startedAt: 'asc' },
+      }),
+      this.prisma.announcement.findMany({
+        where: { OR: [{ expiresAt: null }, { expiresAt: { gte: today } }] },
+        select: { id: true, title: true, publishedAt: true, expiresAt: true },
+        orderBy: { publishedAt: 'desc' },
+        take: 8,
+      }),
+      this.prisma.driver.findMany({
+        where: { renewalDate: { gte: today } },
+        select: { id: true, renewalDate: true, user: { select: { fullName: true } } },
+        orderBy: { renewalDate: 'asc' },
+        take: 8,
       }),
     ]);
 
@@ -74,7 +86,115 @@ export class AdminService {
         dismissed: incidentCount.get('DISMISSED') ?? 0,
       },
       rideActivity,
+      calendarEvents: [
+        ...announcements.map((announcement) => ({
+          id: `announcement-${announcement.id}`,
+          date: announcement.publishedAt.toISOString(),
+          label: announcement.title,
+          type: 'ANNOUNCEMENT',
+          detail: announcement.expiresAt
+            ? `Active until ${announcement.expiresAt.toLocaleDateString('en-PH')}`
+            : 'Published announcement',
+        })),
+        ...renewals.map((driver) => ({
+          id: `renewal-${driver.id}`,
+          date: driver.renewalDate.toISOString(),
+          label: `${driver.user.fullName} renewal`,
+          type: 'RENEWAL',
+          detail: 'Driver franchise renewal date',
+        })),
+      ].sort((a, b) => a.date.localeCompare(b.date)),
     };
+  }
+
+  async weather(latitudeInput?: string, longitudeInput?: string, locationNameInput?: string) {
+    const suppliedCoordinates = latitudeInput !== undefined || longitudeInput !== undefined;
+    const latitude = suppliedCoordinates ? Number(latitudeInput) : 9.8108;
+    const longitude = suppliedCoordinates ? Number(longitudeInput) : 124.1435;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new BadRequestException('Provide valid latitude and longitude coordinates');
+    }
+    const requestedLocationName = locationNameInput?.trim();
+    if (requestedLocationName && requestedLocationName.length > 120) throw new BadRequestException('Location name is too long');
+    const snapshotId = suppliedCoordinates ? `geo-${latitude.toFixed(3)}-${longitude.toFixed(3)}` : 'bohol';
+    const params = new URLSearchParams({
+      latitude: String(latitude), longitude: String(longitude),
+      current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day',
+      timezone: 'auto',
+    });
+    const query = `api.open-meteo.com/v1/forecast?${params.toString()}`;
+    try {
+      let response: Response | undefined;
+      let lastError: unknown;
+      for (const protocol of ['https', 'http']) {
+        try {
+          const candidate = await fetch(`${protocol}://${query}`);
+          if (candidate.ok) {
+            response = candidate;
+            break;
+          }
+          lastError = new Error(`Weather provider returned ${candidate.status}`);
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (!response) throw lastError ?? new Error('Weather provider unavailable');
+      const payload = (await response.json()) as {
+        current: {
+          time: string;
+          temperature_2m: number;
+          apparent_temperature: number;
+          relative_humidity_2m: number;
+          wind_speed_10m: number;
+          weather_code: number;
+          is_day: number;
+        };
+      };
+      const current = payload.current;
+      const cached = await this.prisma.weatherSnapshot.findUnique({ where: { id: snapshotId } });
+      const locationName = suppliedCoordinates
+        ? requestedLocationName || await this.resolveLocationName(latitude, longitude, cached?.locationName)
+        : 'Trinidad, Bohol';
+      return this.prisma.weatherSnapshot.upsert({
+        where: { id: snapshotId },
+        create: {
+          id: snapshotId, locationName, latitude, longitude,
+          temperatureC: current.temperature_2m, apparentC: current.apparent_temperature,
+          humidity: current.relative_humidity_2m, windKmh: current.wind_speed_10m,
+          weatherCode: current.weather_code, isDay: current.is_day === 1,
+          observedAt: new Date(current.time),
+        },
+        update: {
+          locationName, latitude, longitude,
+          temperatureC: current.temperature_2m, apparentC: current.apparent_temperature,
+          humidity: current.relative_humidity_2m, windKmh: current.wind_speed_10m,
+          weatherCode: current.weather_code, isDay: current.is_day === 1,
+          observedAt: new Date(current.time),
+        },
+      });
+    } catch (error) {
+      const cached = await this.prisma.weatherSnapshot.findUnique({ where: { id: snapshotId } });
+      if (cached) return cached;
+      throw error;
+    }
+  }
+
+  private async resolveLocationName(latitude: number, longitude: number, cachedName?: string) {
+    try {
+      const params = new URLSearchParams({ lat: String(latitude), lon: String(longitude), format: 'jsonv2', addressdetails: '1', zoom: '10', 'accept-language': 'en' });
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+        headers: { 'User-Agent': 'TriSafe-LGU/0.1 (transport safety administration)' },
+      });
+      if (!response.ok) throw new Error(`Reverse geocoder returned ${response.status}`);
+      const result = (await response.json()) as { display_name?: string; address?: Record<string, string> };
+      const address = result.address ?? {};
+      const locality = address.city ?? address.town ?? address.municipality ?? address.village ?? address.county;
+      const region = address.province ?? address.state ?? address.region ?? address.country;
+      const conciseName = [locality, region].filter((value, index, values) => value && values.indexOf(value) === index).join(', ');
+      return conciseName || result.display_name?.split(',').slice(0, 2).join(',').trim() || cachedName || `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+    } catch {
+      return cachedName || `Current location (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
+    }
   }
 
   async users(query: ListUsersQueryDto) {

@@ -6,9 +6,21 @@ let accessToken = localStorage.getItem(TOKEN_KEY);
 export type SessionUser = {
   id: string;
   fullName: string;
-  email: string;
+  email: string | null;
   role: "LGU_ADMIN" | "DRIVER" | "PASSENGER";
   status?: UserStatus;
+  username?: string | null;
+  phone?: string | null;
+  avatarData?: string | null;
+};
+
+export type AdminProfile = SessionUser & { status: UserStatus };
+export type UpdateProfileInput = {
+  fullName: string;
+  username: string;
+  email: string;
+  phone: string;
+  avatarData?: string | null;
 };
 
 export type UserRole = "PASSENGER" | "DRIVER" | "LGU_ADMIN";
@@ -34,6 +46,10 @@ export function getSessionUser(): SessionUser | null {
     localStorage.removeItem(USER_KEY);
     return null;
   }
+}
+
+export function updateSessionUser(user: SessionUser) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -108,13 +124,59 @@ export type Dashboard = {
   activeRides: number;
   openIncidents: number;
   generatedAt: string;
-  users: { total: number; passengers: number; drivers: number; administrators: number; inactive?: number };
-  rides: { total: number; active: number; completed: number; cancelled: number };
-  incidents: { submitted: number; underReview: number; resolved: number; dismissed: number };
+  users: {
+    total: number;
+    passengers: number;
+    drivers: number;
+    administrators: number;
+    inactive?: number;
+  };
+  rides: {
+    total: number;
+    active: number;
+    completed: number;
+    cancelled: number;
+  };
+  incidents: {
+    submitted: number;
+    underReview: number;
+    resolved: number;
+    dismissed: number;
+  };
   rideActivity: { date: string; label: string; count: number }[];
+  calendarEvents: CalendarEvent[];
+};
+export type CalendarEvent = {
+  id: string;
+  date: string;
+  label: string;
+  type: "ANNOUNCEMENT" | "RENEWAL";
+  detail: string;
+};
+export type WeatherSnapshot = {
+  id: string;
+  locationName: string;
+  temperatureC: number | string;
+  apparentC: number | string;
+  humidity: number;
+  windKmh: number | string;
+  weatherCode: number;
+  isDay: boolean;
+  observedAt: string;
+  fetchedAt: string;
+  latitude?: number | string;
+  longitude?: number | string;
 };
 
-type DashboardResponse = Partial<Dashboard> & Pick<Dashboard, 'drivers' | 'verifiedDrivers' | 'activeRides' | 'openIncidents' | 'generatedAt'>;
+type DashboardResponse = Partial<Dashboard> &
+  Pick<
+    Dashboard,
+    | "drivers"
+    | "verifiedDrivers"
+    | "activeRides"
+    | "openIncidents"
+    | "generatedAt"
+  >;
 
 function normalizeDashboard(value: DashboardResponse): Dashboard {
   const rideActivity = Array.isArray(value.rideActivity)
@@ -122,7 +184,11 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
     : Array.from({ length: 7 }, (_, index) => {
         const date = new Date();
         date.setDate(date.getDate() - (6 - index));
-        return { date: date.toISOString().slice(0, 10), label: date.toLocaleDateString('en-PH', { weekday: 'short' }), count: 0 };
+        return {
+          date: date.toISOString().slice(0, 10),
+          label: date.toLocaleDateString("en-PH", { weekday: "short" }),
+          count: 0,
+        };
       });
   return {
     drivers: Number(value.drivers ?? 0),
@@ -130,10 +196,28 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
     activeRides: Number(value.activeRides ?? 0),
     openIncidents: Number(value.openIncidents ?? 0),
     generatedAt: value.generatedAt ?? new Date().toISOString(),
-    users: value.users ?? { total: Number(value.drivers ?? 0), passengers: 0, drivers: Number(value.drivers ?? 0), administrators: 0 },
-    rides: value.rides ?? { total: Number(value.activeRides ?? 0), active: Number(value.activeRides ?? 0), completed: 0, cancelled: 0 },
-    incidents: value.incidents ?? { submitted: Number(value.openIncidents ?? 0), underReview: 0, resolved: 0, dismissed: 0 },
+    users: value.users ?? {
+      total: Number(value.drivers ?? 0),
+      passengers: 0,
+      drivers: Number(value.drivers ?? 0),
+      administrators: 0,
+    },
+    rides: value.rides ?? {
+      total: Number(value.activeRides ?? 0),
+      active: Number(value.activeRides ?? 0),
+      completed: 0,
+      cancelled: 0,
+    },
+    incidents: value.incidents ?? {
+      submitted: Number(value.openIncidents ?? 0),
+      underReview: 0,
+      resolved: 0,
+      dismissed: 0,
+    },
     rideActivity,
+    calendarEvents: Array.isArray(value.calendarEvents)
+      ? value.calendarEvents
+      : [],
   };
 }
 export type AdminUser = {
@@ -146,13 +230,52 @@ export type AdminUser = {
   createdAt: string;
   updatedAt: string;
   roleDefinition: { name: string };
-  driverProfile?: { id?: string; verification: DriverStatus; licenseNumber: string } | null;
+  driverProfile?: {
+    id?: string;
+    verification: DriverStatus;
+    licenseNumber: string;
+  } | null;
 };
-export type UserPage = { items: AdminUser[]; total: number; page: number; pageSize: number };
-export type RoleDefinition = { id: string; key: UserRole; name: string; description?: string | null; permissions: string[]; active: boolean; createdAt: string; updatedAt: string; _count: { users: number } };
-export type CreateUserInput = { fullName: string; email: string; phone?: string; role: UserRole; status: UserStatus; temporaryPassword: string };
-export type UpdateUserInput = { fullName?: string; email?: string; phone?: string; role?: UserRole; status?: UserStatus; newPassword?: string };
-export type RoleInput = { key: UserRole; name: string; description?: string; permissions: string[]; active?: boolean };
+export type UserPage = {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+export type RoleDefinition = {
+  id: string;
+  key: UserRole;
+  name: string;
+  description?: string | null;
+  permissions: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count: { users: number };
+};
+export type CreateUserInput = {
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  status: UserStatus;
+  temporaryPassword: string;
+};
+export type UpdateUserInput = {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  role?: UserRole;
+  status?: UserStatus;
+  newPassword?: string;
+};
+export type RoleInput = {
+  key: UserRole;
+  name: string;
+  description?: string;
+  permissions: string[];
+  active?: boolean;
+};
 export type Driver = {
   id: string;
   fullName: string;
@@ -162,7 +285,12 @@ export type Driver = {
   verification: DriverStatus;
   licenseNumber: string;
   renewalDate: string;
-  franchise?: { franchiseNumber: string; issuedAt: string; expiresAt: string; status: string };
+  franchise?: {
+    franchiseNumber: string;
+    issuedAt: string;
+    expiresAt: string;
+    status: string;
+  };
   vehicles: {
     plateNumber: string;
     vehicleType: string;
@@ -181,11 +309,19 @@ export type Incident = {
     estimatedFare: number | string;
     fromLocationId: string;
     toLocationId: string;
-    vehicle: { plateNumber: string; vehicleType: string; driver: { user: { fullName: string } } };
+    vehicle: {
+      plateNumber: string;
+      vehicleType: string;
+      driver: { user: { fullName: string } };
+    };
   } | null;
   createdAt: string;
 };
-export type IncidentReviewInput = { status: 'UNDER_REVIEW' | 'RESOLVED' | 'DISMISSED'; category?: string; reviewerNotes?: string };
+export type IncidentReviewInput = {
+  status: "UNDER_REVIEW" | "RESOLVED" | "DISMISSED";
+  category?: string;
+  reviewerNotes?: string;
+};
 export type AuditLog = {
   id: string;
   actorId?: string | null;
@@ -197,7 +333,11 @@ export type AuditLog = {
   details?: Record<string, unknown> | null;
   createdAt: string;
 };
-export type AnnouncementInput = { title: string; body: string; expiresAt?: string };
+export type AnnouncementInput = {
+  title: string;
+  body: string;
+  expiresAt?: string;
+};
 export type LocationOption = { id: string; name: string };
 export type FareRule = {
   id: string;
@@ -278,30 +418,77 @@ export type RegisterDriverInput = {
   plateNumber: string;
   vehicleType: string;
 };
-export type UpdateFranchiseInput = { status: 'PENDING' | 'VERIFIED' | 'SUSPENDED' | 'EXPIRED'; expiresAt: string };
+export type UpdateFranchiseInput = {
+  status: "PENDING" | "VERIFIED" | "SUSPENDED" | "EXPIRED";
+  expiresAt: string;
+};
 
 export const api = {
-  dashboard: () => request<DashboardResponse>("/admin/dashboard").then(normalizeDashboard),
-  users: (options: { search?: string; role?: string; status?: string; page?: number; pageSize?: number } = {}) => {
+  profile: () => request<AdminProfile>("/auth/me"),
+  updateProfile: (body: UpdateProfileInput) =>
+    request<AdminProfile>("/auth/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  dashboard: () =>
+    request<DashboardResponse>("/admin/dashboard").then(normalizeDashboard),
+  weather: (position?: { latitude: number; longitude: number; locationName?: string }) => {
     const params = new URLSearchParams();
-    if (options.search) params.set('search', options.search);
-    if (options.role) params.set('role', options.role);
-    if (options.status) params.set('status', options.status);
-    if (options.page) params.set('page', String(options.page));
-    if (options.pageSize) params.set('pageSize', String(options.pageSize));
+    if (position) {
+      params.set("latitude", String(position.latitude));
+      params.set("longitude", String(position.longitude));
+      if (position.locationName) params.set("locationName", position.locationName);
+    }
+    const query = params.toString();
+    return request<WeatherSnapshot>(`/admin/weather${query ? `?${query}` : ""}`);
+  },
+  users: (
+    options: {
+      search?: string;
+      role?: string;
+      status?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ) => {
+    const params = new URLSearchParams();
+    if (options.search) params.set("search", options.search);
+    if (options.role) params.set("role", options.role);
+    if (options.status) params.set("status", options.status);
+    if (options.page) params.set("page", String(options.page));
+    if (options.pageSize) params.set("pageSize", String(options.pageSize));
     return request<UserPage>(`/admin/users?${params.toString()}`);
   },
   user: (id: string) => request<AdminUser>(`/admin/users/${id}`),
-  createUser: (body: CreateUserInput) => request<AdminUser>('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
-  updateUser: (id: string, body: UpdateUserInput) => request<AdminUser>(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  deleteUser: (id: string) => request<{ deleted: true }>(`/admin/users/${id}`, { method: 'DELETE' }),
-  roles: () => request<RoleDefinition[]>('/admin/roles'),
-  createRole: (body: RoleInput) => request<RoleDefinition>('/admin/roles', { method: 'POST', body: JSON.stringify(body) }),
-  updateRole: (id: string, body: Omit<RoleInput, 'key'>) => request<RoleDefinition>(`/admin/roles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  deleteRole: (id: string) => request<{ deleted: true }>(`/admin/roles/${id}`, { method: 'DELETE' }),
+  createUser: (body: CreateUserInput) =>
+    request<AdminUser>("/admin/users", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateUser: (id: string, body: UpdateUserInput) =>
+    request<AdminUser>(`/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteUser: (id: string) =>
+    request<{ deleted: true }>(`/admin/users/${id}`, { method: "DELETE" }),
+  roles: () => request<RoleDefinition[]>("/admin/roles"),
+  createRole: (body: RoleInput) =>
+    request<RoleDefinition>("/admin/roles", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateRole: (id: string, body: Omit<RoleInput, "key">) =>
+    request<RoleDefinition>(`/admin/roles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteRole: (id: string) =>
+    request<{ deleted: true }>(`/admin/roles/${id}`, { method: "DELETE" }),
   drivers: () => request<Driver[]>("/admin/drivers"),
   incidents: () => request<Incident[]>("/incidents/admin/all"),
-  auditLogs: (limit = 100) => request<AuditLog[]>(`/admin/audit-logs?limit=${limit}`),
+  auditLogs: (limit = 100) =>
+    request<AuditLog[]>(`/admin/audit-logs?limit=${limit}`),
   locations: () => request<LocationOption[]>("/locations"),
   fareRules: () => request<FareRule[]>("/admin/fare-rules"),
   vehicleFarePolicies: () =>
@@ -322,15 +509,33 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  updateDriverStatus: (driverId: string, status: DriverStatus) => request<Driver>(`/admin/drivers/${driverId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateDriverStatus: (driverId: string, status: DriverStatus) =>
+    request<Driver>(`/admin/drivers/${driverId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
   reviewIncident: (id: string, body: IncidentReviewInput) =>
     request(`/incidents/admin/${id}/review`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  createFareRule: (body: FareRuleInput) => request<FareRule>("/admin/fare-rules", { method: "POST", body: JSON.stringify(body) }),
-  updateFareRule: (id: string, body: FareRuleInput) => request<FareRule>(`/admin/fare-rules/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  deactivateFareRule: (id: string) => request<FareRule>(`/admin/fare-rules/${id}`, { method: "DELETE" }),
-  activateFareRule: (id: string) => request<FareRule>(`/admin/fare-rules/${id}/activate`, { method: "POST" }),
-  createAnnouncement: (body: AnnouncementInput) => request("/admin/announcements", { method: "POST", body: JSON.stringify(body) }),
+  createFareRule: (body: FareRuleInput) =>
+    request<FareRule>("/admin/fare-rules", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateFareRule: (id: string, body: FareRuleInput) =>
+    request<FareRule>(`/admin/fare-rules/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deactivateFareRule: (id: string) =>
+    request<FareRule>(`/admin/fare-rules/${id}`, { method: "DELETE" }),
+  activateFareRule: (id: string) =>
+    request<FareRule>(`/admin/fare-rules/${id}/activate`, { method: "POST" }),
+  createAnnouncement: (body: AnnouncementInput) =>
+    request("/admin/announcements", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };

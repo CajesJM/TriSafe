@@ -1,4 +1,18 @@
 import type { Tab } from "../../types/admin";
+import {
+  Activity,
+  Banknote,
+  CarFront,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  ShieldAlert,
+  ShieldCheck,
+  UsersRound,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 type SidebarProps = {
   tab: Tab;
@@ -8,29 +22,29 @@ type SidebarProps = {
   onClose: () => void;
   onLogout: () => void;
 };
-type NavItem = { tab: Tab; icon: string; label: string };
+type NavItem = { tab: Tab; icon: LucideIcon; label: string };
 
 const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "OVERVIEW",
     items: [
-      { tab: "overview", icon: "▦", label: "Dashboard" },
-      { tab: "users", icon: "♙", label: "Users & roles" },
+      { tab: "overview", icon: LayoutDashboard, label: "Dashboard" },
+      { tab: "users", icon: UsersRound, label: "Users & roles" },
     ],
   },
   {
     label: "TRANSPORT REGISTRY",
     items: [
-      { tab: "drivers", icon: "◫", label: "Drivers & QR" },
-      { tab: "fares", icon: "₱", label: "Fare matrix" },
+      { tab: "drivers", icon: CarFront, label: "Drivers & QR" },
+      { tab: "fares", icon: Banknote, label: "Fare matrix" },
     ],
   },
   {
     label: "SAFETY & COMPLIANCE",
     items: [
-      { tab: "incidents", icon: "!", label: "Incident review" },
-      { tab: "announcements", icon: "✉", label: "Announcements" },
-      { tab: "audit", icon: "◷", label: "Audit trail" },
+      { tab: "incidents", icon: ShieldAlert, label: "Incident review" },
+      { tab: "announcements", icon: Megaphone, label: "Announcements" },
+      { tab: "audit", icon: ClipboardList, label: "Audit trail" },
     ],
   },
 ];
@@ -57,7 +71,7 @@ export function Sidebar({
       />
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">T</div>
+          <div className="brand-mark" aria-hidden="true"><ShieldCheck size={22} strokeWidth={2.4} /></div>
           <div>
             <strong>TriSafe</strong>
             <small>LGU Admin Portal</small>
@@ -68,7 +82,7 @@ export function Sidebar({
             type="button"
             aria-label="Close navigation"
           >
-            ×
+            <X size={20} />
           </button>
         </div>
         <nav className="main-nav" aria-label="Admin navigation">
@@ -83,9 +97,7 @@ export function Sidebar({
                   onClick={() => select(item.tab)}
                   type="button"
                 >
-                  <span className="nav-icon" aria-hidden="true">
-                    {item.icon}
-                  </span>
+                  <span className="nav-icon" aria-hidden="true"><item.icon size={18} strokeWidth={2} /></span>
                   <span>{item.label}</span>
                   {item.tab === "incidents" && incidentCount > 0 && (
                     <em>{incidentCount}</em>
@@ -104,7 +116,7 @@ export function Sidebar({
             </div>
           </div>
           <button className="logout-button" onClick={onLogout} type="button">
-            <span aria-hidden="true">↪</span> Sign out
+            <LogOut size={16} aria-hidden="true" /> Sign out
           </button>
         </div>
       </aside>

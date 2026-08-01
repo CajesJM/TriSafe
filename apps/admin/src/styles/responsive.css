@@ -60,8 +60,6 @@
 }
 
 @media (max-width: 480px) {
-  .refresh-button { padding: 7px 9px; }
-  .refresh-button span { display: none; }
   .profile > div { display: none; }
   .profile { margin-left: 0; }
   .auth-card { padding: 27px 22px; }

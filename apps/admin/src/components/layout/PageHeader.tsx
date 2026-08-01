@@ -1,11 +1,12 @@
 import type { SessionUser } from "../../api";
 import type { Tab } from "../../types/admin";
+import { Menu, UserRound } from "lucide-react";
 
 const titleByTab: Record<Tab, string> = {
   overview: "Operations dashboard",
   users: "Users and access",
   drivers: "Drivers and vehicles",
-  fares: "Official fare matrix",
+  fares: "Fare matrix and live operations",
   announcements: "Driver announcements",
   incidents: "Incident review",
   audit: "Activity audit trail",
@@ -18,7 +19,8 @@ const hintByTab: Record<Tab, string> = {
     "View passenger, driver, and administrator accounts and their current roles.",
   drivers:
     "Manage approved drivers, franchises, vehicles, and LGU-issued QR identities.",
-  fares: "Maintain the official route rules used for passenger fare estimates.",
+  fares:
+    "Configure vehicle rates, inspect live locations, and monitor fare transparency.",
   announcements:
     "Send renewal reminders and safety advisories to verified drivers.",
   incidents: "Review passenger reports and record the final LGU decision.",
@@ -29,18 +31,16 @@ type Props = {
   tab: Tab;
   user: SessionUser | null;
   openIncidents: number;
-  refreshing: boolean;
   onMenu: () => void;
-  onRefresh: () => void;
+  onProfile: () => void;
 };
 
 export function PageHeader({
   tab,
   user,
   openIncidents,
-  refreshing,
   onMenu,
-  onRefresh,
+  onProfile,
 }: Props) {
   return (
     <header className="page-header">
@@ -51,7 +51,7 @@ export function PageHeader({
           type="button"
           aria-label="Open navigation"
         >
-          ☰
+          <Menu size={19} />
         </button>
         <div className="breadcrumb">
           <span>TriSafe</span>
@@ -66,22 +66,27 @@ export function PageHeader({
               day: "numeric",
             })}
           </time>
+
           <button
-            className="refresh-button"
-            disabled={refreshing}
-            onClick={onRefresh}
+            className="profile profile-button"
             type="button"
+            onClick={onProfile}
+            aria-label="Open administrator profile"
           >
-            <span aria-hidden="true">↻</span>
-            {refreshing ? "Refreshing…" : "Refresh data"}
-          </button>
-          <div className="profile">
-            <span>{initials(user?.fullName ?? "LGU Administrator")}</span>
+            {user?.avatarData ? (
+              <img src={user.avatarData} alt="" />
+            ) : (
+              <span>{initials(user?.fullName ?? "LGU Administrator")}</span>
+            )}
             <div>
               <strong>{user?.fullName ?? "LGU Administrator"}</strong>
-              <small>{user?.email ?? "Authorized account"}</small>
+              <small>
+                {user?.username
+                  ? `@${user.username}`
+                  : (user?.email ?? "Authorized account")}
+              </small>
             </div>
-          </div>
+          </button>
         </div>
       </div>
       <div className="page-title-row">
