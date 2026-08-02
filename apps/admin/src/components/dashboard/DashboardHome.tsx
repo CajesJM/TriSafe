@@ -28,6 +28,7 @@ import {
   type WeatherSnapshot,
 } from "../../api";
 import type { Tab } from "../../types/admin";
+import { RideAnalyticsPanel } from "./RideAnalyticsPanel";
 
 type Props = {
   dashboard: Dashboard;
@@ -36,6 +37,12 @@ type Props = {
   user: SessionUser | null;
   onRegister: () => void;
   onNavigate: (tab: Tab) => void;
+};
+
+const defaultWeatherLocation = {
+  latitude: 9.8108,
+  longitude: 124.1435,
+  locationName: "Trinidad, Bohol",
 };
 
 export function DashboardHome({
@@ -54,28 +61,7 @@ export function DashboardHome({
   const verifiedPercent = dashboard.drivers
     ? Math.round((dashboard.verifiedDrivers / dashboard.drivers) * 100)
     : 0;
-  const totalActivity = dashboard.rideActivity.reduce(
-    (sum, day) => sum + day.count,
-    0,
-  );
-  const maxActivity = Math.max(
-    ...dashboard.rideActivity.map((day) => day.count),
-    1,
-  );
-  const chartMax = Math.max(4, Math.ceil(maxActivity / 4) * 4);
-  const chartPoints = dashboard.rideActivity
-    .map(
-      (day, index) =>
-        `${rideChartX(index, dashboard.rideActivity.length)},${rideChartY(day.count, chartMax)}`,
-    )
-    .join(" ");
-  const chartArea = `54,188 ${chartPoints} 654,188`;
-  const chartTicks = Array.from(
-    { length: 5 },
-    (_, index) => chartMax - index * (chartMax / 4),
-  );
-  const administratorName =
-    user?.username || user?.fullName.split(/\s+/)[0] || "Administrator";
+  const administratorName = user?.fullName?.trim() || "Administrator";
 
   useEffect(() => {
     const clock = window.setInterval(
@@ -121,7 +107,7 @@ export function DashboardHome({
         },
         () => {
           setWeatherUsesDevice(false);
-          void loadWeather();
+          void loadWeather(defaultWeatherLocation);
         },
         {
           enableHighAccuracy: false,
@@ -130,7 +116,8 @@ export function DashboardHome({
         },
       );
     } else {
-      void loadWeather();
+      setWeatherUsesDevice(false);
+      void loadWeather(defaultWeatherLocation);
     }
     return () => {
       active = false;
@@ -193,80 +180,7 @@ export function DashboardHome({
       </section>
 
       <section className="dashboard-main-grid">
-        <article className="dashboard-card activity-chart-card">
-          <PanelHeading
-            eyebrow="RIDE ANALYTICS"
-            title="Transport activity"
-            detail="Ride sessions recorded by the passenger application."
-            action={
-              <span className="data-badge">{totalActivity} rides · 7 days</span>
-            }
-          />
-          <div className="chart-summary">
-            <strong>{dashboard.rides.total.toLocaleString()}</strong>
-            <span>Total rides recorded</span>
-            <em>Database snapshot</em>
-          </div>
-          <div
-            className="ride-chart"
-            role="img"
-            aria-label="Line chart of rides started during the last seven days"
-          >
-            <svg viewBox="0 0 700 235" preserveAspectRatio="xMidYMid meet">
-              <defs>
-                <linearGradient id="rideArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--lime)" stopOpacity=".24" />
-                  <stop offset="100%" stopColor="var(--lime)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {chartTicks.map((tick, index) => {
-                const y = 28 + index * 40;
-                return (
-                  <g key={tick}>
-                    <line
-                      x1="54"
-                      x2="654"
-                      y1={y}
-                      y2={y}
-                      className="ride-grid-line"
-                    />
-                    <text x="39" y={y + 4} className="ride-axis-label">
-                      {tick}
-                    </text>
-                  </g>
-                );
-              })}
-              <polygon points={chartArea} fill="url(#rideArea)" />
-              <polyline points={chartPoints} className="ride-chart-line" />
-              {dashboard.rideActivity.map((day, index) => {
-                const x = rideChartX(index, dashboard.rideActivity.length);
-                const y = rideChartY(day.count, chartMax);
-                return (
-                  <g key={day.date}>
-                    <circle cx={x} cy={y} r="5" className="ride-chart-point">
-                      <title>{`${day.label}: ${day.count} ride${day.count === 1 ? "" : "s"}`}</title>
-                    </circle>
-                    <text x={x} y="215" className="ride-day-label">
-                      {day.label}
-                    </text>
-                    <text
-                      x={x}
-                      y={Math.max(18, y - 12)}
-                      className="ride-value-label"
-                    >
-                      {day.count}
-                    </text>
-                    {index === dashboard.rideActivity.length - 1 && (
-                      <text x={x} y="230" className="ride-today-label">
-                        TODAY
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </article>
+        <RideAnalyticsPanel />
 
         <div className="dashboard-side-stack">
           <WeatherCard
@@ -279,55 +193,14 @@ export function DashboardHome({
             events={dashboard.calendarEvents}
             onNavigate={onNavigate}
           />
+          <AccountDistributionCard
+            dashboard={dashboard}
+            onNavigate={onNavigate}
+          />
         </div>
       </section>
 
       <section className="dashboard-three-grid">
-        <article className="dashboard-card role-distribution-card">
-          <PanelHeading
-            eyebrow="ACCOUNT DISTRIBUTION"
-            title="Users by role"
-            action={
-              <button
-                className="link-button"
-                onClick={() => onNavigate("users")}
-                type="button"
-              >
-                Directory <ArrowUpRight size={14} />
-              </button>
-            }
-          />
-          <div className="donut-layout">
-            <DonutChart
-              values={[
-                dashboard.users.passengers,
-                dashboard.users.drivers,
-                dashboard.users.administrators,
-              ]}
-              total={dashboard.users.total}
-            />
-            <div className="donut-legend">
-              <LegendRow
-                icon={<UsersRound />}
-                label="Passengers"
-                value={dashboard.users.passengers}
-                total={dashboard.users.total}
-              />
-              <LegendRow
-                icon={<CarFront />}
-                label="Drivers"
-                value={dashboard.users.drivers}
-                total={dashboard.users.total}
-              />
-              <LegendRow
-                icon={<ShieldCheck />}
-                label="LGU admins"
-                value={dashboard.users.administrators}
-                total={dashboard.users.total}
-              />
-            </div>
-          </div>
-        </article>
         <article className="dashboard-card outcomes-card">
           <PanelHeading
             eyebrow="RIDE OUTCOMES"
@@ -479,12 +352,17 @@ function WeatherCard({
       <div className="weather-top">
         <div>
           <span className="eyebrow">LOCAL WEATHER</span>
-          <h3>{weather?.locationName ?? "Locating administrator…"}</h3>
+          <h3>
+            {weather?.locationName ??
+              (usesDeviceLocation
+                ? "Locating administrator…"
+                : defaultWeatherLocation.locationName)}
+          </h3>
           <small className="weather-location-source">
             <MapPin size={11} />{" "}
             {usesDeviceLocation
               ? "Current device location"
-              : "Trinidad fallback location"}
+              : "Default location · Trinidad, Bohol"}
           </small>
         </div>
         <CloudSun size={30} />
@@ -630,6 +508,65 @@ function CalendarCard({
   );
 }
 
+function AccountDistributionCard({
+  dashboard,
+  onNavigate,
+}: {
+  dashboard: Dashboard;
+  onNavigate: (tab: Tab) => void;
+}) {
+  return (
+    <article className="dashboard-card role-distribution-card">
+      <PanelHeading
+        eyebrow="ACCOUNT DISTRIBUTION"
+        title="Users by role"
+        action={
+          <button
+            className="link-button"
+            onClick={() => onNavigate("users")}
+            type="button"
+          >
+            <ArrowUpRight size={14} />
+          </button>
+        }
+      />
+      <div className="donut-layout">
+        <DonutChart
+          values={[
+            dashboard.users.passengers,
+            dashboard.users.drivers,
+            dashboard.users.administrators,
+          ]}
+          total={dashboard.users.total}
+        />
+        <div className="donut-legend">
+          <LegendRow
+            icon={<UsersRound />}
+            label="Passengers"
+            value={dashboard.users.passengers}
+            total={dashboard.users.total}
+            tone="passenger"
+          />
+          <LegendRow
+            icon={<CarFront />}
+            label="Drivers"
+            value={dashboard.users.drivers}
+            total={dashboard.users.total}
+            tone="driver"
+          />
+          <LegendRow
+            icon={<ShieldCheck />}
+            label="Administrators"
+            value={dashboard.users.administrators}
+            total={dashboard.users.total}
+            tone="admin"
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function PanelHeading({
   eyebrow,
   title,
@@ -718,14 +655,16 @@ function LegendRow({
   label,
   value,
   total,
+  tone,
 }: {
   icon: ReactNode;
   label: string;
   value: number;
   total: number;
+  tone: "passenger" | "driver" | "admin";
 }) {
   return (
-    <div className="legend-row">
+    <div className={`legend-row ${tone}`}>
       <span>{icon}</span>
       <div>
         <b>{label}</b>
@@ -763,27 +702,48 @@ function OutcomeRow({
 }
 function DonutChart({ values, total }: { values: number[]; total: number }) {
   const safeTotal = Math.max(total, 1);
-  const first = (values[0] / safeTotal) * 100;
-  const second = first + (values[1] / safeTotal) * 100;
+  const radius = 44;
+  const circumference = 2 * Math.PI * radius;
+  const segmentGap = 9;
+  const roles = [
+    { label: "Passengers", value: values[0], className: "passenger" },
+    { label: "Drivers", value: values[1], className: "driver" },
+    { label: "Administrators", value: values[2], className: "admin" },
+  ];
+  let offset = 0;
   return (
-    <div
-      className="donut-chart"
-      style={{
-        background: `conic-gradient(var(--orange) 0 ${first}%, var(--black) ${first}% ${second}%, var(--gray) ${second}% 100%)`,
-      }}
-    >
-      <div>
+    <div className="donut-chart" role="img" aria-label={`${total} accounts distributed across passenger, driver, and administrator roles`}>
+      <svg viewBox="0 0 110 110" aria-hidden="true">
+        <circle className="donut-track" cx="55" cy="55" r={radius} />
+        {roles.map((role) => {
+          const completeLength = (role.value / safeTotal) * circumference;
+          const visibleLength = role.value > 0
+            ? Math.max(2, completeLength - segmentGap)
+            : 0;
+          const dashOffset = -offset;
+          offset += completeLength;
+          return (
+            <circle
+              className={`donut-segment ${role.className}`}
+              cx="55"
+              cy="55"
+              r={radius}
+              key={role.className}
+              pathLength={circumference}
+              strokeDasharray={`${visibleLength} ${circumference}`}
+              strokeDashoffset={dashOffset}
+            >
+              <title>{`${role.label}: ${role.value} (${Math.round((role.value / safeTotal) * 100)}%)`}</title>
+            </circle>
+          );
+        })}
+      </svg>
+      <div className="donut-center">
         <strong>{total}</strong>
         <small>accounts</small>
       </div>
     </div>
   );
-}
-function rideChartX(index: number, length: number) {
-  return length <= 1 ? 354 : 54 + index * (600 / (length - 1));
-}
-function rideChartY(value: number, max: number) {
-  return 188 - (value / Math.max(max, 1)) * 160;
 }
 async function resolveDeviceLocationName(latitude: number, longitude: number) {
   const controller = new AbortController();

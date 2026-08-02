@@ -6,16 +6,20 @@ export function RoleForm({
   availableKeys,
   onCancel,
   onSave,
+  onError,
 }: {
   role: RoleDefinition | null;
   availableKeys: UserRole[];
   onCancel: () => void;
   onSave: (input: RoleInput) => Promise<void>;
+  onError: (message: string) => void;
 }) {
   const [key, setKey] = useState<UserRole>(
     role?.key ?? availableKeys[0] ?? "PASSENGER",
   );
-  const [name, setName] = useState(role?.name ?? "");
+  const [name] = useState(
+    role?.key === "LGU_ADMIN" ? "Administrator" : role?.name ?? "",
+  );
   const [description, setDescription] = useState(role?.description ?? "");
   const [permissions, setPermissions] = useState(
     role?.permissions.join(", ") ?? "",
@@ -39,11 +43,11 @@ export function RoleForm({
         active,
       });
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
+      const message = requestError instanceof Error
           ? requestError.message
-          : "Unable to save role.",
-      );
+          : "Unable to save role.";
+      setError(message);
+      onError(message);
     } finally {
       setSaving(false);
     }
@@ -53,10 +57,10 @@ export function RoleForm({
       <div className="form-heading">
         <div>
           <span className="eyebrow">ROLE DEFINITION</span>
-          <h3>{role ? `Edit ${role.name}` : "Create role definition"}</h3>
+          <h3>{role ? `Edit ${role.key === "LGU_ADMIN" ? "Administrator" : role.name}` : "Create role definition"}</h3>
           <p>
-            System keys remain fixed so API and mobile authorization stay
-            predictable.
+            Role names and system keys are fixed so web, mobile, and API
+            authorization remain consistent.
           </p>
         </div>
         <button className="close-button" onClick={onCancel} type="button">
@@ -80,11 +84,11 @@ export function RoleForm({
           </select>
         </label>
         <label className="field">
-          <span>Display name</span>
+          <span>Display name · system controlled</span>
           <input
             value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
+            readOnly
+            aria-readonly="true"
           />
         </label>
         <label className="field field-wide">

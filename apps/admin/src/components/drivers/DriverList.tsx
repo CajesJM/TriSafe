@@ -3,6 +3,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { Driver, DriverStatus } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState } from "../shared/Feedback";
+import { DriverProfileModal } from "./DriverProfileModal";
 
 const pageSize = 8;
 const statusOptions = [
@@ -18,6 +19,10 @@ type Props = {
   onViewQr: (driver: Driver) => void;
   onUpdateFranchise: (driver: Driver) => void;
   onUpdateStatus: (driver: Driver, status: DriverStatus) => Promise<void>;
+  selectedDriverId: string | null;
+  onViewProfile: (driverId: string) => void;
+  onCloseProfile: () => void;
+  onEditAccount: (driver: Driver) => void;
 };
 
 export function DriverList({
@@ -26,6 +31,10 @@ export function DriverList({
   onViewQr,
   onUpdateFranchise,
   onUpdateStatus,
+  selectedDriverId,
+  onViewProfile,
+  onCloseProfile,
+  onEditAccount,
 }: Props) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -46,6 +55,7 @@ export function DriverList({
     [drivers, search, status],
   );
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const selectedDriver = drivers.find((driver) => driver.id === selectedDriverId);
 
   async function changeStatus(driver: Driver, nextStatus: DriverStatus) {
     setChanging(driver.id);
@@ -125,6 +135,8 @@ export function DriverList({
               changing={changing === driver.id}
               onViewQr={onViewQr}
               onUpdateFranchise={onUpdateFranchise}
+              onViewProfile={() => onViewProfile(driver.id)}
+              onEditAccount={() => onEditAccount(driver)}
               onUpdateStatus={(nextStatus) => changeStatus(driver, nextStatus)}
               key={driver.id}
             />
@@ -139,6 +151,20 @@ export function DriverList({
           onPageChange={setPage}
         />
       )}
+      {selectedDriver && (
+        <DriverProfileModal
+          driver={selectedDriver}
+          onClose={onCloseProfile}
+          onEditFranchise={() => {
+            onCloseProfile();
+            onUpdateFranchise(selectedDriver);
+          }}
+          onViewQr={() => {
+            onCloseProfile();
+            onViewQr(selectedDriver);
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -148,12 +174,16 @@ function DriverRow({
   changing,
   onViewQr,
   onUpdateFranchise,
+  onViewProfile,
+  onEditAccount,
   onUpdateStatus,
 }: {
   driver: Driver;
   changing: boolean;
   onViewQr: (driver: Driver) => void;
   onUpdateFranchise: (driver: Driver) => void;
+  onViewProfile: () => void;
+  onEditAccount: () => void;
   onUpdateStatus: (status: DriverStatus) => Promise<void>;
 }) {
   const vehicle = driver.vehicles[0];
@@ -193,6 +223,12 @@ function DriverRow({
         {status}
       </span>
       <span className="row-menu">
+        <button className="row-action" onClick={onEditAccount} type="button">
+          Edit account
+        </button>
+        <button className="row-action driver-profile-action" onClick={onViewProfile} type="button">
+          Profile
+        </button>
         <button
           className="row-action"
           onClick={() => onUpdateFranchise(driver)}

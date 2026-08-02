@@ -17,9 +17,13 @@
 .data-row b, .data-row small { display: block; }
 .data-row b { color: var(--ink); font-size: 11px; }
 .data-row small { margin-top: 4px; color: var(--subtle); font-size: 9px; line-height: 1.4; }
-.user-row, .data-row.data-head:not(.driver-table-head):not(.fare-table-head):not(.driver-summary-head) { grid-template-columns: minmax(205px, 1.2fr) minmax(105px, .55fr) minmax(180px, .9fr) minmax(90px, .5fr) minmax(100px, .55fr); }
+.user-row, .data-row.data-head:not(.driver-table-head):not(.fare-table-head):not(.driver-summary-head):not(.account-user-head) { grid-template-columns: minmax(205px, 1.2fr) minmax(105px, .55fr) minmax(180px, .9fr) minmax(90px, .5fr) minmax(100px, .55fr); }
 .user-row, .user-table-head { grid-template-columns: minmax(205px, 1.05fr) minmax(115px, .58fr) minmax(180px, .9fr) minmax(88px, .42fr) minmax(100px, .52fr) minmax(205px, 1fr); min-width: 1080px; }
-.driver-table-row, .driver-table-head { grid-template-columns: minmax(220px, 1.25fr) minmax(110px, .65fr) minmax(145px, .8fr) minmax(120px, .65fr) minmax(85px, .5fr) minmax(150px, .8fr); min-width: 1020px; }
+.account-user-row, .account-user-head { grid-template-columns: minmax(220px, 1.15fr) minmax(220px, 1fr) minmax(100px, .45fr) minmax(240px, 1fr); min-width: 840px; }
+.account-user-row > .status { align-self: center; justify-self: start; }
+.account-user-row > .row-menu { align-self: center; justify-self: start; }
+.account-loading-reserve { min-height: 126px; }
+.driver-table-row, .driver-table-head { grid-template-columns: minmax(220px, 1.15fr) minmax(110px, .6fr) minmax(145px, .72fr) minmax(120px, .58fr) minmax(85px, .42fr) minmax(250px, 1.2fr); min-width: 1130px; }
 .driver-summary-row, .driver-summary-head { grid-template-columns: minmax(220px, 1.25fr) minmax(130px, .7fr) minmax(170px, .8fr) minmax(90px, .45fr); }
 .identity-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .identity-cell > span:last-child { min-width: 0; }

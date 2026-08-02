@@ -151,10 +151,22 @@ input::placeholder, textarea::placeholder { color: var(--subtle) !important; }
 .metric-card-modern small { margin-top: 5px; color: var(--muted); font-size: 8px; }
 .metric-card-modern button { margin-top: 7px; color: var(--forest); font-size: 8px; }
 .dashboard-main-grid { grid-template-columns: minmax(0, 1.7fr) minmax(260px, .63fr); gap: 12px; }
-.dashboard-three-grid { grid-template-columns: 1.05fr .95fr 1fr; gap: 12px; }
+.dashboard-three-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 12px; }
 .dashboard-card { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: var(--off-white); box-shadow: var(--shadow-sm); }
 .activity-chart-card { min-height: 360px; }
 .dashboard-side-stack { gap: 12px; }
+.dashboard-side-stack .role-distribution-card .donut-layout { grid-template-columns: 104px minmax(0, 1fr); gap: 12px; margin-top: 16px; }
+.dashboard-side-stack .role-distribution-card .donut-chart { width: 104px; height: 104px; }
+.dashboard-side-stack .role-distribution-card .donut-chart > div { width: 67px; height: 67px; }
+.dashboard-side-stack .role-distribution-card .donut-chart strong { font-size: 19px; }
+.dashboard-side-stack .role-distribution-card .donut-legend { gap: 10px; }
+.dashboard-side-stack .role-distribution-card .legend-row { grid-template-columns: 21px minmax(0, 1fr) auto; gap: 6px; }
+.dashboard-side-stack .role-distribution-card .legend-row > span { width: 21px; height: 21px; }
+.dashboard-side-stack .role-distribution-card .legend-row svg { width: 13px; height: 13px; }
+.dashboard-side-stack .role-distribution-card .legend-row b { font-size: 9px; }
+.dashboard-side-stack .role-distribution-card .legend-row small { font-size: 7px; }
+.dashboard-side-stack .role-distribution-card .legend-row > strong { font-size: 12px; }
+.dashboard-three-grid > .dashboard-card { height: 100%; }
 .panel-title-modern h3 { color: var(--black); font-size: 14px; }
 .panel-title-modern p:not(.eyebrow) { margin-top: 4px; color: var(--muted); font-size: 9px; }
 .data-badge { color: var(--forest); background: var(--primary-100); font-size: 8px; }
@@ -183,7 +195,7 @@ input::placeholder, textarea::placeholder { color: var(--subtle) !important; }
 .calendar-date.renewal { color: var(--off-white); background: var(--forest); }
 .donut-chart > div { background: var(--off-white); }
 .donut-chart strong, .legend-row b, .legend-row > strong, .panel-total-modern { color: var(--black); }
-.legend-row > span, .outcome-row > div:first-child > span { color: var(--forest); background: var(--primary-100); }
+.outcome-row > div:first-child > span { color: var(--forest); background: var(--primary-100); }
 .legend-row small, .outcome-footnote { color: var(--muted); }
 .outcome-track { background: var(--line-light); }
 .outcome-track i { background: var(--forest); }
@@ -270,20 +282,23 @@ input::placeholder, textarea::placeholder { color: var(--subtle) !important; }
 @media (max-width: 1180px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-main-grid { grid-template-columns: 1fr; }
-  .dashboard-side-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-side-stack { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .dashboard-three-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .priority-card { grid-column: 1 / -1; }
 }
 @media (max-width: 1024px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .sidebar { width: 232px; box-shadow: 18px 0 50px rgba(15,15,15,.18); }
   .sidebar-backdrop { background: rgba(15,15,15,.48); }
 }
+@media (max-width: 900px) {
+  .dashboard-side-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-side-stack .role-distribution-card { grid-column: 1 / -1; }
+}
 @media (max-width: 700px) {
   .content { padding: 12px 12px 30px; }
   .dashboard-welcome { align-items: flex-start; flex-direction: column; }
   .live-status { width: 100%; }
   .metric-grid, .dashboard-side-stack, .dashboard-three-grid { grid-template-columns: 1fr; }
-  .priority-card { grid-column: auto; }
+  .dashboard-side-stack .role-distribution-card { grid-column: auto; }
   .dashboard-card, .data-card, .live-map-card, .fare-policy-card, .registration-form, .fare-form { padding: 16px; }
 }

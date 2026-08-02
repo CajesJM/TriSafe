@@ -5,6 +5,7 @@ import { EmptyState } from "../shared/Feedback";
 import { FareRuleForm } from "./FareRuleForm";
 import { LiveTransportMap } from "./LiveTransportMap";
 import { VehicleFarePolicyPanel } from "./VehicleFarePolicyPanel";
+import { ConfirmModal } from "../shared/ConfirmModal";
 
 type Props = {
   rules: FareRule[];
@@ -21,6 +22,7 @@ export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
+  const [ruleToDeactivate, setRuleToDeactivate] = useState<FareRule>();
   const filtered = useMemo(
     () =>
       rules.filter((rule) => {
@@ -43,14 +45,7 @@ export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
     setEditing(undefined);
     setShowForm(false);
   }
-  async function setRuleActive(rule: FareRule, active: boolean) {
-    if (
-      !active &&
-      !window.confirm(
-        `Deactivate the rule for ${rule.fromLocation.name} to ${rule.toLocation.name}?`,
-      )
-    )
-      return;
+  async function applyRuleStatus(rule: FareRule, active: boolean) {
     setError("");
     setChanging(rule.id);
     try {
@@ -59,13 +54,24 @@ export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
         : await api.deactivateFareRule(rule.id);
       await onChanged();
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to update the fare rule.",
-      );
+      const message = requestError instanceof Error
+        ? requestError.message
+        : "Unable to update the fare rule.";
+      setError(message);
+      throw new Error(message);
     } finally {
       setChanging("");
+    }
+  }
+  async function setRuleActive(rule: FareRule, active: boolean) {
+    if (!active) {
+      setRuleToDeactivate(rule);
+      return;
+    }
+    try {
+      await applyRuleStatus(rule, active);
+    } catch {
+      // The inline error panel already explains an activation failure.
     }
   }
   function updateSearch(value: string) {
@@ -221,6 +227,16 @@ export function FareMatrixPanel({ rules, locations, onChanged }: Props) {
         />
       )}
       </section>
+      {ruleToDeactivate && (
+        <ConfirmModal
+          title="Deactivate this official fare rule?"
+          message={`${ruleToDeactivate.fromLocation.name} to ${ruleToDeactivate.toLocation.name} will no longer be available for new fare estimates. Existing ride records will not be changed.`}
+          confirmLabel="Deactivate rule"
+          tone="warning"
+          onConfirm={() => applyRuleStatus(ruleToDeactivate, false)}
+          onCancel={() => setRuleToDeactivate(undefined)}
+        />
+      )}
     </div>
   );
 }

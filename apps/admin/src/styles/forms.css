@@ -18,6 +18,7 @@
 .field textarea, .announcement-body textarea { min-height: 115px; resize: vertical; line-height: 1.5; }
 .field input:focus, .field select:focus, .field textarea:focus, .announcement-body textarea:focus, .auth-card input:focus { border-color: var(--primary-600); box-shadow: 0 0 0 3px rgba(20,112,100,.12); }
 .field input::placeholder, .field textarea::placeholder { color: var(--gray); }
+.field input[readonly] { color: var(--muted); background: var(--line-light); cursor: not-allowed; }
 .form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 23px; border-top: 1px solid var(--line-light); padding-top: 18px; }
 .submit-button { min-width: 165px; }
 .form-help { border-color: var(--gray); background: linear-gradient(150deg, var(--gray), var(--gray)); }

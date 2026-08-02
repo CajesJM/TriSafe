@@ -7,6 +7,7 @@ import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { hashPassword } from '../auth/password';
+import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
 
 @Injectable()
 export class AdminService {
@@ -104,6 +105,107 @@ export class AdminService {
           detail: 'Driver franchise renewal date',
         })),
       ].sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  }
+
+  async rideAnalytics(query: RideAnalyticsQueryDto) {
+    const to = query.to ?? manilaDateString(new Date());
+    const from = query.from ?? addDateString(to, -6);
+    const rangeDays = dateRangeDays(from, to);
+
+    if (rangeDays < 1) throw new BadRequestException('The start date must be before or equal to the end date.');
+    if (rangeDays > 90) throw new BadRequestException('Ride analytics can display up to 90 days at a time.');
+
+    const previousTo = addDateString(from, -1);
+    const previousFrom = addDateString(previousTo, -(rangeDays - 1));
+    const [rides, previousTotal] = await Promise.all([
+      this.prisma.ride.findMany({
+        where: {
+          startedAt: {
+            gte: manilaDayStart(from),
+            lt: manilaDayStart(addDateString(to, 1)),
+          },
+        },
+        select: {
+          startedAt: true,
+          status: true,
+          estimatedFare: true,
+          finalFare: true,
+        },
+        orderBy: { startedAt: 'asc' },
+      }),
+      this.prisma.ride.count({
+        where: {
+          startedAt: {
+            gte: manilaDayStart(previousFrom),
+            lt: manilaDayStart(addDateString(previousTo, 1)),
+          },
+        },
+      }),
+    ]);
+
+    const dailyRecords = new Map<string, {
+      total: number;
+      completed: number;
+      active: number;
+      cancelled: number;
+      fareAmount: number;
+    }>();
+
+    for (const ride of rides) {
+      const date = manilaDateString(ride.startedAt);
+      const record = dailyRecords.get(date) ?? {
+        total: 0,
+        completed: 0,
+        active: 0,
+        cancelled: 0,
+        fareAmount: 0,
+      };
+      record.total += 1;
+      if (ride.status === 'COMPLETED') record.completed += 1;
+      if (ride.status === 'ACTIVE') record.active += 1;
+      if (ride.status === 'CANCELLED') record.cancelled += 1;
+      record.fareAmount += Number(ride.finalFare ?? ride.estimatedFare ?? 0);
+      dailyRecords.set(date, record);
+    }
+
+    const daily = Array.from({ length: rangeDays }, (_, index) => {
+      const date = addDateString(from, index);
+      const record = dailyRecords.get(date) ?? {
+        total: 0,
+        completed: 0,
+        active: 0,
+        cancelled: 0,
+        fareAmount: 0,
+      };
+      return {
+        date,
+        label: formatAnalyticsDay(date),
+        ...record,
+        fareAmount: Number(record.fareAmount.toFixed(2)),
+      };
+    });
+
+    const total = rides.length;
+    const changePercent = previousTotal === 0
+      ? (total === 0 ? 0 : null)
+      : Number((((total - previousTotal) / previousTotal) * 100).toFixed(1));
+
+    return {
+      from,
+      to,
+      days: rangeDays,
+      previousPeriod: { from: previousFrom, to: previousTo, total: previousTotal },
+      summary: {
+        total,
+        completed: daily.reduce((sum, day) => sum + day.completed, 0),
+        active: daily.reduce((sum, day) => sum + day.active, 0),
+        cancelled: daily.reduce((sum, day) => sum + day.cancelled, 0),
+        fareAmount: Number(daily.reduce((sum, day) => sum + day.fareAmount, 0).toFixed(2)),
+        previousTotal,
+        changePercent,
+      },
+      daily,
     };
   }
 
@@ -228,7 +330,7 @@ export class AdminService {
           createdAt: true,
           updatedAt: true,
           roleDefinition: { select: { name: true } },
-          driverProfile: { select: { verification: true, licenseNumber: true } },
+          driverProfile: { select: { id: true, verification: true, licenseNumber: true } },
         },
       }),
       this.prisma.user.count({ where }),
@@ -357,7 +459,7 @@ export class AdminService {
   private async ensureAdminContinuity(previousRole: UserRole, previousStatus: UserStatus, nextRole: UserRole, nextStatus: UserStatus, excludedId: string) {
     if (previousRole !== UserRole.LGU_ADMIN || previousStatus !== UserStatus.ACTIVE || (nextRole === UserRole.LGU_ADMIN && nextStatus === UserStatus.ACTIVE)) return;
     const remaining = await this.prisma.user.count({ where: { id: { not: excludedId }, role: UserRole.LGU_ADMIN, status: UserStatus.ACTIVE } });
-    if (remaining === 0) throw new ConflictException('At least one active LGU administrator account is required.');
+    if (remaining === 0) throw new ConflictException('At least one active Administrator account is required.');
   }
 
   private cleanPermissions(permissions: string[]) {
@@ -368,4 +470,40 @@ export class AdminService {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('That email address is already assigned to another user.');
     throw error;
   }
+}
+
+function manilaDateString(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function addDateString(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function dateRangeDays(from: string, to: string) {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((end - start) / 86_400_000) + 1;
+}
+
+function manilaDayStart(value: string) {
+  return new Date(`${value}T00:00:00+08:00`);
+}
+
+function formatAnalyticsDay(value: string) {
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(`${value}T00:00:00+08:00`));
 }

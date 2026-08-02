@@ -167,6 +167,31 @@ export type WeatherSnapshot = {
   latitude?: number | string;
   longitude?: number | string;
 };
+export type RideAnalyticsDay = {
+  date: string;
+  label: string;
+  total: number;
+  completed: number;
+  active: number;
+  cancelled: number;
+  fareAmount: number;
+};
+export type RideAnalytics = {
+  from: string;
+  to: string;
+  days: number;
+  previousPeriod: { from: string; to: string; total: number };
+  summary: {
+    total: number;
+    completed: number;
+    active: number;
+    cancelled: number;
+    fareAmount: number;
+    previousTotal: number;
+    changePercent: number | null;
+  };
+  daily: RideAnalyticsDay[];
+};
 
 type DashboardResponse = Partial<Dashboard> &
   Pick<
@@ -278,6 +303,7 @@ export type RoleInput = {
 };
 export type Driver = {
   id: string;
+  userId: string;
   fullName: string;
   email?: string | null;
   phone?: string;
@@ -432,6 +458,17 @@ export const api = {
     }),
   dashboard: () =>
     request<DashboardResponse>("/admin/dashboard").then(normalizeDashboard),
+  rideAnalytics: (range?: { from: string; to: string }) => {
+    const params = new URLSearchParams();
+    if (range) {
+      params.set("from", range.from);
+      params.set("to", range.to);
+    }
+    const query = params.toString();
+    return request<RideAnalytics>(
+      `/admin/ride-analytics${query ? `?${query}` : ""}`,
+    );
+  },
   weather: (position?: { latitude: number; longitude: number; locationName?: string }) => {
     const params = new URLSearchParams();
     if (position) {

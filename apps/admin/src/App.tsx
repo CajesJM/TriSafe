@@ -11,6 +11,10 @@ import {
   LocationOption,
   SessionUser,
   UpdateFranchiseInput,
+  AdminUser,
+  RoleDefinition,
+  CreateUserInput,
+  UpdateUserInput,
   getSessionUser,
   hasAuthToken,
   logout,
@@ -35,6 +39,7 @@ import {
 } from "./components/shared/Feedback";
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
+import { UserForm } from "./components/users/UserForm";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -57,6 +62,9 @@ export function App() {
     getSessionUser(),
   );
   const [profileOpen, setProfileOpen] = useState(false);
+  const [driverProfileId, setDriverProfileId] = useState<string | null>(null);
+  const [editingDriverAccount, setEditingDriverAccount] = useState<AdminUser | null>(null);
+  const [driverAccountRoles, setDriverAccountRoles] = useState<RoleDefinition[]>([]);
 
   const loadData = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -126,8 +134,34 @@ export function App() {
 
   function changeTab(nextTab: Tab) {
     setTab(nextTab);
+    if (nextTab !== "drivers") setDriverProfileId(null);
+    if (nextTab !== "drivers") setEditingDriverAccount(null);
     setRegistrationNotice("");
     setAnnouncementNotice("");
+  }
+  async function openDriverAccount(driver: Driver) {
+    setError("");
+    try {
+      const [account, roles] = await Promise.all([api.user(driver.userId), api.roles()]);
+      setDriverAccountRoles(roles);
+      setEditingDriverAccount(account);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to open the driver account.");
+    }
+  }
+  async function saveDriverAccount(input: CreateUserInput | UpdateUserInput) {
+    if (!editingDriverAccount) return;
+    const updated = await api.updateUser(editingDriverAccount.id, input as UpdateUserInput);
+    setDrivers((items) => items.map((driver) => driver.userId === updated.id ? {
+      ...driver,
+      fullName: updated.fullName,
+      email: updated.email,
+      phone: updated.phone ?? undefined,
+      accountStatus: updated.status,
+    } : driver));
+    setEditingDriverAccount(null);
+    setRegistrationNotice(`${updated.fullName}'s driver account was updated.`);
+    setAuditLogs(await api.auditLogs());
   }
   function openRegistration() {
     setError("");
@@ -255,6 +289,10 @@ export function App() {
                   onViewQr={setQrDriver}
                   onUpdateFranchise={setFranchiseDriver}
                   onUpdateStatus={updateDriverStatus}
+                  selectedDriverId={driverProfileId}
+                  onViewProfile={setDriverProfileId}
+                  onCloseProfile={() => setDriverProfileId(null)}
+                  onEditAccount={openDriverAccount}
                 />
               ))}
             {tab === "drivers" && franchiseDriver && (
@@ -268,6 +306,16 @@ export function App() {
               <QrCodePanel
                 driver={qrDriver}
                 onClose={() => setQrDriver(null)}
+              />
+            )}
+            {tab === "drivers" && editingDriverAccount && (
+              <UserForm
+                user={editingDriverAccount}
+                roles={driverAccountRoles}
+                defaultRole="DRIVER"
+                onCancel={() => setEditingDriverAccount(null)}
+                onSave={saveDriverAccount}
+                onError={(message) => setError(message)}
               />
             )}
             {tab === "fares" && (

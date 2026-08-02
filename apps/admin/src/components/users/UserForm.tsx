@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AdminUser,
   CreateUserInput,
@@ -13,13 +14,16 @@ type Props = {
   roles: RoleDefinition[];
   onCancel: () => void;
   onSave: (input: CreateUserInput | UpdateUserInput) => Promise<void>;
+  onError: (message: string) => void;
+  defaultRole?: UserRole;
 };
 
-export function UserForm({ user, roles, onCancel, onSave }: Props) {
+export function UserForm({ user, roles, onCancel, onSave, onError, defaultRole = "PASSENGER" }: Props) {
+  const titleId = useId();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [role, setRole] = useState<UserRole>(user?.role ?? "PASSENGER");
+  const [role, setRole] = useState<UserRole>(user?.role ?? defaultRole);
   const [status, setStatus] = useState<UserStatus>(user?.status ?? "ACTIVE");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -27,6 +31,14 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
   const assignableRoles = roles.filter(
     (item) => item.active && (item.key !== "DRIVER" || user?.role === "DRIVER"),
   );
+
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && !saving) onCancel();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onCancel, saving]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -52,23 +64,29 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
           temporaryPassword: password,
         });
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
+      const message = requestError instanceof Error
           ? requestError.message
-          : "Unable to save the account.",
-      );
+          : "Unable to save the account.";
+      setError(message);
+      onError(message);
     } finally {
       setSaving(false);
     }
   }
 
-  return (
-    <section className="registration-layout">
+  return createPortal(
+    <div
+      className="user-form-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !saving) onCancel();
+      }}
+    >
+    <section className="registration-layout user-form-modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <form className="card registration-form" onSubmit={submit}>
         <div className="form-heading">
           <div>
             <span className="eyebrow">USER ACCOUNT</span>
-            <h3>{user ? `Edit ${user.fullName}` : "Create a user"}</h3>
+            <h3 id={titleId}>{user ? `Edit ${user.fullName}` : "Create a user"}</h3>
             <p>
               Account status controls sign-in access immediately. Passwords must
               contain at least eight characters.
@@ -78,6 +96,7 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
             className="close-button"
             onClick={onCancel}
             type="button"
+            disabled={saving}
             aria-label="Close user form"
           >
             ×
@@ -88,6 +107,12 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
             {error}
           </div>
         )}
+        {user?.role === "DRIVER" && (
+          <div className="driver-account-boundary" role="note">
+            <strong>Editing account access only</strong>
+            <span>License, franchise, vehicle, eligibility, and QR information are managed from Drivers &amp; QR through “View driver profile.”</span>
+          </div>
+        )}
         <div className="form-section">
           <h4>Identity and contact</h4>
           <div className="form-grid">
@@ -96,6 +121,7 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
                 Full name <em>*</em>
               </span>
               <input
+                autoFocus
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 required
@@ -155,7 +181,7 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
               >
                 {assignableRoles.map((item) => (
                   <option key={item.key} value={item.key}>
-                    {item.name}
+                    {item.key === "LGU_ADMIN" ? "Administrator" : item.name}
                   </option>
                 ))}
               </select>
@@ -198,7 +224,7 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
         <h3>Access safeguards</h3>
         <p>
           TriSafe prevents administrators from deactivating themselves or
-          removing the final active LGU administrator.
+          removing the final active Administrator.
         </p>
         <div className="help-step">
           <b>1</b>Choose the minimum role needed
@@ -211,5 +237,7 @@ export function UserForm({ user, roles, onCancel, onSave }: Props) {
         </div>
       </aside>
     </section>
+    </div>,
+    document.body,
   );
 }

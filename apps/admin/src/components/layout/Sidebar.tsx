@@ -29,7 +29,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "OVERVIEW",
     items: [
       { tab: "overview", icon: LayoutDashboard, label: "Dashboard" },
-      { tab: "users", icon: UsersRound, label: "Users & roles" },
+      { tab: "users", icon: UsersRound, label: "Accounts & access" },
     ],
   },
   {
@@ -74,7 +74,7 @@ export function Sidebar({
           <div className="brand-mark" aria-hidden="true"><ShieldCheck size={22} strokeWidth={2.4} /></div>
           <div>
             <strong>TriSafe</strong>
-            <small>LGU Admin Portal</small>
+            <small>Administrator Portal</small>
           </div>
           <button
             className="sidebar-close"

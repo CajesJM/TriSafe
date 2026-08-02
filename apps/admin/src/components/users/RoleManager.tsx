@@ -1,38 +1,30 @@
 import { useState } from "react";
-import { RoleDefinition, RoleInput, UserRole } from "../../api";
+import { RoleDefinition, RoleInput } from "../../api";
 import { EmptyState } from "../shared/Feedback";
 import { RoleForm } from "./RoleForm";
 
 export function RoleManager({
   roles,
   onSave,
-  onDelete,
+  onError,
 }: {
   roles: RoleDefinition[];
   onSave: (id: string | null, input: RoleInput) => Promise<void>;
-  onDelete: (role: RoleDefinition) => Promise<void>;
+  onError: (message: string) => void;
 }) {
   const [editing, setEditing] = useState<RoleDefinition | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
-  const missingKeys = (
-    ["PASSENGER", "DRIVER", "LGU_ADMIN"] as UserRole[]
-  ).filter((key) => !roles.some((role) => role.key === key));
 
-  if (editing || creating)
+  if (editing)
     return (
       <RoleForm
         role={editing}
-        availableKeys={missingKeys}
-        onCancel={() => {
-          setEditing(null);
-          setCreating(false);
-        }}
+        availableKeys={[]}
+        onCancel={() => setEditing(null)}
         onSave={async (input) => {
-          await onSave(editing?.id ?? null, input);
+          await onSave(editing.id, input);
           setEditing(null);
-          setCreating(false);
         }}
+        onError={onError}
       />
     );
   return (
@@ -42,31 +34,13 @@ export function RoleManager({
           <h4>System role definitions</h4>
           <p>
             Role keys are fixed because mobile and API authorization depend on
-            them. Names, descriptions, permissions, and availability are
-            configurable.
+            them. Display names are also system controlled; descriptions,
+            permissions, and availability remain configurable.
           </p>
         </div>
-        <button
-          className="secondary"
-          disabled={missingKeys.length === 0}
-          onClick={() => setCreating(true)}
-          title={
-            missingKeys.length
-              ? "Restore a missing system role"
-              : "All system roles already exist"
-          }
-          type="button"
-        >
-          ＋ Create role
-        </button>
       </div>
-      {error && (
-        <div className="error" role="alert">
-          {error}
-        </div>
-      )}
       {roles.length === 0 ? (
-        <EmptyState text="Create the required TriSafe system role definitions." />
+        <EmptyState text="No TriSafe system role definitions are available." />
       ) : (
         <div className="role-grid">
           {roles.map((role) => (
@@ -76,7 +50,7 @@ export function RoleManager({
                   {role.key === "LGU_ADMIN" ? "A" : role.key[0]}
                 </span>
                 <div>
-                  <h4>{role.name}</h4>
+                  <h4>{role.key === "LGU_ADMIN" ? "Administrator" : role.name}</h4>
                   <code>{role.key}</code>
                 </div>
                 <span
@@ -106,23 +80,6 @@ export function RoleManager({
                     type="button"
                   >
                     Edit
-                  </button>
-                  <button
-                    className="row-action danger-action"
-                    onClick={async () => {
-                      try {
-                        await onDelete(role);
-                      } catch (requestError) {
-                        setError(
-                          requestError instanceof Error
-                            ? requestError.message
-                            : "Unable to delete role.",
-                        );
-                      }
-                    }}
-                    type="button"
-                  >
-                    Delete
                   </button>
                 </div>
               </div>

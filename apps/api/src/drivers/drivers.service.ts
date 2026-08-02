@@ -137,6 +137,6 @@ export class DriversService {
   }
 
   private toAdminDriver(driver: Prisma.DriverGetPayload<{ include: { user: true; franchise: true; vehicles: { include: { qrCode: true } } } }>) {
-    return { id: driver.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
+    return { id: driver.id, userId: driver.user.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
   }
 }

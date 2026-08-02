@@ -4,7 +4,7 @@ import { Menu, UserRound } from "lucide-react";
 
 const titleByTab: Record<Tab, string> = {
   overview: "Operations dashboard",
-  users: "Users and access",
+  users: "Accounts and access",
   drivers: "Drivers and vehicles",
   fares: "Fare matrix and live operations",
   announcements: "Driver announcements",
@@ -16,7 +16,7 @@ const hintByTab: Record<Tab, string> = {
   overview:
     "Monitor registered transport activity and items needing LGU action.",
   users:
-    "View passenger, driver, and administrator accounts and their current roles.",
+    "Manage passenger and Administrator accounts, access status, and role definitions.",
   drivers:
     "Manage approved drivers, franchises, vehicles, and LGU-issued QR identities.",
   fares:
@@ -76,10 +76,10 @@ export function PageHeader({
             {user?.avatarData ? (
               <img src={user.avatarData} alt="" />
             ) : (
-              <span>{initials(user?.fullName ?? "LGU Administrator")}</span>
+              <span>{initials(user?.fullName ?? "Administrator")}</span>
             )}
             <div>
-              <strong>{user?.fullName ?? "LGU Administrator"}</strong>
+              <strong>{user?.fullName ?? "Administrator"}</strong>
               <small>
                 {user?.username
                   ? `@${user.username}`

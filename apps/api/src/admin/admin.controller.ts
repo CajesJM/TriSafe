@@ -7,12 +7,14 @@ import type { RequestWithUser } from '../auth/auth.types';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
+import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
 
 @Controller('admin')
 @Roles(UserRole.LGU_ADMIN)
 export class AdminController {
   constructor(private readonly service: AdminService) {}
   @Get('dashboard') dashboard() { return this.service.dashboard(); }
+  @Get('ride-analytics') rideAnalytics(@Query() query: RideAnalyticsQueryDto) { return this.service.rideAnalytics(query); }
   @Get('weather') weather(@Query('latitude') latitude?: string, @Query('longitude') longitude?: string, @Query('locationName') locationName?: string) {
     return this.service.weather(latitude, longitude, locationName);
   }

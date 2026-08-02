@@ -132,8 +132,16 @@
 .calendar-next small { font-size: 8px; }
 
 .donut-layout { display: grid; grid-template-columns: 145px minmax(0, 1fr); align-items: center; gap: 18px; margin-top: 20px; }
-.donut-chart { display: grid; width: 145px; height: 145px; place-items: center; border-radius: 50%; }
-.donut-chart > div { display: grid; width: 91px; height: 91px; place-items: center; align-content: center; border-radius: 50%; text-align: center; }
+.donut-chart { position: relative; display: grid; width: 145px; height: 145px; place-items: center; border-radius: 50%; }
+.donut-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 7px 11px rgba(15, 15, 15, .08)); transform: rotate(-90deg); }
+.donut-track, .donut-segment { fill: none; stroke-width: 11; }
+.donut-track { stroke: var(--line-light); }
+.donut-segment { stroke-linecap: round; transition: stroke-width .2s ease, filter .2s ease; }
+.donut-segment.passenger { stroke: var(--lime); }
+.donut-segment.driver { stroke: var(--forest); }
+.donut-segment.admin { stroke: var(--charcoal); }
+.donut-segment:hover { stroke-width: 14; filter: brightness(1.08); }
+.donut-chart > div { position: relative; display: grid; width: 91px; height: 91px; place-items: center; align-content: center; border: 1px solid var(--line-light); border-radius: 50%; text-align: center; box-shadow: inset 0 0 0 5px var(--surface-soft), 0 6px 18px rgba(15, 15, 15, .05); }
 .donut-chart strong { font-size: 23px; line-height: 1; }
 .donut-chart small { margin-top: 3px; font-size: 9px; }
 .donut-legend { display: grid; gap: 13px; }
@@ -143,6 +151,12 @@
 .legend-row b { font-size: 10px; }
 .legend-row small { margin-top: 3px; font-size: 8px; }
 .legend-row > strong { font-size: 15px; }
+.legend-row.passenger > span { color: var(--black); background: color-mix(in srgb, var(--lime) 35%, var(--off-white)); }
+.legend-row.driver > span { color: var(--off-white); background: var(--forest); }
+.legend-row.admin > span { color: var(--off-white); background: var(--charcoal); }
+.legend-row.passenger > strong { color: var(--forest); }
+.legend-row.driver > strong { color: var(--forest); }
+.legend-row.admin > strong { color: var(--charcoal); }
 .panel-total-modern { font-size: 25px; letter-spacing: -.04em; }
 
 .outcome-row { display: grid; grid-template-columns: 1fr 42px; gap: 8px 10px; margin-top: 17px; }
