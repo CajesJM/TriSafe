@@ -1,9 +1,29 @@
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
+import { CheckCircle2, Eye, EyeOff, Info, ShieldCheck, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { api, Driver, RegisterDriverInput } from "../../api";
+import {
+  createDriverReceipt,
+  type DriverRegistrationReceiptData,
+} from "./DriverRegistrationReceipt";
+import {
+  cleanPersonNamePart,
+  cleanMiddleInitial,
+  formatPersonName,
+  validatePersonName,
+} from "../../utils/personName";
 
-type DriverFormState = RegisterDriverInput;
+type DriverFormState = Omit<RegisterDriverInput, "fullName"> & {
+  lastName: string;
+  firstName: string;
+  middleInitial: string;
+};
+
 const emptyDriverForm: DriverFormState = {
-  fullName: "",
+  lastName: "",
+  firstName: "",
+  middleInitial: "",
+  accountStatus: "ACTIVE",
   phone: "",
   email: "",
   temporaryPassword: "",
@@ -13,250 +33,236 @@ const emptyDriverForm: DriverFormState = {
   franchiseIssuedAt: "",
   franchiseExpiresAt: "",
   plateNumber: "",
-  vehicleType: "Tricycle",
+  vehicleType: "TRICYCLE",
 };
+
+const recordPattern = /^[A-Z0-9-]+$/;
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
+function todayDate() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function cleanRecordValue(value: string, maxLength: number) {
+  return value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, maxLength);
+}
 
 export function DriverRegistrationForm({
   onCancel,
   onCreated,
+  onError,
 }: {
   onCancel: () => void;
-  onCreated: (driver: Driver) => void;
+  onCreated: (driver: Driver, receipt: DriverRegistrationReceiptData) => void;
+  onError: (message: string) => void;
 }) {
+  const titleId = useId();
   const [form, setForm] = useState<DriverFormState>(emptyDriverForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !saving) onCancel();
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onCancel, saving]);
 
   function updateField(field: keyof DriverFormState, value: string) {
+    setFormError("");
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function validate() {
+    const nameError = validatePersonName(form);
+    if (nameError) return nameError;
+    if (!/^9\d{9}$/.test(form.phone))
+      return "Mobile number must contain 10 digits and begin with 9 after +63.";
+    if (form.email.includes(" ") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+      return "Enter a valid email address without spaces.";
+    if (form.temporaryPassword.length < 10 || form.temporaryPassword.length > 72 || !passwordPattern.test(form.temporaryPassword))
+      return "Temporary password must be 10–72 characters with uppercase, lowercase, number, and symbol.";
+    if (!recordPattern.test(form.licenseNumber) || form.licenseNumber.length < 4)
+      return "Enter a valid license number using letters, numbers, and hyphens.";
+    if (!recordPattern.test(form.franchiseNumber) || form.franchiseNumber.length < 4)
+      return "Enter a valid franchise number using letters, numbers, and hyphens.";
+    if (!recordPattern.test(form.plateNumber) || form.plateNumber.length < 3)
+      return "Enter a valid plate number using letters, numbers, and hyphens.";
+    if (!form.renewalDate || !form.franchiseIssuedAt || !form.franchiseExpiresAt)
+      return "Complete all required dates.";
+    const today = todayDate();
+    if (form.renewalDate < today) return "The license renewal date cannot be in the past.";
+    if (form.franchiseIssuedAt > today) return "The franchise issued date cannot be in the future.";
+    if (form.franchiseExpiresAt <= form.franchiseIssuedAt)
+      return "The franchise expiration date must be after its issued date.";
+    if (form.franchiseExpiresAt <= today)
+      return "The franchise expiration date must be in the future.";
+    return "";
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const validationError = validate();
+    if (validationError) {
+      setFormError(validationError);
+      onError(validationError);
+      return;
+    }
+
     setFormError("");
     setSaving(true);
     try {
-      onCreated(
-        await api.registerDriver({
-          ...form,
-          email: form.email.trim(),
-          temporaryPassword: form.temporaryPassword,
-        }),
-      );
+      const registration: RegisterDriverInput = {
+        accountStatus: form.accountStatus,
+        phone: `+63${form.phone}`,
+        email: form.email.trim().toLowerCase(),
+        temporaryPassword: form.temporaryPassword,
+        licenseNumber: form.licenseNumber,
+        renewalDate: form.renewalDate,
+        franchiseNumber: form.franchiseNumber,
+        franchiseIssuedAt: form.franchiseIssuedAt,
+        franchiseExpiresAt: form.franchiseExpiresAt,
+        plateNumber: form.plateNumber,
+        vehicleType: form.vehicleType,
+        fullName: formatPersonName(form),
+      };
+      const driver = await api.registerDriver(registration);
+      onCreated(driver, createDriverReceipt(driver, registration));
     } catch (requestError) {
-      setFormError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to register the driver.",
-      );
+      const message = requestError instanceof Error ? requestError.message : "Unable to register the driver.";
+      setFormError(message);
+      onError(message);
     } finally {
       setSaving(false);
     }
   }
 
-  return (
-    <section className="registration-layout">
-      <form className="card registration-form" onSubmit={submit}>
-        <div className="form-heading">
-          <div>
-            <span className="eyebrow">NEW APPROVAL</span>
-            <h3>Register an approved driver</h3>
-            <p>
-              Enter the details exactly as they appear on the LGU franchise
-              record.
-            </p>
+  return createPortal(
+    <div
+      className="driver-registration-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !saving) onCancel();
+      }}
+    >
+      <section
+        className="driver-registration-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <form className="driver-registration-form" onSubmit={submit} noValidate>
+          <header className="driver-registration-header">
+            <div>
+              <span className="eyebrow">DRIVER REGISTRY</span>
+              <h2 id={titleId}>Register approved driver</h2>
+              <p>Create the driver, franchise, vehicle, and secure QR record.</p>
+            </div>
+            <button type="button" onClick={onCancel} disabled={saving} aria-label="Close registration form">
+              <X aria-hidden="true" />
+            </button>
+          </header>
+
+          <div className="driver-registration-scroll">
+            {formError && <div className="error driver-registration-error" role="alert">{formError}</div>}
+
+            <FormSection number="01" title="Driver identity" description="Official identity and private account credentials.">
+              <div className="form-grid driver-registration-grid">
+                <div className="driver-name-fields">
+                  <Field label="Last name" value={form.lastName} onChange={(value) => updateField("lastName", cleanPersonNamePart(value))} placeholder="Cajes" autoComplete="family-name" maxLength={45} autoFocus required />
+                  <Field label="First name" value={form.firstName} onChange={(value) => updateField("firstName", cleanPersonNamePart(value))} placeholder="John" autoComplete="given-name" maxLength={45} required />
+                  <MiddleInitialField value={form.middleInitial} onChange={(value) => updateField("middleInitial", value)} />
+                </div>
+                <PhoneField value={form.phone} onChange={(value) => updateField("phone", value)} />
+                <Field label="Email address" value={form.email} onChange={(value) => updateField("email", value)} placeholder="driver@example.com" type="email" autoComplete="email" maxLength={160} hint="Used for secure account access." required />
+                <label className="field">
+                  <span>Temporary password <em>*</em></span>
+                  <div className="driver-password-input">
+                    <input type={showPassword ? "text" : "password"} value={form.temporaryPassword} onChange={(event) => updateField("temporaryPassword", event.target.value.slice(0, 72))} placeholder="Create a strong password" autoComplete="new-password" minLength={10} maxLength={72} required />
+                    <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff /> : <Eye />}</button>
+                  </div>
+                  <small>10+ characters with uppercase, lowercase, number, and symbol.</small>
+                </label>
+                <Field label="Driver license number" value={form.licenseNumber} onChange={(value) => updateField("licenseNumber", cleanRecordValue(value, 30))} placeholder="N01-98-123456" maxLength={30} hint="Use the number printed on the license." required />
+                <Field label="License renewal date" value={form.renewalDate} onChange={(value) => updateField("renewalDate", value)} type="date" min={todayDate()} required />
+                <label className="field">
+                  <span>Account status <em>*</em></span>
+                  <select value={form.accountStatus} onChange={(event) => updateField("accountStatus", event.target.value)} required>
+                    <option value="ACTIVE">Active — driver can sign in</option>
+                    <option value="INACTIVE">Inactive — sign-in is blocked</option>
+                  </select>
+                  <small>Controls account access only, not franchise eligibility.</small>
+                </label>
+              </div>
+            </FormSection>
+
+            <FormSection number="02" title="Franchise record" description="Validated against the active LGU transport franchise.">
+              <div className="form-grid driver-registration-grid">
+                <Field label="Franchise number" value={form.franchiseNumber} onChange={(value) => updateField("franchiseNumber", cleanRecordValue(value, 40))} placeholder="TRI-2026-001" maxLength={40} required />
+                <Field label="Issued date" value={form.franchiseIssuedAt} onChange={(value) => updateField("franchiseIssuedAt", value)} type="date" max={todayDate()} required />
+                <Field label="Expiration date" value={form.franchiseExpiresAt} onChange={(value) => updateField("franchiseExpiresAt", value)} type="date" min={form.franchiseIssuedAt || todayDate()} required />
+              </div>
+            </FormSection>
+
+            <FormSection number="03" title="Assigned vehicle" description="The QR identity is generated for this exact vehicle.">
+              <div className="form-grid driver-registration-grid">
+                <Field label="Plate number" value={form.plateNumber} onChange={(value) => updateField("plateNumber", cleanRecordValue(value, 15))} placeholder="NCA-1234" maxLength={15} required />
+                <label className="field">
+                  <span>Vehicle type <em>*</em></span>
+                  <select value={form.vehicleType} onChange={(event) => updateField("vehicleType", event.target.value)} required>
+                    <option value="TRICYCLE">Tricycle</option>
+                    <option value="HABAL_HABAL">Habal-habal</option>
+                  </select>
+                </label>
+              </div>
+            </FormSection>
           </div>
-          <button
-            className="close-button"
-            onClick={onCancel}
-            type="button"
-            aria-label="Close form"
-          >
-            ×
-          </button>
-        </div>
-        {formError && (
-          <div className="error form-error" role="alert">
-            {formError}
+
+          <footer className="driver-registration-actions">
+            <p><ShieldCheck aria-hidden="true" /> Details are validated before any record is created.</p>
+            <div>
+              <button className="secondary" onClick={onCancel} disabled={saving} type="button">Cancel</button>
+              <button className="primary" disabled={saving} type="submit">{saving ? "Registering…" : "Register driver"}</button>
+            </div>
+          </footer>
+        </form>
+
+        <aside className="driver-registration-help" aria-label="Registration process">
+          <span className="driver-registration-help-icon"><ShieldCheck aria-hidden="true" /></span>
+          <span className="eyebrow">SECURE APPROVAL</span>
+          <h3>One verified transport identity</h3>
+          <p>TriSafe creates all linked records in one database transaction. If any step fails, nothing partial is saved.</p>
+          <div className="driver-registration-steps">
+            <HelpStep icon={<CheckCircle2 />} title="Approved account" text="The driver is registered as verified." />
+            <HelpStep icon={<CheckCircle2 />} title="Vehicle-linked QR" text="The QR belongs only to the assigned vehicle." />
+            <HelpStep icon={<Info />} title="Issue credentials safely" text="Ask the driver to change the temporary password." />
           </div>
-        )}
-        <FormSection title="Driver identity">
-          <div className="form-grid">
-            <Field
-              label="Full name"
-              value={form.fullName}
-              onChange={(value) => updateField("fullName", value)}
-              placeholder="Juan Dela Cruz"
-              required
-            />
-            <Field
-              label="Mobile number"
-              value={form.phone}
-              onChange={(value) => updateField("phone", value)}
-              placeholder="+639171234567"
-              required
-            />
-            <Field
-              label="Email address"
-              value={form.email}
-              onChange={(value) => updateField("email", value)}
-              placeholder="driver@example.com"
-              type="email"
-              required
-            />
-            <Field
-              label="Temporary login password"
-              value={form.temporaryPassword}
-              onChange={(value) => updateField("temporaryPassword", value)}
-              placeholder="At least 8 characters"
-              type="password"
-              required
-            />
-            <Field
-              label="Driver license number"
-              value={form.licenseNumber}
-              onChange={(value) => updateField("licenseNumber", value)}
-              placeholder="DL-123456"
-              required
-            />
-            <Field
-              label="Renewal date"
-              value={form.renewalDate}
-              onChange={(value) => updateField("renewalDate", value)}
-              type="date"
-              required
-            />
-          </div>
-        </FormSection>
-        <FormSection title="Franchise record">
-          <div className="form-grid">
-            <Field
-              label="Franchise number"
-              value={form.franchiseNumber}
-              onChange={(value) => updateField("franchiseNumber", value)}
-              placeholder="TRI-2026-001"
-              required
-            />
-            <Field
-              label="Issued date"
-              value={form.franchiseIssuedAt}
-              onChange={(value) => updateField("franchiseIssuedAt", value)}
-              type="date"
-              required
-            />
-            <Field
-              label="Expiration date"
-              value={form.franchiseExpiresAt}
-              onChange={(value) => updateField("franchiseExpiresAt", value)}
-              type="date"
-              required
-            />
-          </div>
-        </FormSection>
-        <FormSection title="Vehicle">
-          <div className="form-grid">
-            <Field
-              label="Plate number"
-              value={form.plateNumber}
-              onChange={(value) => updateField("plateNumber", value)}
-              placeholder="TRI-2026"
-              required
-            />
-            <label className="field">
-              <span>Vehicle type</span>
-              <select
-                value={form.vehicleType}
-                onChange={(event) =>
-                  updateField("vehicleType", event.target.value)
-                }
-              >
-                <option>Tricycle</option>
-                <option>Habal-habal</option>
-              </select>
-            </label>
-          </div>
-        </FormSection>
-        <div className="form-actions">
-          <button className="secondary" onClick={onCancel} type="button">
-            Cancel
-          </button>
-          <button
-            className="primary submit-button"
-            disabled={saving}
-            type="submit"
-          >
-            {saving ? "Registering…" : "Create approved account"}
-          </button>
-        </div>
-      </form>
-      <aside className="card form-help">
-        <div className="help-icon">✓</div>
-        <h3>What happens next?</h3>
-        <p>
-          TriSafe creates the approved driver account, franchise record, vehicle
-          record, and a unique QR identity in one secure transaction.
-        </p>
-        <HelpStep number="01" text="Driver is marked verified" />
-        <HelpStep
-          number="02"
-          text="Driver receives the temporary login credentials"
-        />
-        <HelpStep number="03" text="QR code is prepared for issuance" />
-      </aside>
-    </section>
+        </aside>
+      </section>
+    </div>,
+    document.body,
   );
 }
 
-function FormSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="form-section">
-      <h4>{title}</h4>
-      {children}
-    </div>
-  );
+function FormSection({ number, title, description, children }: { number: string; title: string; description: string; children: ReactNode }) {
+  return <section className="driver-form-section"><header><span>{number}</span><div><h3>{title}</h3><p>{description}</p></div></header>{children}</section>;
 }
-function HelpStep({ number, text }: { number: string; text: string }) {
-  return (
-    <div className="help-step">
-      <b>{number}</b>
-      <span>{text}</span>
-    </div>
-  );
+
+function HelpStep({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
+  return <div className="driver-registration-step"><span>{icon}</span><div><strong>{title}</strong><small>{text}</small></div></div>;
 }
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="field">
-      <span>
-        {label}
-        {required && <em>*</em>}
-      </span>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        required={required}
-      />
-    </label>
-  );
+
+function PhoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <label className="field"><span>Mobile number <em>*</em></span><div className="driver-phone-input"><b>+63</b><input value={value} onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="9171234567" inputMode="numeric" autoComplete="tel-national" minLength={10} maxLength={10} required /></div><small>Enter 10 digits beginning with 9.</small></label>;
+}
+
+function MiddleInitialField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <label className="field"><span>Middle initial</span><div className="middle-initial-input"><input value={value} onChange={(event) => onChange(cleanMiddleInitial(event.target.value))} placeholder="M" autoComplete="additional-name" maxLength={1} aria-label="Middle initial, one letter only" /><b aria-hidden="true">.</b></div><small>Optional · one letter only.</small></label>;
+}
+
+function Field({ label, value, onChange, placeholder, type = "text", required = false, hint, min, max, minLength, maxLength, autoComplete, autoFocus }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string; required?: boolean; hint?: string; min?: string; max?: string; minLength?: number; maxLength?: number; autoComplete?: string; autoFocus?: boolean }) {
+  return <label className="field"><span>{label}{required && <em>*</em>}</span><input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} required={required} min={min} max={max} minLength={minLength} maxLength={maxLength} autoComplete={autoComplete} autoFocus={autoFocus} />{hint && <small>{hint}</small>}</label>;
 }

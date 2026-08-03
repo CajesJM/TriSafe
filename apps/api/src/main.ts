@@ -11,7 +11,11 @@ async function bootstrap() {
   app.enableCors({ origin: config.get('WEB_ORIGIN', '*') });
   app.useBodyParser('json', { limit: '2mb' });
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
   await app.listen(config.get<number>('PORT', 3000));
 }
 

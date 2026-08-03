@@ -113,19 +113,19 @@ class TriSafeApi {
   String _connectionMessage() =>
       'TriSafe API is unavailable. Start npm run dev:api and, for a wired Android phone, run adb reverse tcp:3000 tcp:3000.';
 
-  Future<VerifiedVehicle> verifyQr(String token) async =>
-      VerifiedVehicle.fromJson(await _get('/vehicles/verify/$token'));
+  Future<QrVerificationResult> verifyQr(String token) async =>
+      QrVerificationResult.fromJson(await _get('/vehicles/verify/$token'));
   Future<DriverProfile> driverProfile() async =>
       DriverProfile.fromJson(await _get('/drivers/me'));
   Future<List<DriverAnnouncement>> driverAnnouncements() async =>
       (await _get('/drivers/me/announcements'))
-          .map<DriverAnnouncement>(
-              (item) => DriverAnnouncement.fromJson(item))
+          .map<DriverAnnouncement>((item) => DriverAnnouncement.fromJson(item))
           .toList();
   Future<void> updateDriverContact(
       {required String phone, required String email}) async {
     await _patch('/drivers/me/contact', {'phone': phone, 'email': email});
   }
+
   Future<List<LocationOption>> locations() async => (await _get('/locations'))
       .map<LocationOption>((item) => LocationOption.fromJson(item))
       .toList();
@@ -175,6 +175,7 @@ class TriSafeApi {
       if (speed != null) 'speed': speed,
     });
   }
+
   Future<RideProgress> recordRideLocation(String rideId,
           {required double latitude,
           required double longitude,
@@ -199,6 +200,7 @@ class TriSafeApi {
             : {'liveLocationUrl': liveLocationUrl});
     return Map<String, dynamic>.from(await _getUri(uri));
   }
+
   Future<Map<String, dynamic>> draftIncident(String description,
           {String? rideId}) async =>
       Map<String, dynamic>.from(await _post('/incidents/draft', {

@@ -469,15 +469,22 @@ export const api = {
       `/admin/ride-analytics${query ? `?${query}` : ""}`,
     );
   },
-  weather: (position?: { latitude: number; longitude: number; locationName?: string }) => {
+  weather: (position?: {
+    latitude: number;
+    longitude: number;
+    locationName?: string;
+  }) => {
     const params = new URLSearchParams();
     if (position) {
       params.set("latitude", String(position.latitude));
       params.set("longitude", String(position.longitude));
-      if (position.locationName) params.set("locationName", position.locationName);
+      if (position.locationName)
+        params.set("locationName", position.locationName);
     }
     const query = params.toString();
-    return request<WeatherSnapshot>(`/admin/weather${query ? `?${query}` : ""}`);
+    return request<WeatherSnapshot>(
+      `/admin/weather${query ? `?${query}` : ""}`,
+    );
   },
   users: (
     options: {

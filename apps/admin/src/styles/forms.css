@@ -19,6 +19,21 @@
 .field input:focus, .field select:focus, .field textarea:focus, .announcement-body textarea:focus, .auth-card input:focus { border-color: var(--primary-600); box-shadow: 0 0 0 3px rgba(20,112,100,.12); }
 .field input::placeholder, .field textarea::placeholder { color: var(--gray); }
 .field input[readonly] { color: var(--muted); background: var(--line-light); cursor: not-allowed; }
+.field .user-phone-input { min-height: 40px; background: color-mix(in srgb, var(--off-white) 90%, white); }
+.field .user-phone-input > span { flex: 0 0 auto; padding-left: 11px; color: var(--charcoal); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.field .user-phone-input input { min-height: 38px; border: 0; padding-left: 0; box-shadow: none; }
+.field .user-phone-input input:focus { border: 0; box-shadow: none; }
+.driver-name-fields { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(115px, .42fr); gap: 14px; }
+.middle-initial-input { display: flex; align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--off-white); }
+.middle-initial-input:focus-within { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 18%, transparent); }
+.field .middle-initial-input input { min-width: 0; border: 0; border-radius: 0; padding-right: 2px; box-shadow: none; text-transform: uppercase; }
+.middle-initial-input b { flex: 0 0 auto; padding: 0 12px 0 2px; color: var(--charcoal); font-size: 14px; }
+.user-driver-name-fields { margin-bottom: 1px; }
+.field-input-hint { color: var(--subtle); font-size: 8px; line-height: 1.4; }
+
+@media (max-width: 650px) {
+  .driver-name-fields { grid-template-columns: 1fr; }
+}
 .form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 23px; border-top: 1px solid var(--line-light); padding-top: 18px; }
 .submit-button { min-width: 165px; }
 .form-help { border-color: var(--gray); background: linear-gradient(150deg, var(--gray), var(--gray)); }

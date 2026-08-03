@@ -35,6 +35,7 @@ export function DataToolbar({
           value={search}
         />
       </label>
+      {additionalFilter}
       {onFilter && (
         <label className="data-filter">
           <span>{filterLabel}</span>
@@ -50,7 +51,6 @@ export function DataToolbar({
           </select>
         </label>
       )}
-      {additionalFilter}
       {resultCount !== undefined && (
         <span className="result-count">
           {resultCount} {resultCount === 1 ? "record" : "records"}

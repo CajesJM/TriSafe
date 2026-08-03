@@ -9,6 +9,8 @@ import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { hashPassword } from '../auth/password';
 import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
 
+const canonicalPersonNamePattern = /^[\p{L}][\p{L} '-]{1,44}, [\p{L}][\p{L}'-]+(?: [\p{L}][\p{L}'-]+)*(?: \p{L}\.)?$/u;
+
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
@@ -309,6 +311,7 @@ export class AdminService {
       ...(search ? {
         OR: [
           { fullName: { contains: search, mode: 'insensitive' } },
+          { username: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search, mode: 'insensitive' } },
         ],
@@ -323,6 +326,7 @@ export class AdminService {
         select: {
           id: true,
           fullName: true,
+          username: true,
           email: true,
           phone: true,
           role: true,
@@ -341,7 +345,7 @@ export class AdminService {
   async user(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, fullName: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { id: true, verification: true, licenseNumber: true } } },
+      select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { id: true, verification: true, licenseNumber: true } } },
     });
     if (!user) throw new NotFoundException('User account not found');
     return user;
@@ -349,11 +353,12 @@ export class AdminService {
 
   async createUser(actorId: string, dto: CreateUserDto) {
     if (dto.role === UserRole.DRIVER) throw new BadRequestException('Create driver accounts through the Drivers & QR registration workflow.');
+    if (dto.role === UserRole.PASSENGER && !canonicalPersonNamePattern.test(dto.fullName.trim())) throw new BadRequestException('Passenger names must use Last Name, First Name M. format.');
     await this.requireActiveRole(dto.role);
     try {
       const user = await this.prisma.user.create({
-        data: { fullName: dto.fullName.trim(), email: dto.email.trim().toLowerCase(), phone: dto.phone, role: dto.role, status: dto.status ?? UserStatus.ACTIVE, passwordHash: hashPassword(dto.temporaryPassword) },
-        select: { id: true, fullName: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
+        data: { fullName: dto.fullName.trim(), username: dto.username, email: dto.email.trim().toLowerCase(), phone: dto.phone, role: dto.role, status: dto.status ?? UserStatus.ACTIVE, passwordHash: hashPassword(dto.temporaryPassword) },
+        select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
       });
       await this.audit.record({ actorId, action: 'USER_CREATED', entityType: 'User', entityId: user.id, details: { role: user.role, status: user.status, email: user.email } });
       return user;
@@ -365,6 +370,13 @@ export class AdminService {
   async updateUser(actorId: string, id: string, dto: UpdateUserDto) {
     const current = await this.prisma.user.findUnique({ where: { id }, include: { driverProfile: true } });
     if (!current) throw new NotFoundException('User account not found');
+    if (current.driverProfile && dto.fullName && !canonicalPersonNamePattern.test(dto.fullName.trim())) {
+      throw new BadRequestException('Driver names must use Last Name, First Name M. format.');
+    }
+    const effectiveRole = dto.role ?? current.role;
+    const editsPassengerIdentity = effectiveRole === UserRole.PASSENGER && (dto.fullName !== undefined || dto.username !== undefined || dto.role === UserRole.PASSENGER);
+    if (editsPassengerIdentity && !canonicalPersonNamePattern.test((dto.fullName ?? current.fullName).trim())) throw new BadRequestException('Passenger names must use Last Name, First Name M. format.');
+    if (editsPassengerIdentity && !(dto.username ?? current.username)) throw new BadRequestException('A username is required for passenger accounts.');
     if (actorId === id && dto.status === UserStatus.INACTIVE) throw new ForbiddenException('You cannot deactivate your own account.');
     if (actorId === id && dto.role && dto.role !== UserRole.LGU_ADMIN) throw new ForbiddenException('You cannot remove your own administrator role.');
     if (dto.role && dto.role !== current.role) {
@@ -375,6 +387,7 @@ export class AdminService {
     await this.ensureAdminContinuity(current.role, current.status, dto.role ?? current.role, dto.status ?? current.status, id);
     const data: Prisma.UserUncheckedUpdateInput = {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
+      ...(dto.username !== undefined ? { username: dto.username } : {}),
       ...(dto.email !== undefined ? { email: dto.email.trim().toLowerCase() } : {}),
       ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
       ...(dto.role !== undefined ? { role: dto.role } : {}),
@@ -384,7 +397,7 @@ export class AdminService {
     try {
       const updated = await this.prisma.user.update({
         where: { id }, data,
-        select: { id: true, fullName: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
+        select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
       });
       const statusChanged = current.status !== updated.status;
       await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword) } });
@@ -467,7 +480,11 @@ export class AdminService {
   }
 
   private handleUniqueUserError(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new ConflictException('That email address is already assigned to another user.');
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const target = Array.isArray(error.meta?.target) ? error.meta.target.join(',') : String(error.meta?.target ?? '');
+      if (target.includes('username')) throw new ConflictException('That username is already assigned to another account.');
+      throw new ConflictException('That email address is already assigned to another user.');
+    }
     throw error;
   }
 }

@@ -52,13 +52,22 @@ export type FareEstimate = {
 export type VerifiedVehicle = {
   driverId: string;
   driverName: string;
-  franchiseNumber: string;
-  franchiseExpiresAt: string;
+  franchiseNumber: string | null;
+  franchiseExpiresAt: string | null;
   vehicleId: string;
   plateNumber: string;
   vehicleType: string;
   qrCodeId: string;
-  verified: true;
+};
+
+export type QrVerificationResult = {
+  legitimate: boolean;
+  eligibleForRide: boolean;
+  transportStatus: "VERIFIED" | "PENDING" | "SUSPENDED" | "EXPIRED" | "NOT_LGU_ISSUED";
+  accountStatus: "ACTIVE" | "INACTIVE" | null;
+  qrStatus: "ACTIVE" | "REVOKED" | "UNKNOWN";
+  message: string;
+  vehicle: VerifiedVehicle | null;
 };
 
 export type SafeSharePayload = {

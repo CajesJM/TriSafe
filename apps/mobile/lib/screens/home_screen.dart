@@ -10,7 +10,7 @@ import '../widgets/action_card.dart';
 import '../widgets/active_ride_card.dart';
 import '../widgets/emergency_contacts_sheet.dart';
 import '../widgets/incident_report_dialog.dart';
-import '../widgets/verified_vehicle_card.dart';
+import '../widgets/vehicle_verification_card.dart';
 import 'qr_scanner_screen.dart';
 import 'route_selection_screen.dart';
 import 'ride_history_screen.dart';
@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  VerifiedVehicle? verifiedVehicle;
+  QrVerificationResult? qrVerification;
   Ride? activeRide;
   bool scanning = false;
   bool startingRide = false;
@@ -79,10 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     try {
-      final vehicle = await widget.api.verifyQr(token);
+      final result = await widget.api.verifyQr(token);
       if (mounted) {
         setState(() {
-          verifiedVehicle = vehicle;
+          qrVerification = result;
           scanning = false;
         });
       }
@@ -102,8 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> planAndStartRide() async {
-    final vehicle = verifiedVehicle;
-    if (vehicle == null) {
+    final result = qrVerification;
+    final vehicle = result?.vehicle;
+    if (result == null || !result.eligibleForRide || vehicle == null) {
       return;
     }
     final plan = await Navigator.of(context).push<RidePlan>(MaterialPageRoute(
@@ -230,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.all(12),
                       child: Text(error!,
                           style: TextStyle(color: Colors.red.shade800)))),
-            if (verifiedVehicle == null)
+            if (qrVerification == null)
               ActionCard(
                   icon: Icons.qr_code_scanner,
                   title: 'Scan a vehicle QR',
@@ -240,8 +241,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: scanning ? null : scanVehicle,
                   label: scanning ? 'Verifying…' : 'Scan now')
             else
-              VerifiedVehicleCard(
-                  vehicle: verifiedVehicle!,
+              VehicleVerificationCard(
+                  result: qrVerification!,
+                  onScanAgain: scanVehicle,
                   onContinue: activeRide == null && !startingRide
                       ? planAndStartRide
                       : null),

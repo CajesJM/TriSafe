@@ -24,6 +24,10 @@ import { LoginScreen } from "./components/auth/LoginScreen";
 import { DashboardHome } from "./components/dashboard/DashboardHome";
 import { DriverList, QrCodePanel } from "./components/drivers/DriverList";
 import { DriverRegistrationForm } from "./components/drivers/DriverRegistrationForm";
+import {
+  DriverRegistrationReceipt,
+  type DriverRegistrationReceiptData,
+} from "./components/drivers/DriverRegistrationReceipt";
 import { FranchiseEditor } from "./components/drivers/FranchiseEditor";
 import { FareMatrixPanel } from "./components/fares/FareMatrixPanel";
 import { AnnouncementComposer } from "./components/announcements/AnnouncementComposer";
@@ -40,6 +44,10 @@ import {
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
 import { UserForm } from "./components/users/UserForm";
+import {
+  ToastNotification,
+  type ToastMessage,
+} from "./components/shared/ToastNotification";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -53,7 +61,6 @@ export function App() {
   const [loading, setLoading] = useState(hasAuthToken());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [registrationNotice, setRegistrationNotice] = useState("");
   const [announcementNotice, setAnnouncementNotice] = useState("");
   const [qrDriver, setQrDriver] = useState<Driver | null>(null);
   const [franchiseDriver, setFranchiseDriver] = useState<Driver | null>(null);
@@ -65,6 +72,12 @@ export function App() {
   const [driverProfileId, setDriverProfileId] = useState<string | null>(null);
   const [editingDriverAccount, setEditingDriverAccount] = useState<AdminUser | null>(null);
   const [driverAccountRoles, setDriverAccountRoles] = useState<RoleDefinition[]>([]);
+  const [driverReceipt, setDriverReceipt] = useState<DriverRegistrationReceiptData | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = useCallback((type: ToastMessage["type"], message: string) => {
+    setToast({ id: Date.now(), type, message });
+  }, []);
 
   const loadData = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -136,7 +149,6 @@ export function App() {
     setTab(nextTab);
     if (nextTab !== "drivers") setDriverProfileId(null);
     if (nextTab !== "drivers") setEditingDriverAccount(null);
-    setRegistrationNotice("");
     setAnnouncementNotice("");
   }
   async function openDriverAccount(driver: Driver) {
@@ -160,22 +172,19 @@ export function App() {
       accountStatus: updated.status,
     } : driver));
     setEditingDriverAccount(null);
-    setRegistrationNotice(`${updated.fullName}'s driver account was updated.`);
+    showToast("success", `${updated.fullName}'s driver account was updated.`);
     setAuditLogs(await api.auditLogs());
   }
   function openRegistration() {
     setError("");
-    setRegistrationNotice("");
     setTab("drivers");
     setShowRegistration(true);
   }
-  function handleDriverCreated(driver: Driver) {
+  function handleDriverCreated(driver: Driver, receipt: DriverRegistrationReceiptData) {
     setDrivers((current) => [driver, ...current]);
     setShowRegistration(false);
-    setQrDriver(driver);
-    setRegistrationNotice(
-      `${driver.fullName} was registered and approved successfully.`,
-    );
+    setDriverReceipt(receipt);
+    showToast("success", `${driver.fullName} was registered and the one-time receipt was generated.`);
     void Promise.all([
       api.dashboard().then(setDashboard),
       api.auditLogs().then(setAuditLogs),
@@ -220,18 +229,16 @@ export function App() {
     );
     setFranchiseDriver(null);
     setAuditLogs(await api.auditLogs());
-    setRegistrationNotice(
-      `${updated.fullName}'s franchise record was updated.`,
-    );
+    showToast("success", `${updated.fullName}'s franchise record was updated.`);
   }
 
-  async function updateDriverStatus(driver: Driver, status: DriverStatus) {
-    const updated = await api.updateDriverStatus(driver.id, status);
+  async function updateDriverStatus(driver: Driver, status: DriverStatus, reason?: string) {
+    const updated = await api.updateDriverStatus(driver.id, status, reason);
     setDrivers((items) =>
       items.map((item) => (item.id === updated.id ? updated : item)),
     );
     setAuditLogs(await api.auditLogs());
-    setRegistrationNotice(`${updated.fullName} is now ${status.toLowerCase()}.`);
+    showToast("success", status === "SUSPENDED" ? `${updated.fullName}'s transport eligibility was suspended.` : `${updated.fullName} is now ${status.toLowerCase()}.`);
   }
 
   return (
@@ -257,10 +264,10 @@ export function App() {
           onProfile={() => setProfileOpen(true)}
         />
         <AdminProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={(user) => { setSessionUser(user); updateSessionUser(user); }} />
+        {toast && <ToastNotification key={toast.id} toast={toast} onDismiss={() => setToast(null)} />}
         {error && (
           <ErrorMessage message={error} onRetry={() => void loadData()} />
         )}
-        {registrationNotice && <SuccessMessage message={registrationNotice} />}
         {loading ? (
           <LoadingState label="Loading TriSafe operations…" rows={6} />
         ) : (
@@ -276,36 +283,52 @@ export function App() {
               />
             )}
             {tab === "users" && <UserDirectory />}
-            {tab === "drivers" &&
-              (showRegistration ? (
-                <DriverRegistrationForm
-                  onCancel={() => setShowRegistration(false)}
-                  onCreated={handleDriverCreated}
-                />
-              ) : (
-                <DriverList
-                  drivers={drivers}
-                  onRegister={openRegistration}
-                  onViewQr={setQrDriver}
-                  onUpdateFranchise={setFranchiseDriver}
-                  onUpdateStatus={updateDriverStatus}
-                  selectedDriverId={driverProfileId}
-                  onViewProfile={setDriverProfileId}
-                  onCloseProfile={() => setDriverProfileId(null)}
-                  onEditAccount={openDriverAccount}
-                />
-              ))}
+            {tab === "drivers" && (
+              <DriverList
+                drivers={drivers}
+                onRegister={openRegistration}
+                onViewQr={setQrDriver}
+                onUpdateFranchise={setFranchiseDriver}
+                onUpdateStatus={updateDriverStatus}
+                selectedDriverId={driverProfileId}
+                onViewProfile={setDriverProfileId}
+                onCloseProfile={() => setDriverProfileId(null)}
+                onEditAccount={openDriverAccount}
+                onError={(message) => showToast("error", message)}
+                onFileDownloaded={(driver) => showToast("success", `${driver.fullName}'s current registration file was downloaded.`)}
+              />
+            )}
+            {tab === "drivers" && showRegistration && (
+              <DriverRegistrationForm
+                onCancel={() => setShowRegistration(false)}
+                onCreated={handleDriverCreated}
+                onError={(message) => showToast("error", message)}
+              />
+            )}
             {tab === "drivers" && franchiseDriver && (
               <FranchiseEditor
                 driver={franchiseDriver}
                 onCancel={() => setFranchiseDriver(null)}
                 onSave={updateFranchise}
+                onError={(message) => showToast("error", message)}
               />
             )}
             {tab === "drivers" && qrDriver && (
               <QrCodePanel
                 driver={qrDriver}
                 onClose={() => setQrDriver(null)}
+                onDownloaded={() => showToast("success", "Vehicle QR code downloaded successfully.")}
+              />
+            )}
+            {tab === "drivers" && driverReceipt && (
+              <DriverRegistrationReceipt
+                receipt={driverReceipt}
+                onClose={() => {
+                  setDriverReceipt(null);
+                  showToast("info", "The one-time receipt was closed. Its readable password is no longer retained by this screen.");
+                }}
+                onDownloaded={() => showToast("success", "Driver registration receipt downloaded successfully.")}
+                onError={(message) => showToast("error", message)}
               />
             )}
             {tab === "drivers" && editingDriverAccount && (
@@ -315,7 +338,7 @@ export function App() {
                 defaultRole="DRIVER"
                 onCancel={() => setEditingDriverAccount(null)}
                 onSave={saveDriverAccount}
-                onError={(message) => setError(message)}
+                onError={(message) => showToast("error", message)}
               />
             )}
             {tab === "fares" && (

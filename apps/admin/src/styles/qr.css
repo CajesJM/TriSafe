@@ -9,3 +9,12 @@
 .qr-actions { display: flex; gap: 8px; margin-top: 16px; }
 .qr-preview { display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--gray); box-shadow: var(--shadow-md); }
 .qr-preview canvas { display: block; max-width: 100%; height: auto; }
+.qr-modal-layout { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 28px; }
+.qr-code-modal .qr-copy > .eyebrow { display: none; }
+.qr-code-modal .qr-copy h3 { color: var(--black); }
+.qr-code-modal .qr-preview { justify-self: end; }
+
+@media (max-width: 650px) {
+  .qr-modal-layout { grid-template-columns: 1fr; }
+  .qr-code-modal .qr-preview { justify-self: center; }
+}

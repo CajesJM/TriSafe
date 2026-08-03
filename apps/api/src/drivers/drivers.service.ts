@@ -15,7 +15,16 @@ export class DriversService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly statuses: DriverStatusService) {}
 
   async registerApprovedDriver(actorId: string, dto: RegisterDriverDto) {
-    if (new Date(dto.franchiseExpiresAt) <= new Date()) throw new BadRequestException('The franchise expiration date must be in the future.');
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    if (dto.renewalDate < today) throw new BadRequestException('The license renewal date cannot be in the past.');
+    if (dto.franchiseIssuedAt > today) throw new BadRequestException('The franchise issued date cannot be in the future.');
+    if (dto.franchiseExpiresAt <= dto.franchiseIssuedAt) throw new BadRequestException('The franchise expiration date must be after its issued date.');
+    if (dto.franchiseExpiresAt <= today) throw new BadRequestException('The franchise expiration date must be in the future.');
     const identityFilters = [{ phone: dto.phone }, ...(dto.email ? [{ email: dto.email }] : [])];
     const [existingUser, existingFranchise, existingVehicle] = await Promise.all([
       this.prisma.user.findFirst({ where: { OR: identityFilters } }),
@@ -29,7 +38,7 @@ export class DriversService {
 
     try {
       const driver = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({ data: { fullName: dto.fullName, email: dto.email, phone: dto.phone, passwordHash: hashPassword(dto.temporaryPassword), role: 'DRIVER' } });
+        const user = await tx.user.create({ data: { fullName: dto.fullName, email: dto.email, phone: dto.phone, passwordHash: hashPassword(dto.temporaryPassword), role: 'DRIVER', status: dto.accountStatus } });
         const driver = await tx.driver.create({
           data: {
             userId: user.id, licenseNumber: dto.licenseNumber, renewalDate: new Date(dto.renewalDate), verification: DriverVerificationStatus.VERIFIED,
@@ -45,7 +54,7 @@ export class DriversService {
         action: 'DRIVER_REGISTERED',
         entityType: 'Driver',
         entityId: driver.id,
-        details: { franchiseNumber: dto.franchiseNumber, plateNumber: dto.plateNumber },
+        details: { franchiseNumber: dto.franchiseNumber, plateNumber: dto.plateNumber, accountStatus: dto.accountStatus },
       });
       return driver;
     } catch (error) {
@@ -59,10 +68,49 @@ export class DriversService {
   async verifyQr(token: string) {
     await this.statuses.syncExpiredDrivers();
     const qr = await this.prisma.qrCode.findUnique({ where: { token }, include: { vehicle: { include: { driver: { include: { user: true, franchise: true } } } } } });
-    const franchise = qr?.vehicle.driver.franchise;
-    const valid = Boolean(qr && !qr.revokedAt && qr.vehicle.isActive && qr.vehicle.driver.verification === 'VERIFIED' && franchise?.status === 'VERIFIED' && franchise.expiresAt > new Date());
-    if (!valid || !qr || !franchise) throw new NotFoundException('This QR code is not linked to an active verified vehicle');
-    return { driverId: qr.vehicle.driver.id, driverName: qr.vehicle.driver.user.fullName, franchiseNumber: franchise.franchiseNumber, franchiseExpiresAt: franchise.expiresAt.toISOString(), vehicleId: qr.vehicle.id, plateNumber: qr.vehicle.plateNumber, vehicleType: qr.vehicle.vehicleType, qrCodeId: qr.id, verified: true as const };
+    if (!qr) {
+      return {
+        legitimate: false,
+        eligibleForRide: false,
+        transportStatus: 'NOT_LGU_ISSUED',
+        accountStatus: null,
+        qrStatus: 'UNKNOWN',
+        message: 'This QR code was not created by the LGU and is not registered in TriSafe.',
+        vehicle: null,
+      };
+    }
+
+    const driver = qr.vehicle.driver;
+    const franchise = driver.franchise;
+    const transportStatus = franchise?.status ?? driver.verification;
+    const qrStatus = qr.revokedAt ? 'REVOKED' : 'ACTIVE';
+    const eligibleForRide = Boolean(
+      !qr.revokedAt &&
+      qr.vehicle.isActive &&
+      franchise &&
+      driver.verification === 'VERIFIED' &&
+      franchise.status === 'VERIFIED' &&
+      franchise.expiresAt > new Date(),
+    );
+
+    return {
+      legitimate: true,
+      eligibleForRide,
+      transportStatus,
+      accountStatus: driver.user.status,
+      qrStatus,
+      message: this.qrVerificationMessage({ qrRevoked: Boolean(qr.revokedAt), vehicleActive: qr.vehicle.isActive, hasFranchise: Boolean(franchise), transportStatus, eligibleForRide }),
+      vehicle: {
+        driverId: driver.id,
+        driverName: driver.user.fullName,
+        franchiseNumber: franchise?.franchiseNumber ?? null,
+        franchiseExpiresAt: franchise?.expiresAt.toISOString() ?? null,
+        vehicleId: qr.vehicle.id,
+        plateNumber: qr.vehicle.plateNumber,
+        vehicleType: qr.vehicle.vehicleType,
+        qrCodeId: qr.id,
+      },
+    };
   }
 
   async getDriver(id: string) {
@@ -132,11 +180,22 @@ export class DriversService {
       this.prisma.driver.update({ where: { id: driverId }, data: { verification: dto.status } }),
       ...(driver.franchise ? [this.prisma.franchise.update({ where: { id: driver.franchise.id }, data: { status: dto.status } })] : []),
     ]);
-    await this.audit.record({ actorId, action: 'DRIVER_STATUS_CHANGED', entityType: 'Driver', entityId: driverId, details: { previousStatus: driver.verification, status: dto.status } });
+    await this.audit.record({ actorId, action: 'DRIVER_STATUS_CHANGED', entityType: 'Driver', entityId: driverId, details: { previousStatus: driver.verification, status: dto.status, ...(dto.reason ? { reason: dto.reason } : {}) } });
     return this.getDriver(driverId);
   }
 
   private toAdminDriver(driver: Prisma.DriverGetPayload<{ include: { user: true; franchise: true; vehicles: { include: { qrCode: true } } } }>) {
     return { id: driver.id, userId: driver.user.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
+  }
+
+  private qrVerificationMessage(input: { qrRevoked: boolean; vehicleActive: boolean; hasFranchise: boolean; transportStatus: string; eligibleForRide: boolean }) {
+    if (input.qrRevoked) return 'This LGU-issued QR code has been revoked. Do not continue the ride.';
+    if (!input.vehicleActive) return 'This LGU-issued QR belongs to an inactive vehicle. Do not continue the ride.';
+    if (!input.hasFranchise) return 'This LGU-issued QR has no active franchise record. Do not continue the ride.';
+    if (input.transportStatus === 'PENDING') return 'This driver is still pending LGU transport approval. Do not continue the ride.';
+    if (input.transportStatus === 'SUSPENDED') return 'This driver is suspended by the LGU. Do not continue the ride.';
+    if (input.transportStatus === 'EXPIRED') return 'This driver’s franchise has expired. Do not continue the ride.';
+    if (input.eligibleForRide) return 'LGU-issued QR verified. This driver and vehicle are eligible for rides.';
+    return 'This LGU-issued QR is not currently eligible for rides.';
   }
 }
