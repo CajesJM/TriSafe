@@ -17,7 +17,11 @@ export class FaresController {
 
   @Public() @Get('locations') locations() { return this.service.listLocations(); }
   @Public() @Get('fare-estimates') estimate(@Query() dto: FareEstimateDto) { return this.service.estimate(dto); }
-  @Public() @Post('distance-fare-estimates') estimateDistance(@Body() dto: DistanceFareEstimateDto) { return this.service.estimateDistance(dto); }
+  @Roles(UserRole.PASSENGER)
+  @Post('distance-fare-estimates')
+  estimateDistance(@Body() dto: DistanceFareEstimateDto) {
+    return this.service.estimateDistance(dto);
+  }
 
   @Roles(UserRole.LGU_ADMIN)
   @Get('admin/fare-rules') rules() { return this.service.listRules(); }

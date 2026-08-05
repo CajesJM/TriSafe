@@ -60,7 +60,8 @@ class RideHistoryCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(ride.finalFare == null ? 'Estimated fare' : 'Final fare',
+                  child: Text(
+                      ride.finalFare == null ? 'Estimated fare' : 'Final fare',
                       style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
                 Text(

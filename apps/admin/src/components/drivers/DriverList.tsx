@@ -1,14 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import { Driver, DriverStatus } from "../../api";
+import { Driver, DriverStatus, UserStatus } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState } from "../shared/Feedback";
 import { ModalShell } from "../shared/ModalShell";
 import { DriverProfileModal } from "./DriverProfileModal";
 import { displayPersonName } from "../../utils/personName";
-import { downloadDriverRegistrationFile } from "../../utils/driverRegistrationFile";
 import { SuspendDriverModal } from "./SuspendDriverModal";
 import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
+import { ConfirmModal } from "../shared/ConfirmModal";
+import { DriverRegistrationFileModal } from "./DriverRegistrationFileModal";
+import type { DriverFileFormat } from "../../utils/driverRegistrationFile";
 import {
   BadgeCheck,
   Download,
@@ -16,7 +18,9 @@ import {
   FileText,
   QrCode,
   ShieldAlert,
+  UserCheck,
   UserRound,
+  UserX,
 } from "lucide-react";
 
 const pageSize = 8;
@@ -42,12 +46,13 @@ type Props = {
     status: DriverStatus,
     reason?: string,
   ) => Promise<void>;
+  onUpdateAccountStatus: (driver: Driver, status: UserStatus) => Promise<void>;
   selectedDriverId: string | null;
   onViewProfile: (driverId: string) => void;
   onCloseProfile: () => void;
   onEditAccount: (driver: Driver) => void;
   onError: (message: string) => void;
-  onFileDownloaded: (driver: Driver) => void;
+  onFileDownloaded: (driver: Driver, format: DriverFileFormat) => void;
 };
 
 export function DriverList({
@@ -56,6 +61,7 @@ export function DriverList({
   onViewQr,
   onUpdateFranchise,
   onUpdateStatus,
+  onUpdateAccountStatus,
   selectedDriverId,
   onViewProfile,
   onCloseProfile,
@@ -70,6 +76,8 @@ export function DriverList({
   const [changing, setChanging] = useState("");
   const [error, setError] = useState("");
   const [suspendingDriver, setSuspendingDriver] = useState<Driver | null>(null);
+  const [accountStatusDriver, setAccountStatusDriver] = useState<Driver | null>(null);
+  const [fileDriver, setFileDriver] = useState<Driver | null>(null);
   const filtered = useMemo(
     () =>
       drivers.filter((driver) => {
@@ -200,18 +208,8 @@ export function DriverList({
               onUpdateFranchise={onUpdateFranchise}
               onViewProfile={() => onViewProfile(driver.id)}
               onEditAccount={() => onEditAccount(driver)}
-              onDownloadFile={() => {
-                try {
-                  downloadDriverRegistrationFile(driver);
-                  onFileDownloaded(driver);
-                } catch (downloadError) {
-                  onError(
-                    downloadError instanceof Error
-                      ? downloadError.message
-                      : "Unable to generate the driver file.",
-                  );
-                }
-              }}
+              onViewFile={() => setFileDriver(driver)}
+              onChangeAccountStatus={() => setAccountStatusDriver(driver)}
               onSuspend={() => setSuspendingDriver(driver)}
               onUpdateStatus={(nextStatus) =>
                 changeStatus(driver, nextStatus).catch(() => undefined)
@@ -254,6 +252,30 @@ export function DriverList({
           }}
         />
       )}
+      {accountStatusDriver && (
+        <ConfirmModal
+          title={`${(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "Deactivate" : "Activate"} ${displayPersonName(accountStatusDriver.fullName)}'s account?`}
+          message={(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
+            ? "The driver will be signed out and unable to log in. Their franchise and transport status will remain unchanged."
+            : "The driver will be allowed to sign in again. Their transport eligibility will still follow the separate franchise status."}
+          confirmLabel={(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "Deactivate account" : "Activate account"}
+          tone={(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "danger" : "warning"}
+          onCancel={() => setAccountStatusDriver(null)}
+          onError={onError}
+          onConfirm={() => onUpdateAccountStatus(
+            accountStatusDriver,
+            (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+          )}
+        />
+      )}
+      {fileDriver && (
+        <DriverRegistrationFileModal
+          driver={fileDriver}
+          onClose={() => setFileDriver(null)}
+          onError={onError}
+          onDownloaded={(format) => onFileDownloaded(fileDriver, format)}
+        />
+      )}
     </section>
   );
 }
@@ -266,7 +288,8 @@ function DriverRow({
   onUpdateFranchise,
   onViewProfile,
   onEditAccount,
-  onDownloadFile,
+  onViewFile,
+  onChangeAccountStatus,
   onSuspend,
   onUpdateStatus,
 }: {
@@ -277,7 +300,8 @@ function DriverRow({
   onUpdateFranchise: (driver: Driver) => void;
   onViewProfile: () => void;
   onEditAccount: () => void;
-  onDownloadFile: () => void;
+  onViewFile: () => void;
+  onChangeAccountStatus: () => void;
   onSuspend: () => void;
   onUpdateStatus: (status: DriverStatus) => Promise<void>;
 }) {
@@ -292,6 +316,12 @@ function DriverRow({
           label: "Edit account",
           icon: <FilePenLine />,
           onSelect: onEditAccount,
+        },
+        {
+          label: (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "Deactivate account" : "Activate account",
+          icon: (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? <UserX /> : <UserCheck />,
+          onSelect: onChangeAccountStatus,
+          tone: (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "danger" : "default",
         },
       ],
     },
@@ -310,9 +340,9 @@ function DriverRow({
           disabled: !vehicle?.qrCode?.token,
         },
         {
-          label: "Download file",
+          label: "View registration file",
           icon: <Download />,
-          onSelect: onDownloadFile,
+          onSelect: onViewFile,
         },
       ],
     },

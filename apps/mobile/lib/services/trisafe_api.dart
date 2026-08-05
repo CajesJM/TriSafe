@@ -111,10 +111,12 @@ class TriSafeApi {
   }
 
   String _connectionMessage() =>
-      'TriSafe API is unavailable. Start npm run dev:api and, for a wired Android phone, run adb reverse tcp:3000 tcp:3000.';
+      'TriSafe API is unavailable at $baseUrl. Start npm run dev:api. Use adb reverse tcp:3000 tcp:3000 only when testing on a wired Android phone.';
 
   Future<QrVerificationResult> verifyQr(String token) async =>
       QrVerificationResult.fromJson(await _get('/vehicles/verify/$token'));
+  Future<PassengerProfile> accountProfile() async =>
+      PassengerProfile.fromJson(await _get('/auth/me'));
   Future<DriverProfile> driverProfile() async =>
       DriverProfile.fromJson(await _get('/drivers/me'));
   Future<List<DriverAnnouncement>> driverAnnouncements() async =>
@@ -139,6 +141,22 @@ class TriSafeApi {
         'fromLocationId': fromLocationId,
         'toLocationId': toLocationId,
         'passengerCount': passengerCount
+      }));
+  Future<FareEstimate> estimateDistanceFare({
+    required String vehicleType,
+    required double originLatitude,
+    required double originLongitude,
+    required double destinationLatitude,
+    required double destinationLongitude,
+    int passengerCount = 1,
+  }) async =>
+      FareEstimate.fromJson(await _post('/distance-fare-estimates', {
+        'vehicleType': vehicleType,
+        'originLatitude': originLatitude,
+        'originLongitude': originLongitude,
+        'destinationLatitude': destinationLatitude,
+        'destinationLongitude': destinationLongitude,
+        'passengerCount': passengerCount,
       }));
   Future<Ride> startRide(
           {required String vehicleId,
@@ -189,9 +207,16 @@ class TriSafeApi {
         if (heading != null) 'heading': heading,
         if (speed != null) 'speed': speed,
       }));
-  Future<List<Ride>> rideHistory() async => (await _get('/rides'))
-      .map<Ride>((item) => Ride.fromJson(item as Map<String, dynamic>))
-      .toList();
+  Future<List<Ride>> rideHistory({DateTime? from, DateTime? to}) async {
+    final uri = Uri.parse('$baseUrl/rides').replace(queryParameters: {
+      if (from != null) 'from': from.toUtc().toIso8601String(),
+      if (to != null) 'to': to.toUtc().toIso8601String(),
+    });
+    return (await _getUri(uri))
+        .map<Ride>((item) => Ride.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<Map<String, dynamic>> shareRide(String rideId,
       {String? liveLocationUrl}) async {
     final uri = Uri.parse('$baseUrl/rides/$rideId/share').replace(

@@ -9,6 +9,8 @@ class FareEstimate {
   final double? distanceKm;
   final double? ratePerKm;
   final String? vehicleType;
+  final double? routeDurationSeconds;
+  final List<FareRoutePoint> routeCoordinates;
 
   FareEstimate.fromJson(Map<String, dynamic> json)
       : amount = (json['amount'] as num).toDouble(),
@@ -20,7 +22,23 @@ class FareEstimate {
         distanceMeters = (json['distanceMeters'] as num?)?.toDouble(),
         distanceKm = (json['distanceKm'] as num?)?.toDouble(),
         ratePerKm = (json['ratePerKm'] as num?)?.toDouble(),
-        vehicleType = json['vehicleType'] as String?;
+        vehicleType = json['vehicleType'] as String?,
+        routeDurationSeconds =
+            (json['routeDurationSeconds'] as num?)?.toDouble(),
+        routeCoordinates = (json['routeCoordinates'] as List<dynamic>? ??
+                const [])
+            .map(
+                (item) => FareRoutePoint.fromJson(item as Map<String, dynamic>))
+            .toList();
+}
+
+class FareRoutePoint {
+  final double latitude;
+  final double longitude;
+
+  FareRoutePoint.fromJson(Map<String, dynamic> json)
+      : latitude = (json['latitude'] as num).toDouble(),
+        longitude = (json['longitude'] as num).toDouble();
 }
 
 class LocationOption {

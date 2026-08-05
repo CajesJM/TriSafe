@@ -18,7 +18,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @Roles(UserRole.LGU_ADMIN)
+  @Roles(UserRole.LGU_ADMIN, UserRole.DRIVER, UserRole.PASSENGER)
   me(@Req() request: RequestWithUser) {
     return this.auth.getProfile(request.user.id);
   }

@@ -248,6 +248,7 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
 export type AdminUser = {
   id: string;
   fullName: string;
+  username?: string | null;
   email?: string | null;
   phone?: string | null;
   role: UserRole;
@@ -280,6 +281,7 @@ export type RoleDefinition = {
 };
 export type CreateUserInput = {
   fullName: string;
+  username?: string;
   email: string;
   phone?: string;
   role: UserRole;
@@ -288,6 +290,7 @@ export type CreateUserInput = {
 };
 export type UpdateUserInput = {
   fullName?: string;
+  username?: string;
   email?: string;
   phone?: string;
   role?: UserRole;
@@ -433,6 +436,7 @@ export type LivePresence = {
 };
 export type RegisterDriverInput = {
   fullName: string;
+  accountStatus: UserStatus;
   phone: string;
   email: string;
   temporaryPassword: string;
@@ -553,10 +557,10 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  updateDriverStatus: (driverId: string, status: DriverStatus) =>
+  updateDriverStatus: (driverId: string, status: DriverStatus, reason?: string) =>
     request<Driver>(`/admin/drivers/${driverId}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...(reason ? { reason } : {}) }),
     }),
   reviewIncident: (id: string, body: IncidentReviewInput) =>
     request(`/incidents/admin/${id}/review`, {

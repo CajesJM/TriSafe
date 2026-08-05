@@ -53,14 +53,17 @@ Future<void> showIncidentReport(BuildContext context, TriSafeApi api,
       await api.submitIncident(draft['id']);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incident submitted to the LGU for review.')),
+          const SnackBar(
+              content: Text('Incident submitted to the LGU for review.')),
         );
       }
     }
   } catch (exception) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Incident report could not be submitted: $exception')),
+        SnackBar(
+            content:
+                Text('Incident report could not be submitted: $exception')),
       );
     }
   } finally {

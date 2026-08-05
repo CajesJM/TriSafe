@@ -57,6 +57,6 @@ class DriverAnnouncement {
       : id = json['announcement']['id'] as String,
         title = json['announcement']['title'] as String,
         body = json['announcement']['body'] as String,
-        publishedAt = DateTime.parse(
-            json['announcement']['publishedAt'].toString());
+        publishedAt =
+            DateTime.parse(json['announcement']['publishedAt'].toString());
 }

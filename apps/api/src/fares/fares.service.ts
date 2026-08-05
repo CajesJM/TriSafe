@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { calculateDistanceFare, calculateFare } from '@trisafe/contracts';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFareRuleDto } from './dto/create-fare-rule.dto';
@@ -11,7 +17,11 @@ import {
 
 @Injectable()
 export class FaresService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly config: ConfigService,
+  ) {}
 
   async estimate(dto: FareEstimateDto) {
     const rule = await this.findActiveRule(dto.fromLocationId, dto.toLocationId);
@@ -26,15 +36,75 @@ export class FaresService {
   }
 
   async estimateDistance(dto: DistanceFareEstimateDto) {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: dto.vehicleId },
-    });
-    if (!vehicle) throw new NotFoundException('Vehicle not found');
-    return this.calculateForVehicle(
-      vehicle.vehicleType,
-      dto.distanceMeters,
+    const route = await this.findRoadRoute(dto);
+    const estimate = await this.calculateForVehicle(
+      dto.vehicleType,
+      route.distanceMeters,
       dto.passengerCount,
     );
+    return {
+      ...estimate,
+      routeDurationSeconds: route.durationSeconds,
+      routeCoordinates: route.coordinates,
+      distanceBasis: 'ROAD_ROUTE',
+    };
+  }
+
+  private async findRoadRoute(dto: DistanceFareEstimateDto) {
+    const baseUrl = this.config.get<string>(
+      'ROUTING_BASE_URL',
+      'https://router.project-osrm.org',
+    );
+    const coordinates = `${dto.originLongitude},${dto.originLatitude};${dto.destinationLongitude},${dto.destinationLatitude}`;
+    const url = new URL(`/route/v1/driving/${coordinates}`, baseUrl);
+    url.searchParams.set('overview', 'simplified');
+    url.searchParams.set('geometries', 'geojson');
+    url.searchParams.set('steps', 'false');
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: AbortSignal.timeout(10000),
+        headers: { 'user-agent': 'TriSafe/0.1 (LGU transport safety system)' },
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'The road routing service is temporarily unavailable',
+      );
+    }
+    if (!response.ok) {
+      throw new ServiceUnavailableException(
+        'The road routing service could not calculate this trip',
+      );
+    }
+
+    const payload = (await response.json()) as {
+      code?: string;
+      routes?: Array<{
+        distance?: number;
+        duration?: number;
+        geometry?: { coordinates?: Array<[number, number]> };
+      }>;
+    };
+    const route = payload.routes?.[0];
+    if (payload.code !== 'Ok' || !route?.distance || !route.geometry?.coordinates) {
+      throw new BadRequestException(
+        'No drivable road route was found for the selected destination',
+      );
+    }
+    if (route.distance > 200000) {
+      throw new BadRequestException(
+        'The selected destination is outside the supported 200 km fare-estimate range',
+      );
+    }
+    return {
+      distanceMeters: route.distance,
+      durationSeconds: route.duration ?? 0,
+      coordinates: route.geometry.coordinates.map(([longitude, latitude]) => ({
+        latitude,
+        longitude,
+      })),
+    };
   }
 
   async calculateForVehicle(

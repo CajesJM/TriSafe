@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/trisafe_api.dart';
 import 'screens/login_screen.dart';
+import 'theme/trisafe_theme.dart';
 
 void main() => runApp(const TriSafeApp());
 
@@ -14,10 +15,7 @@ class TriSafeApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
         title: 'TriSafe',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-            colorScheme:
-                ColorScheme.fromSeed(seedColor: const Color(0xff185449)),
-            useMaterial3: true),
+        theme: buildTriSafeTheme(),
         home: LoginScreen(api: TriSafeApi(baseUrl: apiBaseUrl)),
       );
 }

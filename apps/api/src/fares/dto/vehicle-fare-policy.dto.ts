@@ -2,9 +2,13 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
+  IsInt,
+  IsLatitude,
+  IsLongitude,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
 } from 'class-validator';
 
@@ -46,15 +50,24 @@ export class SaveVehicleFarePolicyDto {
 }
 
 export class DistanceFareEstimateDto {
-  @IsString()
-  vehicleId!: string;
+  @IsIn(SUPPORTED_VEHICLE_TYPES)
+  vehicleType!: (typeof SUPPORTED_VEHICLE_TYPES)[number];
 
-  @IsNumber()
-  @Min(0)
-  distanceMeters!: number;
+  @IsLatitude()
+  originLatitude!: number;
+
+  @IsLongitude()
+  originLongitude!: number;
+
+  @IsLatitude()
+  destinationLatitude!: number;
+
+  @IsLongitude()
+  destinationLongitude!: number;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(1)
+  @Max(8)
   passengerCount = 1;
 }

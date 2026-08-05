@@ -41,7 +41,8 @@ class DriverProfileCard extends StatelessWidget {
           _InfoRow(label: 'Phone number', value: profile.phone),
           if (profile.franchise != null) ...[
             _InfoRow(label: 'Franchise', value: profile.franchise!.number),
-            _InfoRow(label: 'Franchise status', value: profile.franchise!.status),
+            _InfoRow(
+                label: 'Franchise status', value: profile.franchise!.status),
             _InfoRow(
                 label: 'Franchise expiry',
                 value: _formatDate(profile.franchise!.expiresAt)),
@@ -76,8 +77,7 @@ class DriverProfileCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) =>
-      '${date.month}/${date.day}/${date.year}';
+  String _formatDate(DateTime date) => '${date.month}/${date.day}/${date.year}';
 }
 
 class _InfoRow extends StatelessWidget {

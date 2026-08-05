@@ -30,8 +30,8 @@ Future<void> showEmergencyContacts(BuildContext context, TriSafeApi api,
               title: Text(item['name']),
               subtitle: Text(item['description'] ?? ''),
               trailing: TextButton.icon(
-                  onPressed: () => _callContact(
-                      sheetContext, item['phone'].toString()),
+                  onPressed: () =>
+                      _callContact(sheetContext, item['phone'].toString()),
                   icon: const Icon(Icons.call_outlined),
                   label: const Text('Call')))),
           if (activeRide != null && onShareRide != null) ...[
@@ -61,7 +61,8 @@ Future<void> _callContact(BuildContext context, String phone) async {
   );
   if (!launched && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('This device could not open the phone dialer.')),
+      const SnackBar(
+          content: Text('This device could not open the phone dialer.')),
     );
   }
 }

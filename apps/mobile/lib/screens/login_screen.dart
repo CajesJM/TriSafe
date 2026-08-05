@@ -42,10 +42,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) {
         return;
       }
+      if (session.role != 'PASSENGER' && session.role != 'DRIVER') {
+        widget.api.logout();
+        throw Exception(
+            'Administrator accounts must sign in through the TriSafe Admin Portal.');
+      }
       Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (_) => session.role == 'DRIVER'
               ? DriverHomeScreen(api: widget.api)
-              : HomeScreen(api: widget.api)));
+              : HomeScreen(api: widget.api, session: session)));
     } catch (exception) {
       if (mounted) {
         setState(() => error = exception.toString());
@@ -106,9 +111,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           labelText: 'Email address',
                           prefixIcon: Icon(Icons.email_outlined),
                           border: OutlineInputBorder()),
-                      validator: (value) => value == null || !value.contains('@')
-                          ? 'Enter a valid email address.'
-                          : null,
+                      validator: (value) =>
+                          value == null || !value.contains('@')
+                              ? 'Enter a valid email address.'
+                              : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

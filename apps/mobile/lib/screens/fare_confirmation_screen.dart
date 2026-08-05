@@ -84,8 +84,7 @@ class FareConfirmationScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(fare.disclaimer,
                           style: TextStyle(
-                              color: Colors.grey.shade700, fontSize: 12))
-                      ,
+                              color: Colors.grey.shade700, fontSize: 12)),
                       const SizedBox(height: 8),
                       const Text(
                           'The final fare is recalculated from GPS distance when the ride ends.',

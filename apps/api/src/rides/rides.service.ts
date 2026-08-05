@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
 import { AuditService } from '../audit/audit.service';
 import { RecordRideLocationDto } from './dto/record-ride-location.dto';
+import { RideHistoryQueryDto } from './dto/ride-history-query.dto';
 
 @Injectable()
 export class RidesService {
@@ -168,8 +169,20 @@ export class RidesService {
     };
   }
 
-  async history(passengerId: string) {
-    const rides = await this.prisma.ride.findMany({ where: { passengerId }, include: { vehicle: { include: { driver: { include: { user: true } } } } }, orderBy: { startedAt: 'desc' } });
+  async history(passengerId: string, query: RideHistoryQueryDto = {}) {
+    const startedAt = query.from || query.to
+      ? {
+          ...(query.from ? { gte: new Date(query.from) } : {}),
+          ...(query.to ? { lt: new Date(query.to) } : {}),
+        }
+      : undefined;
+    const rides = await this.prisma.ride.findMany({
+      // The passenger ID always comes from the verified access token. It is
+      // never accepted from the query string, preventing cross-account reads.
+      where: { passengerId, ...(startedAt ? { startedAt } : {}) },
+      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+      orderBy: { startedAt: 'desc' },
+    });
     return Promise.all(rides.map((ride) => this.addLocationNames(ride)));
   }
 

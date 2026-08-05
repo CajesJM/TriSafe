@@ -1,0 +1,98 @@
+%PDF-1.4
+%TriSafe
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 3732 >>
+stream
+0.2 0.455 0.094 rg 0 820 595 22 re f
+BT /F2 9 Tf 0.2 0.455 0.094 rg 42 791 Td (TRISAFE  |  LGU DRIVER REGISTRY) Tj ET
+BT /F2 22 Tf 0.125 0.125 0.125 rg 42 764 Td (Driver registration file) Tj ET
+BT /F1 8 Tf 0.4 0.4 0.4 rg 42 745 Td (Generated Aug 5, 2026, 4:30 PM from live registry data) Tj ET
+0.933 0.973 0.914 rg 42 695 511 36 re f
+BT /F2 8 Tf 0.137 0.357 0.067 rg 54 717 Td (CURRENT DATABASE RECORD) Tj ET
+BT /F1 7 Tf 0.25 0.35 0.22 rg 54 704 Td (Temporary passwords are excluded because TriSafe stores secure password hashes only.) Tj ET
+0.933 0.973 0.914 rg 42 667 511 22 re f
+BT /F2 8 Tf 0.137 0.357 0.067 rg 52 674 Td (ACCOUNT AND CONTACT) Tj ET
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 650 Td (DRIVER NAME) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 650 Td (Cajes, John M.) Tj ET
+0.88 0.88 0.88 RG 42 643 m 553 643 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 625 Td (EMAIL ADDRESS) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 625 Td (john.cajes@example.com) Tj ET
+0.88 0.88 0.88 RG 42 618 m 553 618 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 600 Td (MOBILE NUMBER) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 600 Td (+639171234567) Tj ET
+0.88 0.88 0.88 RG 42 593 m 553 593 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 575 Td (ACCOUNT STATUS) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 575 Td (ACTIVE) Tj ET
+0.88 0.88 0.88 RG 42 568 m 553 568 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 550 Td (DRIVER ID) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 550 Td (driver-qa-001) Tj ET
+0.88 0.88 0.88 RG 42 543 m 553 543 l S
+0.933 0.973 0.914 rg 42 506 511 22 re f
+BT /F2 8 Tf 0.137 0.357 0.067 rg 52 513 Td (LICENSE AND TRANSPORT ELIGIBILITY) Tj ET
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 489 Td (LICENSE NUMBER) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 489 Td (N01-98-123456) Tj ET
+0.88 0.88 0.88 RG 42 482 m 553 482 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 464 Td (LICENSE RENEWAL) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 464 Td (August 5, 2027) Tj ET
+0.88 0.88 0.88 RG 42 457 m 553 457 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 439 Td (TRANSPORT STATUS) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 439 Td (VERIFIED) Tj ET
+0.88 0.88 0.88 RG 42 432 m 553 432 l S
+0.933 0.973 0.914 rg 42 395 511 22 re f
+BT /F2 8 Tf 0.137 0.357 0.067 rg 52 402 Td (FRANCHISE DETAILS) Tj ET
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 378 Td (FRANCHISE NUMBER) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 378 Td (TRI-2026-001) Tj ET
+0.88 0.88 0.88 RG 42 371 m 553 371 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 353 Td (FRANCHISE ISSUED) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 353 Td (August 5, 2026) Tj ET
+0.88 0.88 0.88 RG 42 346 m 553 346 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 328 Td (FRANCHISE EXPIRATION) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 328 Td (August 5, 2027) Tj ET
+0.88 0.88 0.88 RG 42 321 m 553 321 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 303 Td (FRANCHISE STATUS) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 303 Td (VERIFIED) Tj ET
+0.88 0.88 0.88 RG 42 296 m 553 296 l S
+0.933 0.973 0.914 rg 42 259 511 22 re f
+BT /F2 8 Tf 0.137 0.357 0.067 rg 52 266 Td (VEHICLE AND QR IDENTITY) Tj ET
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 242 Td (PLATE NUMBER) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 242 Td (NCA-1234) Tj ET
+0.88 0.88 0.88 RG 42 235 m 553 235 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 217 Td (VEHICLE TYPE) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 217 Td (TRICYCLE) Tj ET
+0.88 0.88 0.88 RG 42 210 m 553 210 l S
+BT /F2 6.5 Tf 0.45 0.45 0.45 rg 52 192 Td (LGU QR STATUS) Tj ET
+BT /F2 8.5 Tf 0.125 0.125 0.125 rg 192 192 Td (Generated) Tj ET
+0.88 0.88 0.88 RG 42 185 m 553 185 l S
+0.88 0.88 0.88 RG 42 48 m 553 48 l S
+BT /F1 7 Tf 0.42 0.42 0.42 rg 42 32 Td (Confirm current account and transport eligibility through the live TriSafe registry.) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000018 00000 n 
+0000000067 00000 n 
+0000000124 00000 n 
+0000000194 00000 n 
+0000000269 00000 n 
+0000000405 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+4189
+%%EOF

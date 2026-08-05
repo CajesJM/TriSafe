@@ -5,6 +5,7 @@ import { Roles } from '../auth/roles.decorator';
 import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
 import { RidesService } from './rides.service';
 import { RecordRideLocationDto } from './dto/record-ride-location.dto';
+import { RideHistoryQueryDto } from './dto/ride-history-query.dto';
 
 @Roles(UserRole.PASSENGER)
 @Controller('rides')
@@ -13,7 +14,9 @@ export class RidesController {
 
   @Post('preview') preview(@Body() dto: StartRideDto) { return this.service.preview(dto); }
   @Post() start(@Req() req: RequestWithUser, @Body() dto: StartRideDto) { return this.service.start(req.user.id, dto); }
-  @Get() history(@Req() req: RequestWithUser) { return this.service.history(req.user.id); }
+  @Get() history(@Req() req: RequestWithUser, @Query() query: RideHistoryQueryDto) {
+    return this.service.history(req.user.id, query);
+  }
   @Post(':id/end') end(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: EndRideDto) { return this.service.end(req.user.id, id, dto); }
   @Post(':id/location') location(
     @Req() req: RequestWithUser,

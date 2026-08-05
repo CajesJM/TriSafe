@@ -68,24 +68,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     if (currentProfile == null) {
       return;
     }
-    await showDriverContactEditor(
-        context, widget.api, currentProfile, _load);
+    await showDriverContactEditor(context, widget.api, currentProfile, _load);
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-            title: const Text('Driver workspace'),
-            actions: [
-              IconButton(
-                  onPressed: loading ? null : _load,
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh profile'),
-              IconButton(
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout),
-                  tooltip: 'Sign out')
-            ]),
+        appBar: AppBar(title: const Text('Driver workspace'), actions: [
+          IconButton(
+              onPressed: loading ? null : _load,
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh profile'),
+          IconButton(
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout),
+              tooltip: 'Sign out')
+        ]),
         body: loading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
@@ -107,8 +104,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             child: Padding(
                                 padding: const EdgeInsets.all(14),
                                 child: Text(error!,
-                                    style: TextStyle(
-                                        color: Colors.red.shade800))))
+                                    style:
+                                        TextStyle(color: Colors.red.shade800))))
                       ],
                       if (profile != null) ...[
                         const SizedBox(height: 20),
@@ -125,8 +122,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             style: TextStyle(color: Colors.grey.shade700))
                       else
                         ...announcements.map((announcement) =>
-                            DriverAnnouncementCard(
-                                announcement: announcement)),
+                            DriverAnnouncementCard(announcement: announcement)),
                     ]),
               ),
       );

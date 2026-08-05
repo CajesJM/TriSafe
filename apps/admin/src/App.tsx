@@ -15,6 +15,7 @@ import {
   RoleDefinition,
   CreateUserInput,
   UpdateUserInput,
+  UserStatus,
   getSessionUser,
   hasAuthToken,
   logout,
@@ -241,6 +242,19 @@ export function App() {
     showToast("success", status === "SUSPENDED" ? `${updated.fullName}'s transport eligibility was suspended.` : `${updated.fullName} is now ${status.toLowerCase()}.`);
   }
 
+  async function updateDriverAccountStatus(driver: Driver, status: UserStatus) {
+    const updated = await api.updateUser(driver.userId, { status });
+    setDrivers((items) => items.map((item) => item.id === driver.id ? {
+      ...item,
+      accountStatus: updated.status,
+    } : item));
+    setAuditLogs(await api.auditLogs());
+    showToast(
+      "success",
+      `${updated.fullName}'s account is now ${updated.status.toLowerCase()}.`,
+    );
+  }
+
   return (
     <main className="shell">
       <Sidebar
@@ -290,12 +304,13 @@ export function App() {
                 onViewQr={setQrDriver}
                 onUpdateFranchise={setFranchiseDriver}
                 onUpdateStatus={updateDriverStatus}
+                onUpdateAccountStatus={updateDriverAccountStatus}
                 selectedDriverId={driverProfileId}
                 onViewProfile={setDriverProfileId}
                 onCloseProfile={() => setDriverProfileId(null)}
                 onEditAccount={openDriverAccount}
                 onError={(message) => showToast("error", message)}
-                onFileDownloaded={(driver) => showToast("success", `${driver.fullName}'s current registration file was downloaded.`)}
+                onFileDownloaded={(driver, format) => showToast("success", `${driver.fullName}'s registration file was downloaded as ${format.toUpperCase()}.`)}
               />
             )}
             {tab === "drivers" && showRegistration && (

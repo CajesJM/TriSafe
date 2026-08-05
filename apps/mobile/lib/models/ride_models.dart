@@ -9,6 +9,7 @@ class Ride {
   final String? toLocationName;
   final String? driverName;
   final String? plateNumber;
+  final String vehicleType;
   final DateTime? startedAt;
   final DateTime? endedAt;
 
@@ -30,6 +31,9 @@ class Ride {
         driverName =
             (json['vehicle']?['driver']?['user']?['fullName']) as String?,
         plateNumber = json['vehicle']?['plateNumber'] as String?,
+        vehicleType = (json['vehicleType'] ??
+            json['vehicle']?['vehicleType'] ??
+            'TRICYCLE') as String,
         startedAt = _parseDate(json['startedAt']),
         endedAt = _parseDate(json['endedAt']);
 
@@ -47,6 +51,7 @@ class Ride {
         toLocationName: toLocationName,
         driverName: driverName,
         plateNumber: plateNumber,
+        vehicleType: vehicleType,
         startedAt: startedAt,
         endedAt: endedAt,
       );
@@ -62,6 +67,7 @@ class Ride {
     required this.toLocationName,
     required this.driverName,
     required this.plateNumber,
+    required this.vehicleType,
     required this.startedAt,
     required this.endedAt,
   });
@@ -73,9 +79,7 @@ class RideProgress {
   final bool pointAccepted;
 
   RideProgress.fromJson(Map<String, dynamic> json)
-      : actualDistanceMeters =
-            (json['actualDistanceMeters'] as num).toDouble(),
-        currentFare =
-            (json['currentFare']['amount'] as num).toDouble(),
+      : actualDistanceMeters = (json['actualDistanceMeters'] as num).toDouble(),
+        currentFare = (json['currentFare']['amount'] as num).toDouble(),
         pointAccepted = json['pointAccepted'] as bool? ?? true;
 }
