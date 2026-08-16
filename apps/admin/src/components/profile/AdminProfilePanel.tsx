@@ -11,6 +11,10 @@ import {
 import { AdminProfile, api, SessionUser, updateSessionUser } from "../../api";
 import { AvatarCropDialog } from "./AvatarCropDialog";
 import { CameraCaptureDialog } from "./CameraCaptureDialog";
+import {
+  BoholAddressFields,
+  type BoholAddressField,
+} from "../drivers/DriverLocationFields";
 
 type Props = {
   open: boolean;
@@ -27,6 +31,17 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
     email: "",
     phone: "",
     avatarData: "",
+    provinceCode: "0701200000",
+    provinceName: "Bohol",
+    municipalityCode: "",
+    municipalityName: "",
+    barangayCode: "",
+    barangayName: "",
+    streetPurok: "",
+    postalCode: "",
+    streetPlaceId: "",
+    addressLatitude: 0,
+    addressLongitude: 0,
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,6 +70,17 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
           email: next.email ?? "",
           phone: localPhone(next.phone),
           avatarData: next.avatarData ?? "",
+          provinceCode: next.address?.provinceCode ?? "0701200000",
+          provinceName: next.address?.provinceName ?? "Bohol",
+          municipalityCode: next.address?.municipalityCode ?? "",
+          municipalityName: next.address?.municipalityName ?? "",
+          barangayCode: next.address?.barangayCode ?? "",
+          barangayName: next.address?.barangayName ?? "",
+          streetPurok: next.address?.streetPurok ?? "",
+          postalCode: next.address?.postalCode ?? "",
+          streetPlaceId: next.address?.externalPlaceId ?? "",
+          addressLatitude: Number(next.address?.latitude ?? 0),
+          addressLongitude: Number(next.address?.longitude ?? 0),
         });
       })
       .catch((requestError) =>
@@ -71,6 +97,13 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
 
   function change(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+    setSaved(false);
+  }
+
+  function changeAddress(
+    changes: Partial<Pick<typeof form, BoholAddressField>>,
+  ) {
+    setForm((current) => ({ ...current, ...changes }));
     setSaved(false);
   }
 
@@ -106,6 +139,14 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
       return "Enter a valid Gmail address, for example admin@gmail.com.";
     if (!/^\d{10}$/.test(form.phone))
       return "Enter exactly 10 digits after the +63 prefix.";
+    if (editingDetails && (!form.municipalityCode || !form.municipalityName))
+      return "Select the administrator's municipality or city.";
+    if (editingDetails && (!form.barangayCode || !form.barangayName))
+      return "Select the administrator's barangay.";
+    if (editingDetails && (!form.streetPurok || !form.streetPlaceId))
+      return "Select a verified Street/Purok suggestion for the administrator address.";
+    if (editingDetails && !/^\d{4}$/.test(form.postalCode))
+      return "A valid 4-digit postal/ZIP code is required.";
     return "";
   }
 
@@ -121,9 +162,24 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
     setSaved(false);
     try {
       const next = await api.updateProfile({
-        ...form,
+        fullName: form.fullName,
+        username: form.username,
+        avatarData: form.avatarData,
         email: form.email.trim(),
         phone: `+63${form.phone}`,
+        ...(editingDetails ? { address: {
+          provinceCode: form.provinceCode,
+          provinceName: form.provinceName,
+          municipalityCode: form.municipalityCode,
+          municipalityName: form.municipalityName,
+          barangayCode: form.barangayCode,
+          barangayName: form.barangayName,
+          streetPurok: form.streetPurok,
+          postalCode: form.postalCode,
+          streetPlaceId: form.streetPlaceId,
+          addressLatitude: form.addressLatitude,
+          addressLongitude: form.addressLongitude,
+        } } : {}),
       });
       setProfile(next);
       setForm({
@@ -132,9 +188,21 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
         email: next.email ?? "",
         phone: localPhone(next.phone),
         avatarData: next.avatarData ?? "",
+        provinceCode: next.address?.provinceCode ?? "0701200000",
+        provinceName: next.address?.provinceName ?? "Bohol",
+        municipalityCode: next.address?.municipalityCode ?? "",
+        municipalityName: next.address?.municipalityName ?? "",
+        barangayCode: next.address?.barangayCode ?? "",
+        barangayName: next.address?.barangayName ?? "",
+        streetPurok: next.address?.streetPurok ?? "",
+        postalCode: next.address?.postalCode ?? "",
+        streetPlaceId: next.address?.externalPlaceId ?? "",
+        addressLatitude: Number(next.address?.latitude ?? 0),
+        addressLongitude: Number(next.address?.longitude ?? 0),
       });
       updateSessionUser(next);
       onSaved(next);
+      setEditingDetails(false);
       setSaved(true);
       setToast("Profile updated successfully.");
       window.setTimeout(() => setToast(""), 3600);
@@ -357,6 +425,20 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
                   <small>Enter 10 digits after the +63 prefix.</small>
                 </label>
               </div>
+              <div className="profile-address-heading">
+                <div>
+                  <h3>Registered address</h3>
+                  <p>
+                    Saved to the administrator account. Location fields are
+                    read-only until Edit details is enabled.
+                  </p>
+                </div>
+              </div>
+              <BoholAddressFields
+                value={form}
+                onChange={changeAddress}
+                readOnly={!editingDetails}
+              />
               <div className="profile-panel-actions">
                 <button className="secondary" type="button" onClick={onClose}>
                   Cancel

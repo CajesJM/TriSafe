@@ -45,6 +45,16 @@ export function createDriverRegistrationFileData(driver: Driver): DriverRegistra
         ],
       },
       {
+        title: "Registered address",
+        fields: [
+          { label: "Street / Purok", value: driver.address?.streetPurok ?? "Not recorded" },
+          { label: "Barangay", value: driver.address?.barangayName ?? "Not recorded" },
+          { label: "Municipality / City", value: driver.address?.municipalityName ?? "Not recorded" },
+          { label: "Province", value: driver.address?.provinceName ?? "Not recorded" },
+          { label: "Postal / ZIP code", value: driver.address?.postalCode ?? "Not recorded" },
+        ],
+      },
+      {
         title: "Franchise details",
         fields: [
           { label: "Franchise number", value: driver.franchise?.franchiseNumber ?? "Not assigned" },

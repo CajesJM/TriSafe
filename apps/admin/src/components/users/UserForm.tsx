@@ -2,12 +2,17 @@ import { FormEvent, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   AdminUser,
+  Driver,
   CreateUserInput,
   RoleDefinition,
   UpdateUserInput,
   UserRole,
   UserStatus,
 } from "../../api";
+import {
+  BoholAddressFields,
+  type BoholAddressField,
+} from "../drivers/DriverLocationFields";
 import {
   cleanPersonNamePart,
   cleanMiddleInitial,
@@ -28,6 +33,7 @@ type Props = {
   onSave: (input: CreateUserInput | UpdateUserInput) => Promise<void>;
   onError: (message: string) => void;
   defaultRole?: UserRole;
+  driver?: Driver;
 };
 
 export function UserForm({
@@ -37,6 +43,7 @@ export function UserForm({
   onSave,
   onError,
   defaultRole = "PASSENGER",
+  driver,
 }: Props) {
   const titleId = useId();
   const [role, setRole] = useState<UserRole>(user?.role ?? defaultRole);
@@ -52,6 +59,19 @@ export function UserForm({
   const [phone, setPhone] = useState(() => localPhoneDigits(user?.phone));
   const [status, setStatus] = useState<UserStatus>(user?.status ?? "ACTIVE");
   const [password, setPassword] = useState("");
+  const [address, setAddress] = useState(() => ({
+    provinceCode: driver?.address?.provinceCode ?? "0701200000",
+    provinceName: driver?.address?.provinceName ?? "Bohol",
+    municipalityCode: driver?.address?.municipalityCode ?? "",
+    municipalityName: driver?.address?.municipalityName ?? "",
+    barangayCode: driver?.address?.barangayCode ?? "",
+    barangayName: driver?.address?.barangayName ?? "",
+    streetPurok: driver?.address?.streetPurok ?? "",
+    postalCode: driver?.address?.postalCode ?? "",
+    streetPlaceId: driver?.address?.externalPlaceId ?? "",
+    addressLatitude: Number(driver?.address?.latitude ?? 0),
+    addressLongitude: Number(driver?.address?.longitude ?? 0),
+  }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const assignableRoles = roles.filter(
@@ -96,6 +116,24 @@ export function UserForm({
       onError(message);
       return;
     }
+    if (isDriver && (!address.municipalityCode || !address.municipalityName)) {
+      const message = "Select the driver's municipality or city.";
+      setError(message);
+      onError(message);
+      return;
+    }
+    if (isDriver && (!address.barangayCode || !address.barangayName)) {
+      const message = "Select the driver's barangay.";
+      setError(message);
+      onError(message);
+      return;
+    }
+    if (isDriver && (!address.streetPurok || !address.streetPlaceId || !/^\d{4}$/.test(address.postalCode))) {
+      const message = "Select a verified Street/Purok so TriSafe can assign the correct postal code.";
+      setError(message);
+      onError(message);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -108,6 +146,7 @@ export function UserForm({
           role,
           status,
           ...(password ? { newPassword: password } : {}),
+          ...(isDriver ? { driverAddress: address } : {}),
         });
       else
         await onSave({
@@ -349,6 +388,22 @@ export function UserForm({
               </label>
             </div>
           </div>
+          {isDriver && user && (
+            <div className="form-section driver-account-address-section">
+              <h4>Registered address</h4>
+              <p className="driver-account-address-description">
+                Search and select the verified Bohol location associated with
+                this driver. The saved address is shown during QR verification.
+              </p>
+              <BoholAddressFields
+                value={address}
+                onChange={(changes: Partial<Pick<typeof address, BoholAddressField>>) => {
+                  setAddress((current) => ({ ...current, ...changes }));
+                  setError("");
+                }}
+              />
+            </div>
+          )}
           <div className="form-section">
             <h4>Authorization</h4>
             <div className="form-grid">

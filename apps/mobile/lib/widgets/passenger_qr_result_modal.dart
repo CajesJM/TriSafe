@@ -149,6 +149,14 @@ class _PassengerQrResultDialog extends StatelessWidget {
                     value: vehicle?.driverName ?? 'Not available'),
                 const Divider(height: 1),
                 _VerificationRow(
+                    icon: Icons.location_on_outlined,
+                    label: 'Registered address',
+                    value: vehicle?.driverAddress ?? 'Not recorded',
+                    detail: vehicle?.postalCode == null
+                        ? null
+                        : 'Postal code ${vehicle!.postalCode}'),
+                const Divider(height: 1),
+                _VerificationRow(
                     icon: vehicle?.vehicleType == 'HABAL_HABAL'
                         ? Icons.two_wheeler_rounded
                         : Icons.electric_rickshaw_rounded,

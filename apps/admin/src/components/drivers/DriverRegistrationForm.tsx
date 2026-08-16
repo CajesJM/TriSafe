@@ -12,6 +12,7 @@ import {
   formatPersonName,
   validatePersonName,
 } from "../../utils/personName";
+import { DriverLocationFields, type DriverLocationField } from "./DriverLocationFields";
 
 type DriverFormState = Omit<RegisterDriverInput, "fullName"> & {
   lastName: string;
@@ -23,6 +24,17 @@ const emptyDriverForm: DriverFormState = {
   lastName: "",
   firstName: "",
   middleInitial: "",
+  provinceCode: "0701200000",
+  provinceName: "Bohol",
+  municipalityCode: "",
+  municipalityName: "",
+  barangayCode: "",
+  barangayName: "",
+  streetPurok: "",
+  postalCode: "",
+  streetPlaceId: "",
+  addressLatitude: 0,
+  addressLongitude: 0,
   accountStatus: "ACTIVE",
   phone: "",
   email: "",
@@ -77,9 +89,30 @@ export function DriverRegistrationForm({
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function updateLocation(
+    changes: Partial<Pick<DriverFormState, DriverLocationField>>,
+  ) {
+    setFormError("");
+    setForm((current) => ({ ...current, ...changes }));
+  }
+
   function validate() {
     const nameError = validatePersonName(form);
     if (nameError) return nameError;
+    if (form.provinceCode !== "0701200000" || form.provinceName !== "Bohol")
+      return "Driver registration currently supports Bohol addresses only.";
+    if (!form.municipalityCode || !form.municipalityName)
+      return "Select the driver's municipality or city.";
+    if (!form.barangayCode || !form.barangayName)
+      return "Select the driver's barangay.";
+    if (/\d/.test(form.barangayName))
+      return "Barangay names cannot contain numbers.";
+    if (!form.streetPurok.trim() || !form.streetPlaceId)
+      return "Search and select a verified Street/Purok suggestion.";
+    if (!/^\d{4}$/.test(form.postalCode))
+      return "A valid 4-digit postal/ZIP code is required.";
+    if (!Number.isFinite(form.addressLatitude) || !Number.isFinite(form.addressLongitude))
+      return "The selected location coordinates are invalid.";
     if (!/^9\d{9}$/.test(form.phone))
       return "Mobile number must contain 10 digits and begin with 9 after +63.";
     if (form.email.includes(" ") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
@@ -128,6 +161,17 @@ export function DriverRegistrationForm({
         franchiseExpiresAt: form.franchiseExpiresAt,
         plateNumber: form.plateNumber,
         vehicleType: form.vehicleType,
+        provinceCode: form.provinceCode,
+        provinceName: form.provinceName,
+        municipalityCode: form.municipalityCode,
+        municipalityName: form.municipalityName,
+        barangayCode: form.barangayCode,
+        barangayName: form.barangayName,
+        streetPurok: form.streetPurok,
+        postalCode: form.postalCode,
+        streetPlaceId: form.streetPlaceId,
+        addressLatitude: form.addressLatitude,
+        addressLongitude: form.addressLongitude,
         fullName: formatPersonName(form),
       };
       const driver = await api.registerDriver(registration);
@@ -199,7 +243,11 @@ export function DriverRegistrationForm({
               </div>
             </FormSection>
 
-            <FormSection number="02" title="Franchise record" description="Validated against the active LGU transport franchise.">
+            <FormSection number="02" title="Driver address" description="A verified Bohol address linked to its official location hierarchy.">
+              <DriverLocationFields value={form} onChange={updateLocation} />
+            </FormSection>
+
+            <FormSection number="03" title="Franchise record" description="Validated against the active LGU transport franchise.">
               <div className="form-grid driver-registration-grid">
                 <Field label="Franchise number" value={form.franchiseNumber} onChange={(value) => updateField("franchiseNumber", cleanRecordValue(value, 40))} placeholder="TRI-2026-001" maxLength={40} required />
                 <Field label="Issued date" value={form.franchiseIssuedAt} onChange={(value) => updateField("franchiseIssuedAt", value)} type="date" max={todayDate()} required />
@@ -207,7 +255,7 @@ export function DriverRegistrationForm({
               </div>
             </FormSection>
 
-            <FormSection number="03" title="Assigned vehicle" description="The QR identity is generated for this exact vehicle.">
+            <FormSection number="04" title="Assigned vehicle" description="The QR identity is generated for this exact vehicle.">
               <div className="form-grid driver-registration-grid">
                 <Field label="Plate number" value={form.plateNumber} onChange={(value) => updateField("plateNumber", cleanRecordValue(value, 15))} placeholder="NCA-1234" maxLength={15} required />
                 <label className="field">

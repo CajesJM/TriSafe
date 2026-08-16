@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   CarFront,
   FileText,
+  MapPin,
   QrCode,
   UserRound,
   X,
@@ -110,6 +111,29 @@ export function DriverProfileModal({
             <ProfileField
               label="Renewal date"
               value={formatDate(driver.renewalDate)}
+            />
+          </ProfileSection>
+
+          <ProfileSection icon={<MapPin />} title="Registered address">
+            <ProfileField
+              label="Street / Purok"
+              value={driver.address?.streetPurok ?? "Not recorded"}
+            />
+            <ProfileField
+              label="Barangay"
+              value={driver.address?.barangayName ?? "Not recorded"}
+            />
+            <ProfileField
+              label="Municipality / City"
+              value={driver.address?.municipalityName ?? "Not recorded"}
+            />
+            <ProfileField
+              label="Province"
+              value={driver.address?.provinceName ?? "Not recorded"}
+            />
+            <ProfileField
+              label="Postal / ZIP code"
+              value={driver.address?.postalCode ?? "Not recorded"}
             />
           </ProfileSection>
 

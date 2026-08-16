@@ -23,6 +23,46 @@
 .driver-registration-grid .field > small { display: block; min-height: 12px; margin-top: 5px; color: var(--muted); font-size: 7px; line-height: 1.4; }
 .driver-registration-grid input, .driver-registration-grid select { min-height: 42px; border-color: var(--line); background: #fff; }
 .driver-registration-grid input:focus, .driver-registration-grid select:focus { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb,var(--lime) 18%,transparent); outline: none; }
+.driver-location-fields { min-width: 0; }
+.driver-location-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.driver-location-grid .field { position: relative; align-content: start; min-width: 0; }
+.driver-location-grid .field > span { margin-bottom: 7px; }
+.driver-location-grid .field > small { display: block; min-height: 12px; margin-top: 5px; color: var(--muted); font-size: 7px; line-height: 1.4; }
+.driver-location-grid input, .driver-location-grid select { min-height: 42px; border-color: var(--line); background: #fff; }
+.driver-location-grid input:focus, .driver-location-grid select:focus { border-color: var(--forest); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb,var(--lime) 18%,transparent); }
+.driver-location-grid select:disabled, .driver-location-grid input:disabled { color: color-mix(in srgb,var(--charcoal) 66%,transparent); background: var(--surface-soft); cursor: not-allowed; }
+.driver-location-error { grid-column: 1 / -1; margin-bottom: 12px; border: 1px solid color-mix(in srgb,#b3261e 28%,var(--line)); border-radius: 9px; padding: 10px 12px; color: #8f1d17; background: #fff1f0; font-size: 8px; }
+.driver-hierarchy-field { display: grid; gap: 7px; }
+.driver-location-combobox, .driver-location-search { position: relative; display: flex; align-items: center; }
+.driver-location-combobox > svg:first-child, .driver-location-search > svg:first-child { position: absolute; left: 12px; z-index: 1; width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
+.driver-location-combobox input, .driver-location-search input { width: 100%; padding-left: 35px; }
+.driver-location-combobox input { padding-right: 40px; cursor: text; }
+.driver-location-combobox.open input { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb,var(--lime) 18%,transparent); }
+.driver-location-combobox > button { position: absolute; right: 4px; display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 7px; color: var(--muted); background: transparent; cursor: pointer; }
+.driver-location-combobox > button:hover { color: var(--forest); background: var(--primary-50); }
+.driver-location-combobox > button:disabled { cursor: not-allowed; opacity: .45; }
+.driver-location-combobox > button svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.driver-location-combobox.open > button svg { transform: rotate(180deg); }
+.driver-hierarchy-options { position: absolute; z-index: 35; top: calc(100% - 14px); right: 0; left: 0; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 10px; padding: 5px; background: #fff; box-shadow: 0 16px 36px rgba(15,15,15,.17); scrollbar-color: var(--forest) var(--surface-soft); scrollbar-width: thin; }
+.driver-hierarchy-options button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; border: 0; border-radius: 7px; padding: 9px 10px; color: var(--charcoal); text-align: left; background: transparent; cursor: pointer; }
+.driver-hierarchy-options button:hover, .driver-hierarchy-options button.active { color: var(--forest); background: var(--primary-50); }
+.driver-hierarchy-options button.selected { font-weight: 800; }
+.driver-hierarchy-options button svg { flex: 0 0 14px; width: 14px; height: 14px; color: var(--forest); }
+.driver-hierarchy-options p { margin: 0; padding: 14px 10px; color: var(--muted); font-size: 8px; text-align: center; }
+.driver-location-search.verified input { padding-right: 38px; border-color: color-mix(in srgb,var(--forest) 50%,var(--line)); background: var(--primary-50); }
+.driver-location-spinner, .driver-location-verified { position: absolute; right: 12px; width: 15px; height: 15px; }
+.driver-location-spinner { color: var(--forest); animation: driver-location-spin .8s linear infinite; }
+.driver-location-verified { color: var(--forest); }
+.driver-location-suggestions { position: absolute; z-index: 30; top: calc(100% - 14px); right: 0; left: 0; max-height: 210px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 5px; background: #fff; box-shadow: 0 16px 36px rgba(15,15,15,.17); }
+.driver-location-suggestions button { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: start; gap: 8px; width: 100%; border: 0; border-radius: 7px; padding: 9px; color: var(--charcoal); text-align: left; background: transparent; cursor: pointer; }
+.driver-location-suggestions button:hover, .driver-location-suggestions button:focus-visible { background: var(--primary-50); outline: none; }
+.driver-location-suggestions button > svg { width: 14px; height: 14px; margin-top: 1px; color: var(--forest); }
+.driver-location-suggestions button span { display: grid; min-width: 0; gap: 3px; }
+.driver-location-suggestions strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.driver-location-suggestions small { overflow: hidden; color: var(--muted); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.driver-location-suggestions b { border-radius: 6px; padding: 4px 6px; color: var(--forest); background: var(--green-100); font-size: 7px; }
+.driver-postal-field input[readonly] { color: var(--forest); font-weight: 800; letter-spacing: .08em; background: var(--primary-50); }
+@keyframes driver-location-spin { to { transform: rotate(360deg); } }
 .driver-phone-input, .driver-password-input { display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: #fff; transition: border-color .18s ease, box-shadow .18s ease; }
 .driver-phone-input:focus-within, .driver-password-input:focus-within { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb,var(--lime) 18%,transparent); }
 .driver-phone-input b { display: flex; align-items: center; border-right: 1px solid var(--line-light); padding: 0 11px; color: var(--forest); background: var(--primary-50); font-size: 9px; white-space: nowrap; }
@@ -90,6 +130,7 @@
   .driver-registration-header h2 { font-size: 18px; }
   .driver-registration-scroll { padding: 0 17px 18px; }
   .driver-registration-grid { grid-template-columns: 1fr; gap: 12px; }
+  .driver-location-grid { grid-template-columns: 1fr; gap: 12px; }
   .driver-registration-actions { align-items: stretch; flex-direction: column; padding: 13px 17px 16px; }
   .driver-registration-actions > div { display: grid; grid-template-columns: 1fr 1fr; }
   .driver-registration-actions button { width: 100%; }

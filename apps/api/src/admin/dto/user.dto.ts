@@ -1,6 +1,7 @@
 import { UserRole, UserStatus } from '@prisma/client';
-import { Transform } from 'class-transformer';
-import { IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, Length, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, Length, Matches, MaxLength, MinLength, ValidateIf, ValidateNested } from 'class-validator';
+import { BoholAddressDto } from '../../drivers/dto/bohol-address.dto';
 
 const lowercaseText = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().toLowerCase() : value;
 const usernamePattern = /^(?=.{3,30}$)[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
@@ -73,4 +74,9 @@ export class UpdateUserDto {
   @IsString()
   @MinLength(8)
   newPassword?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BoholAddressDto)
+  driverAddress?: BoholAddressDto;
 }

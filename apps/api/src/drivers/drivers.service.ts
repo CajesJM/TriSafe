@@ -9,12 +9,14 @@ import { AuditService } from '../audit/audit.service';
 import { UpdateFranchiseDto } from './dto/update-franchise.dto';
 import { UpdateDriverStatusDto } from './dto/update-driver-status.dto';
 import { DriverStatusService } from './driver-status.service';
+import { BoholLocationService } from './bohol-location.service';
 
 @Injectable()
 export class DriversService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly statuses: DriverStatusService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly statuses: DriverStatusService, private readonly locations: BoholLocationService) {}
 
   async registerApprovedDriver(actorId: string, dto: RegisterDriverDto) {
+    const verifiedAddress = await this.locations.validateRegistrationAddress(dto);
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Manila',
       year: 'numeric',
@@ -42,10 +44,11 @@ export class DriversService {
         const driver = await tx.driver.create({
           data: {
             userId: user.id, licenseNumber: dto.licenseNumber, renewalDate: new Date(dto.renewalDate), verification: DriverVerificationStatus.VERIFIED,
+            address: { create: verifiedAddress },
             franchise: { create: { franchiseNumber: dto.franchiseNumber, issuedAt: new Date(dto.franchiseIssuedAt), expiresAt: new Date(dto.franchiseExpiresAt), status: DriverVerificationStatus.VERIFIED } },
             vehicles: { create: { plateNumber: dto.plateNumber, vehicleType: dto.vehicleType, qrCode: { create: { token: randomUUID() } } } },
           },
-          include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } },
+          include: { user: true, address: true, franchise: true, vehicles: { include: { qrCode: true } } },
         });
         return this.toAdminDriver(driver);
       });
@@ -54,7 +57,7 @@ export class DriversService {
         action: 'DRIVER_REGISTERED',
         entityType: 'Driver',
         entityId: driver.id,
-        details: { franchiseNumber: dto.franchiseNumber, plateNumber: dto.plateNumber, accountStatus: dto.accountStatus },
+        details: { franchiseNumber: dto.franchiseNumber, plateNumber: dto.plateNumber, accountStatus: dto.accountStatus, barangayCode: verifiedAddress.barangayCode, postalCode: verifiedAddress.postalCode },
       });
       return driver;
     } catch (error) {
@@ -67,7 +70,7 @@ export class DriversService {
 
   async verifyQr(token: string) {
     await this.statuses.syncExpiredDrivers();
-    const qr = await this.prisma.qrCode.findUnique({ where: { token }, include: { vehicle: { include: { driver: { include: { user: true, franchise: true } } } } } });
+    const qr = await this.prisma.qrCode.findUnique({ where: { token }, include: { vehicle: { include: { driver: { include: { user: true, address: true, franchise: true } } } } } });
     if (!qr) {
       return {
         legitimate: false,
@@ -104,6 +107,10 @@ export class DriversService {
       vehicle: {
         driverId: driver.id,
         driverName: driver.user.fullName,
+        driverAddress: driver.address
+          ? [driver.address.streetPurok, driver.address.barangayName, driver.address.municipalityName, driver.address.provinceName].join(', ')
+          : null,
+        postalCode: driver.address?.postalCode ?? null,
         franchiseNumber: franchise?.franchiseNumber ?? null,
         franchiseExpiresAt: franchise?.expiresAt.toISOString() ?? null,
         vehicleId: qr.vehicle.id,
@@ -116,14 +123,14 @@ export class DriversService {
 
   async getDriver(id: string) {
     await this.statuses.syncExpiredDrivers();
-    const driver = await this.prisma.driver.findUnique({ where: { id }, include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } } });
+    const driver = await this.prisma.driver.findUnique({ where: { id }, include: { user: true, address: true, franchise: true, vehicles: { include: { qrCode: true } } } });
     if (!driver) throw new NotFoundException('Driver not found');
     return this.toAdminDriver(driver);
   }
 
   async getByUserId(userId: string) {
     await this.statuses.syncExpiredDrivers();
-    const driver = await this.prisma.driver.findUnique({ where: { userId }, include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } } });
+    const driver = await this.prisma.driver.findUnique({ where: { userId }, include: { user: true, address: true, franchise: true, vehicles: { include: { qrCode: true } } } });
     if (!driver) throw new NotFoundException('Driver profile not found');
     const renewalTimes = [driver.renewalDate.getTime(), ...(driver.franchise ? [driver.franchise.expiresAt.getTime()] : [])];
     const daysUntilRenewal = Math.ceil((Math.min(...renewalTimes) - Date.now()) / 86400000);
@@ -277,7 +284,7 @@ export class DriversService {
 
   async list() {
     await this.statuses.syncExpiredDrivers();
-    const drivers = await this.prisma.driver.findMany({ include: { user: true, franchise: true, vehicles: { include: { qrCode: true } } }, orderBy: { createdAt: 'desc' } });
+    const drivers = await this.prisma.driver.findMany({ include: { user: true, address: true, franchise: true, vehicles: { include: { qrCode: true } } }, orderBy: { createdAt: 'desc' } });
     return drivers.map((driver) => this.toAdminDriver(driver));
   }
 
@@ -293,8 +300,8 @@ export class DriversService {
     return this.getDriver(driverId);
   }
 
-  private toAdminDriver(driver: Prisma.DriverGetPayload<{ include: { user: true; franchise: true; vehicles: { include: { qrCode: true } } } }>) {
-    return { id: driver.id, userId: driver.user.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
+  private toAdminDriver(driver: Prisma.DriverGetPayload<{ include: { user: true; address: true; franchise: true; vehicles: { include: { qrCode: true } } } }>) {
+    return { id: driver.id, userId: driver.user.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, address: driver.address, franchise: driver.franchise, vehicles: driver.vehicles };
   }
 
   private qrVerificationMessage(input: { qrRevoked: boolean; vehicleActive: boolean; accountActive: boolean; hasFranchise: boolean; transportStatus: string; eligibleForRide: boolean }) {

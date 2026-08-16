@@ -8,12 +8,13 @@ import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { hashPassword } from '../auth/password';
 import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
+import { BoholLocationService } from '../drivers/bohol-location.service';
 
 const canonicalPersonNamePattern = /^[\p{L}][\p{L} '-]{1,44}, [\p{L}][\p{L}'-]+(?: [\p{L}][\p{L}'-]+)*(?: \p{L}\.)?$/u;
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly locations: BoholLocationService) {}
 
   async dashboard() {
     const today = new Date();
@@ -385,6 +386,12 @@ export class AdminService {
       if (!current.driverProfile && dto.role === UserRole.DRIVER) throw new BadRequestException('Use the Drivers & QR workflow to create a complete driver profile.');
     }
     await this.ensureAdminContinuity(current.role, current.status, dto.role ?? current.role, dto.status ?? current.status, id);
+    if (dto.driverAddress && !current.driverProfile) {
+      throw new BadRequestException('Driver address information can only be assigned to a registered driver.');
+    }
+    const verifiedDriverAddress = dto.driverAddress
+      ? await this.locations.validateRegistrationAddress(dto.driverAddress)
+      : null;
     const data: Prisma.UserUncheckedUpdateInput = {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
       ...(dto.username !== undefined ? { username: dto.username } : {}),
@@ -395,12 +402,21 @@ export class AdminService {
       ...(dto.newPassword ? { passwordHash: hashPassword(dto.newPassword) } : {}),
     };
     try {
-      const updated = await this.prisma.user.update({
-        where: { id }, data,
-        select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.update({
+          where: { id }, data,
+          select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
+        });
+        if (verifiedDriverAddress && current.driverProfile) {
+          await tx.driver.update({
+            where: { id: current.driverProfile.id },
+            data: { address: { upsert: { create: verifiedDriverAddress, update: verifiedDriverAddress } } },
+          });
+        }
+        return user;
       });
       const statusChanged = current.status !== updated.status;
-      await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword) } });
+      await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword), driverAddressUpdated: Boolean(verifiedDriverAddress), postalCode: verifiedDriverAddress?.postalCode } });
       return updated;
     } catch (error) {
       this.handleUniqueUserError(error);

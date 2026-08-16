@@ -24,6 +24,8 @@ class QrVerificationResult {
 class VerifiedVehicle {
   final String driverId;
   final String driverName;
+  final String? driverAddress;
+  final String? postalCode;
   final String? franchiseNumber;
   final String? franchiseExpiresAt;
   final String vehicleId;
@@ -34,6 +36,8 @@ class VerifiedVehicle {
   VerifiedVehicle.fromJson(Map<String, dynamic> json)
       : driverId = json['driverId'] as String,
         driverName = json['driverName'] as String,
+        driverAddress = json['driverAddress'] as String?,
+        postalCode = json['postalCode'] as String?,
         franchiseNumber = json['franchiseNumber'] as String?,
         franchiseExpiresAt = json['franchiseExpiresAt'] as String?,
         vehicleId = json['vehicleId'] as String,

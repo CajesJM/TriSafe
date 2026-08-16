@@ -14,13 +14,43 @@ export type SessionUser = {
   avatarData?: string | null;
 };
 
-export type AdminProfile = SessionUser & { status: UserStatus };
+export type StoredBoholAddress = {
+  provinceCode: string;
+  provinceName: string;
+  municipalityCode: string;
+  municipalityName: string;
+  barangayCode: string;
+  barangayName: string;
+  streetPurok: string;
+  postalCode: string;
+  externalPlaceId: string;
+  latitude: number | string;
+  longitude: number | string;
+};
+export type BoholAddressInput = {
+  provinceCode: string;
+  provinceName: string;
+  municipalityCode: string;
+  municipalityName: string;
+  barangayCode: string;
+  barangayName: string;
+  streetPurok: string;
+  postalCode: string;
+  streetPlaceId: string;
+  addressLatitude: number;
+  addressLongitude: number;
+};
+export type AdminProfile = SessionUser & {
+  status: UserStatus;
+  address?: StoredBoholAddress | null;
+};
 export type UpdateProfileInput = {
   fullName: string;
   username: string;
   email: string;
   phone: string;
   avatarData?: string | null;
+  address?: BoholAddressInput;
 };
 
 export type UserRole = "PASSENGER" | "DRIVER" | "LGU_ADMIN";
@@ -296,6 +326,7 @@ export type UpdateUserInput = {
   role?: UserRole;
   status?: UserStatus;
   newPassword?: string;
+  driverAddress?: BoholAddressInput;
 };
 export type RoleInput = {
   key: UserRole;
@@ -314,6 +345,7 @@ export type Driver = {
   verification: DriverStatus;
   licenseNumber: string;
   renewalDate: string;
+  address?: StoredBoholAddress | null;
   franchise?: {
     franchiseNumber: string;
     issuedAt: string;
@@ -447,6 +479,30 @@ export type RegisterDriverInput = {
   franchiseExpiresAt: string;
   plateNumber: string;
   vehicleType: string;
+  provinceCode: string;
+  provinceName: string;
+  municipalityCode: string;
+  municipalityName: string;
+  barangayCode: string;
+  barangayName: string;
+  streetPurok: string;
+  postalCode: string;
+  streetPlaceId: string;
+  addressLatitude: number;
+  addressLongitude: number;
+};
+export type PhilippineLocationOption = {
+  code: string;
+  name: string;
+  type?: string;
+};
+export type StreetLocationSuggestion = {
+  id: string;
+  name: string;
+  label: string;
+  postalCode: string;
+  latitude: number;
+  longitude: number;
 };
 export type UpdateFranchiseInput = {
   status: "PENDING" | "VERIFIED" | "SUSPENDED" | "EXPIRED";
@@ -552,6 +608,20 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  boholMunicipalities: () =>
+    request<PhilippineLocationOption[]>("/admin/locations/bohol/municipalities"),
+  boholBarangays: (municipalityCode: string) =>
+    request<PhilippineLocationOption[]>(
+      `/admin/locations/bohol/municipalities/${encodeURIComponent(municipalityCode)}/barangays`,
+    ),
+  boholStreetSuggestions: (
+    municipalityCode: string,
+    barangayCode: string,
+    query: string,
+  ) =>
+    request<StreetLocationSuggestion[]>(
+      `/admin/locations/bohol/municipalities/${encodeURIComponent(municipalityCode)}/barangays/${encodeURIComponent(barangayCode)}/streets?q=${encodeURIComponent(query)}`,
+    ),
   updateFranchise: (driverId: string, body: UpdateFranchiseInput) =>
     request<Driver>(`/admin/drivers/${driverId}/franchise`, {
       method: "PATCH",

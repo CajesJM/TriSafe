@@ -9,6 +9,8 @@
 .form-section { padding-top: 20px; }
 .form-section + .form-section { margin-top: 20px; border-top: 1px solid var(--line-light); }
 .form-section h4 { margin: 0 0 14px; color: var(--gray); font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.driver-account-address-description { margin: -7px 0 14px; color: var(--muted); font-size: 9px; line-height: 1.55; }
+.driver-account-address-section .driver-location-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .field { display: grid; gap: 6px; }
 .field > span, .auth-card label { color: var(--gray); font-size: 10px; font-weight: 750; }
@@ -28,6 +30,10 @@
 .middle-initial-input:focus-within { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 18%, transparent); }
 .field .middle-initial-input input { min-width: 0; border: 0; border-radius: 0; padding-right: 2px; box-shadow: none; text-transform: uppercase; }
 .middle-initial-input b { flex: 0 0 auto; padding: 0 12px 0 2px; color: var(--charcoal); font-size: 14px; }
+
+@media (max-width: 560px) {
+  .driver-account-address-section .driver-location-grid { grid-template-columns: 1fr; }
+}
 .user-driver-name-fields { margin-bottom: 1px; }
 .field-input-hint { color: var(--subtle); font-size: 8px; line-height: 1.4; }
 

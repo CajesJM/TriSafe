@@ -16,6 +16,8 @@ export type DriverRegistrationReceiptData = {
   driverStatus: string;
   licenseNumber: string;
   renewalDate: string;
+  addressLine: string;
+  postalCode: string;
   franchiseNumber: string;
   franchiseIssuedAt: string;
   franchiseExpiresAt: string;
@@ -43,6 +45,8 @@ export function createDriverReceipt(
     driverStatus: driver.verification,
     licenseNumber: driver.licenseNumber,
     renewalDate: driver.renewalDate,
+    addressLine: formatAddress(driver, registration),
+    postalCode: driver.address?.postalCode ?? registration.postalCode,
     franchiseNumber: driver.franchise?.franchiseNumber ?? registration.franchiseNumber,
     franchiseIssuedAt: driver.franchise?.issuedAt ?? registration.franchiseIssuedAt,
     franchiseExpiresAt: driver.franchise?.expiresAt ?? registration.franchiseExpiresAt,
@@ -118,6 +122,10 @@ export function DriverRegistrationReceipt({
         <ReceiptField label="Account status" value={receipt.accountStatus} />
         <div className="driver-receipt-password"><span><KeyRound aria-hidden="true" /> Temporary password</span><strong>{receipt.temporaryPassword}</strong><small>Change this password after the first successful login.</small></div>
       </ReceiptSection>
+      <ReceiptSection title="Verified Bohol address">
+        <ReceiptField label="Address" value={receipt.addressLine} />
+        <ReceiptField label="Postal/ZIP code" value={receipt.postalCode} />
+      </ReceiptSection>
       <div className="driver-receipt-columns">
         <ReceiptSection title="License and driver status">
           <ReceiptField label="Driver ID" value={receipt.driverId} />
@@ -164,10 +172,21 @@ function receiptDocument(receipt: DriverRegistrationReceiptData, autoPrint = fal
     ["Full name", receipt.fullName], ["Email", receipt.email], ["Mobile number", receipt.phone],
     ["Temporary password", receipt.temporaryPassword], ["Account status", receipt.accountStatus],
     ["Driver ID", receipt.driverId], ["Driver status", receipt.driverStatus],
+    ["Verified address", receipt.addressLine], ["Postal/ZIP code", receipt.postalCode],
     ["License number", receipt.licenseNumber], ["License renewal", formatDate(receipt.renewalDate)],
     ["Franchise number", receipt.franchiseNumber], ["Franchise issued", formatDate(receipt.franchiseIssuedAt)],
     ["Franchise expiration", formatDate(receipt.franchiseExpiresAt)], ["Franchise status", receipt.franchiseStatus],
     ["Plate number", receipt.plateNumber], ["Vehicle type", receipt.vehicleType.replaceAll("_", " ")], ["QR status", receipt.qrStatus],
   ];
   return `<!doctype html><html><head><meta charset="utf-8"><title>TriSafe Driver Receipt</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;background:#fff;border-top:8px solid #337418;padding:40px;box-shadow:0 10px 35px #0001}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}.title{margin:8px 0 4px;font-size:28px}.meta{color:#666;font-size:12px}.notice{margin:24px 0;padding:14px 16px;border-radius:8px;background:#eef8e9;color:#245b11;font-size:12px;line-height:1.5}.grid{display:grid;grid-template-columns:1fr 1fr;margin-top:20px;border:1px solid #ddd}.row{min-width:0;border-bottom:1px solid #eee;padding:12px 14px}.row:nth-child(odd){border-right:1px solid #eee}.row span{display:block;color:#777;font-size:10px;text-transform:uppercase;letter-spacing:.08em}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.password{color:#0f0f0f;background:#dff7d4}.footer{margin-top:24px;border-top:1px solid #ddd;padding-top:14px;color:#777;font-size:10px;line-height:1.5}@media print{body{background:#fff}.page{margin:0;box-shadow:none}}@media(max-width:600px){.page{margin:0;padding:24px}.grid{grid-template-columns:1fr}.row:nth-child(odd){border-right:0}}</style></head><body><main class="page"><div class="brand">TRISAFE · LGU ADMIN PORTAL</div><h1 class="title">Driver registration receipt</h1><div class="meta">${escapeHtml(receipt.receiptNumber)} · ${escapeHtml(formatDateTime(receipt.generatedAt))}</div><div class="notice"><strong>CONFIDENTIAL:</strong> Give this receipt only to the registered driver. The temporary password must be changed after first login.</div><section class="grid">${rows.map(([label, value]) => `<div class="row ${label === "Temporary password" ? "password" : ""}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</section><p class="footer">This document confirms that the listed account, franchise, vehicle, and QR identity were created in TriSafe. Passwords are stored by the system only as secure hashes; this one-time receipt is the only readable copy generated during registration.</p></main>${autoPrint ? "<script>window.addEventListener('load',()=>window.print())<\/script>" : ""}</body></html>`;
+}
+
+function formatAddress(driver: Driver, registration: RegisterDriverInput) {
+  const address = driver.address;
+  return [
+    address?.streetPurok ?? registration.streetPurok,
+    address?.barangayName ?? registration.barangayName,
+    address?.municipalityName ?? registration.municipalityName,
+    address?.provinceName ?? registration.provinceName,
+  ].filter(Boolean).join(", ");
 }

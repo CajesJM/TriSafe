@@ -165,13 +165,7 @@ export function App() {
   async function saveDriverAccount(input: CreateUserInput | UpdateUserInput) {
     if (!editingDriverAccount) return;
     const updated = await api.updateUser(editingDriverAccount.id, input as UpdateUserInput);
-    setDrivers((items) => items.map((driver) => driver.userId === updated.id ? {
-      ...driver,
-      fullName: updated.fullName,
-      email: updated.email,
-      phone: updated.phone ?? undefined,
-      accountStatus: updated.status,
-    } : driver));
+    setDrivers(await api.drivers());
     setEditingDriverAccount(null);
     showToast("success", `${updated.fullName}'s driver account was updated.`);
     setAuditLogs(await api.auditLogs());
@@ -351,6 +345,7 @@ export function App() {
                 user={editingDriverAccount}
                 roles={driverAccountRoles}
                 defaultRole="DRIVER"
+                driver={drivers.find((driver) => driver.userId === editingDriverAccount.id)}
                 onCancel={() => setEditingDriverAccount(null)}
                 onSave={saveDriverAccount}
                 onError={(message) => showToast("error", message)}

@@ -1,4 +1,6 @@
-import { IsEmail, IsOptional, IsPhoneNumber, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEmail, IsOptional, IsPhoneNumber, IsString, Matches, MaxLength, MinLength, ValidateIf, ValidateNested } from 'class-validator';
+import { BoholAddressDto } from '../../drivers/dto/bohol-address.dto';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -30,4 +32,9 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(2_000_000)
   avatarData?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BoholAddressDto)
+  address?: BoholAddressDto;
 }

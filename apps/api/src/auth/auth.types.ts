@@ -21,4 +21,17 @@ export type AdminProfile = {
   avatarData: string | null;
   role: UserRole;
   status: UserStatus;
+  address: {
+    provinceCode: string;
+    provinceName: string;
+    municipalityCode: string;
+    municipalityName: string;
+    barangayCode: string;
+    barangayName: string;
+    streetPurok: string;
+    postalCode: string;
+    externalPlaceId: string;
+    latitude: number;
+    longitude: number;
+  } | null;
 };

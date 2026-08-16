@@ -7,12 +7,13 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { verifyPassword } from './password';
 import { TokenService } from './token.service';
 import { AuditService } from '../audit/audit.service';
+import { BoholLocationService } from '../drivers/bohol-location.service';
 
 @Injectable()
 export class AuthService {
   private readonly failedAttempts = new Map<string, { count: number; windowStartedAt: number }>();
 
-  constructor(private readonly prisma: PrismaService, private readonly tokens: TokenService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly tokens: TokenService, private readonly audit: AuditService, private readonly locations: BoholLocationService) {}
 
   async login(dto: LoginDto, ipAddress = 'unknown'): Promise<LoginResponse> {
     const email = dto.email.trim().toLowerCase();
@@ -51,10 +52,10 @@ export class AuthService {
   async getProfile(userId: string): Promise<AdminProfile> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, fullName: true, username: true, email: true, phone: true, avatarData: true, role: true, status: true },
+      select: { id: true, fullName: true, username: true, email: true, phone: true, avatarData: true, role: true, status: true, address: true },
     });
     if (!user) throw new UnauthorizedException('Account no longer exists');
-    return user;
+    return this.toAdminProfile(user);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<AdminProfile> {
@@ -65,21 +66,45 @@ export class AuthService {
     if (dto.email !== undefined) data.email = dto.email.trim().toLowerCase() || null;
     if (dto.phone !== undefined) data.phone = dto.phone.trim() || null;
     if (dto.avatarData !== undefined) data.avatarData = dto.avatarData || null;
+    if (dto.address !== undefined) {
+      const address = await this.locations.validateRegistrationAddress(dto.address);
+      data.address = { upsert: { create: address, update: address } };
+    }
 
     try {
       const updated = await this.prisma.user.update({
         where: { id: userId },
         data,
-        select: { id: true, fullName: true, username: true, email: true, phone: true, avatarData: true, role: true, status: true },
+        select: { id: true, fullName: true, username: true, email: true, phone: true, avatarData: true, role: true, status: true, address: true },
       });
-      const changedFields = Object.keys(data).filter((field) => field !== 'avatarData' || current.avatarData !== updated.avatarData);
+      const profile = this.toAdminProfile(updated);
+      const changedFields = Object.keys(data).filter((field) => field !== 'avatarData' || current.avatarData !== profile.avatarData);
       await this.audit.record({ actorId: userId, action: 'ADMIN_PROFILE_UPDATED', entityType: 'User', entityId: userId, details: { changedFields } });
-      return updated;
+      return profile;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ConflictException('That username or email is already in use.');
       }
       throw error;
     }
+  }
+
+  private toAdminProfile(user: Prisma.UserGetPayload<{ select: { id: true; fullName: true; username: true; email: true; phone: true; avatarData: true; role: true; status: true; address: true } }>): AdminProfile {
+    return {
+      ...user,
+      address: user.address ? {
+        provinceCode: user.address.provinceCode,
+        provinceName: user.address.provinceName,
+        municipalityCode: user.address.municipalityCode,
+        municipalityName: user.address.municipalityName,
+        barangayCode: user.address.barangayCode,
+        barangayName: user.address.barangayName,
+        streetPurok: user.address.streetPurok,
+        postalCode: user.address.postalCode,
+        externalPlaceId: user.address.externalPlaceId,
+        latitude: Number(user.address.latitude),
+        longitude: Number(user.address.longitude),
+      } : null,
+    };
   }
 }

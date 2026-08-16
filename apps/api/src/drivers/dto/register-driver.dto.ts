@@ -11,6 +11,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { BoholAddressDto } from './bohol-address.dto';
 
 const trimText = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value;
@@ -19,7 +20,7 @@ const uppercaseText = ({ value }: { value: unknown }) =>
 const lowercaseText = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
 
-export class RegisterDriverDto {
+export class RegisterDriverDto extends BoholAddressDto {
   @Transform(trimText)
   @IsString()
   @Length(5, 100)
@@ -81,4 +82,5 @@ export class RegisterDriverDto {
     message: 'temporaryPassword must include uppercase, lowercase, number, and symbol',
   })
   temporaryPassword!: string;
+
 }

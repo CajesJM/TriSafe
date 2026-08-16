@@ -46,6 +46,11 @@
 .profile-toast { position: fixed; right: 24px; bottom: 24px; z-index: 140; display: flex; align-items: center; gap: 9px; border: 1px solid var(--green-700); border-radius: 10px; padding: 13px 16px; color: var(--green-700); background: var(--surface); box-shadow: var(--shadow-md); font-size: 12px; font-weight: 750; }
 .profile-form-grid { padding-top: 5px; }
 .profile-form-grid small { color: var(--subtle); font-size: 10px; line-height: 1.35; }
+.profile-address-heading { margin-top: 22px; border-top: 1px solid var(--line-light); padding: 20px 0 13px; }
+.profile-address-heading h3 { margin: 0; color: var(--ink); font-size: 15px; }
+.profile-address-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.profile-panel .driver-location-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.profile-panel .driver-hierarchy-options, .profile-panel .driver-location-suggestions { z-index: 150; }
 .profile-panel-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; border-top: 1px solid var(--line-light); padding-top: 18px; }
 .profile-panel-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .profile-message { display: flex; align-items: center; gap: 8px; margin: 5px 0 12px; border-radius: 8px; padding: 10px 12px; font-size: 11px; }
@@ -53,4 +58,4 @@
 .profile-message-success { color: var(--green-700); background: var(--green-100); }
 .profile-loading { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 260px; color: var(--muted); font-size: 12px; }
 .spin { animation: spin .8s linear infinite; }
-@media (max-width: 560px) { .profile-panel, .avatar-crop-dialog { padding: 20px; } .profile-identity { align-items: flex-start; flex-direction: column; } .profile-panel-actions { flex-direction: column-reverse; } .profile-panel-actions button { width: 100%; } .profile-details-heading { align-items: flex-start; flex-direction: column; } .profile-details-heading button { width: 100%; justify-content: center; } .profile-toast { right: 14px; bottom: 14px; left: 14px; justify-content: center; } }
+@media (max-width: 560px) { .profile-panel, .avatar-crop-dialog { padding: 20px; } .profile-identity { align-items: flex-start; flex-direction: column; } .profile-panel-actions { flex-direction: column-reverse; } .profile-panel-actions button { width: 100%; } .profile-details-heading { align-items: flex-start; flex-direction: column; } .profile-details-heading button { width: 100%; justify-content: center; } .profile-panel .driver-location-grid { grid-template-columns: 1fr; } .profile-toast { right: 14px; bottom: 14px; left: 14px; justify-content: center; } }

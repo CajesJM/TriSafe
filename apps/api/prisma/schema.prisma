@@ -61,9 +61,32 @@ model User {
   updatedAt       DateTime  @updatedAt
   roleDefinition  RoleDefinition @relation(fields: [role], references: [key], onDelete: Restrict, onUpdate: Cascade)
   driverProfile   Driver?
+  address         UserAddress?
   passengerRides  Ride[]    @relation("PassengerRides")
   incidents       Incident[]
   livePresence    LivePresence?
+}
+
+model UserAddress {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  provinceCode      String
+  provinceName      String
+  municipalityCode String
+  municipalityName String
+  barangayCode      String
+  barangayName      String
+  streetPurok       String
+  postalCode        String
+  externalPlaceId   String
+  latitude          Decimal  @db.Decimal(10, 7)
+  longitude         Decimal  @db.Decimal(10, 7)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([provinceCode, municipalityCode, barangayCode])
+  @@index([postalCode])
 }
 
 model RoleDefinition {
@@ -88,7 +111,30 @@ model Driver {
   franchise       Franchise?
   vehicles        Vehicle[]
   announcements   AnnouncementRecipient[]
+  address         DriverAddress?
   createdAt       DateTime @default(now())
+}
+
+model DriverAddress {
+  id                String   @id @default(cuid())
+  driverId          String   @unique
+  provinceCode      String
+  provinceName      String
+  municipalityCode String
+  municipalityName String
+  barangayCode      String
+  barangayName      String
+  streetPurok       String
+  postalCode        String
+  externalPlaceId   String
+  latitude          Decimal  @db.Decimal(10, 7)
+  longitude         Decimal  @db.Decimal(10, 7)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  driver            Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([provinceCode, municipalityCode, barangayCode])
+  @@index([postalCode])
 }
 
 model Franchise {
