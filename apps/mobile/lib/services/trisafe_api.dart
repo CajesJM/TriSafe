@@ -123,6 +123,14 @@ class TriSafeApi {
       (await _get('/drivers/me/announcements'))
           .map<DriverAnnouncement>((item) => DriverAnnouncement.fromJson(item))
           .toList();
+  Future<List<DriverNotification>> driverNotifications() async =>
+      (await _get('/drivers/me/notifications'))
+          .map<DriverNotification>((item) => DriverNotification.fromJson(item))
+          .toList();
+  Future<void> markDriverAnnouncementRead(String announcementId) async {
+    await _patch('/drivers/me/announcements/$announcementId/read', {});
+  }
+
   Future<void> updateDriverContact(
       {required String phone, required String email}) async {
     await _patch('/drivers/me/contact', {'phone': phone, 'email': email});
@@ -172,6 +180,24 @@ class TriSafeApi {
         'passengerCount': passengerCount,
         if (startLatitude != null) 'startLatitude': startLatitude,
         if (startLongitude != null) 'startLongitude': startLongitude,
+      }));
+  Future<Ride> startMapRide({
+    required String vehicleId,
+    required String qrToken,
+    required double originLatitude,
+    required double originLongitude,
+    required double destinationLatitude,
+    required double destinationLongitude,
+    int passengerCount = 1,
+  }) async =>
+      Ride.fromJson(await _post('/rides/map', {
+        'vehicleId': vehicleId,
+        'qrToken': qrToken,
+        'originLatitude': originLatitude,
+        'originLongitude': originLongitude,
+        'destinationLatitude': destinationLatitude,
+        'destinationLongitude': destinationLongitude,
+        'passengerCount': passengerCount,
       }));
   Future<Ride> endRide(String rideId,
           {double? endLatitude, double? endLongitude}) async =>

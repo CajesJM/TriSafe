@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/auth_models.dart';
-import '../models/fare_models.dart';
 import '../models/ride_models.dart';
 import '../models/vehicle_models.dart';
 import '../services/location_tracking_service.dart';
@@ -11,6 +10,7 @@ import '../theme/trisafe_theme.dart';
 import '../widgets/emergency_contacts_sheet.dart';
 import '../widgets/incident_report_dialog.dart';
 import '../widgets/passenger_bottom_navigation.dart';
+import '../widgets/passenger_qr_result_modal.dart';
 import '../widgets/passenger_toast.dart';
 import 'login_screen.dart';
 import 'passenger/passenger_dashboard_tab.dart';
@@ -19,7 +19,6 @@ import 'passenger/passenger_profile_tab.dart';
 import 'passenger/passenger_rides_tab.dart';
 import 'passenger/passenger_scanner_tab.dart';
 import 'qr_scanner_screen.dart';
-import 'route_selection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final TriSafeApi api;
@@ -38,9 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Ride> rides = [];
   Ride? activeRide;
   QrVerificationResult? qrVerification;
+  String? verifiedQrToken;
   bool loading = true;
   bool scanning = false;
-  bool startingRide = false;
   int selectedTab = 0;
   int toastId = 0;
   int rideHistoryVersion = 0;
@@ -120,25 +119,37 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         qrVerification = result;
+        verifiedQrToken = result.eligibleForRide ? token : null;
         scanning = false;
       });
-      _toast(
-          result.legitimate
-              ? result.message
-              : 'This QR was not issued by the LGU.',
-          result.eligibleForRide
-              ? PassengerToastType.success
-              : PassengerToastType.error);
+      final action = await showPassengerQrResultModal(context, result);
+      if (!mounted) return;
+      if (action == PassengerQrResultAction.continueToFare) {
+        _continueVerifiedRideToFare();
+      } else if (action == PassengerQrResultAction.scanAgain) {
+        await _scanVehicle();
+      } else {
+        _toast(
+            result.eligibleForRide
+                ? 'QR scanned successfully.'
+                : result.message,
+            result.eligibleForRide
+                ? PassengerToastType.success
+                : PassengerToastType.error);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => scanning = false);
-        _toast('The QR could not be verified. Try scanning it again.',
-            PassengerToastType.error);
+        await showPassengerQrScanErrorModal(context,
+            'TriSafe could not verify this code against the LGU registry. Check your connection and scan the official vehicle QR again.');
+        if (mounted) {
+          _toast('QR verification failed.', PassengerToastType.error);
+        }
       }
     }
   }
 
-  Future<void> _planAndStartRide() async {
+  void _continueVerifiedRideToFare() {
     final result = qrVerification;
     final vehicle = result?.vehicle;
     if (result == null || !result.eligibleForRide || vehicle == null) {
@@ -146,34 +157,20 @@ class _HomeScreenState extends State<HomeScreen> {
           PassengerToastType.error);
       return;
     }
-    final plan = await Navigator.of(context).push<RidePlan>(MaterialPageRoute(
-        builder: (_) =>
-            RouteSelectionScreen(api: widget.api, vehicle: vehicle)));
-    if (plan == null || !mounted) return;
-    setState(() => startingRide = true);
-    try {
-      final ride = await widget.api.startRide(
-          vehicleId: vehicle.vehicleId,
-          fromLocationId: plan.from.id,
-          toLocationId: plan.to.id,
-          passengerCount: plan.passengerCount,
-          startLatitude: locationTracking.latestPosition?.latitude,
-          startLongitude: locationTracking.latestPosition?.longitude);
-      if (!mounted) return;
-      setState(() {
-        activeRide = ride;
-        rides = [ride, ...rides.where((item) => item.id != ride.id)];
-        rideHistoryVersion++;
-        selectedTab = 0;
-      });
-      _toast('Ride started and saved to your account.',
-          PassengerToastType.success);
-    } catch (_) {
-      _toast('The ride could not be started. Please try again.',
-          PassengerToastType.error);
-    } finally {
-      if (mounted) setState(() => startingRide = false);
-    }
+    setState(() => selectedTab = 1);
+    _toast('QR scanned successfully. Redirecting to Fare Dashboard…',
+        PassengerToastType.success);
+  }
+
+  void _rideStarted(Ride ride) {
+    setState(() {
+      activeRide = ride;
+      rides = [ride, ...rides.where((item) => item.id != ride.id)];
+      rideHistoryVersion++;
+      selectedTab = 0;
+    });
+    _toast('Ride started. Live safety tracking is now active.',
+        PassengerToastType.success);
   }
 
   Future<void> _shareRide() async {
@@ -309,15 +306,14 @@ class _HomeScreenState extends State<HomeScreen> {
       PassengerFareTab(
           api: widget.api,
           vehicle: vehicle,
+          qrToken: vehicle == null ? null : verifiedQrToken,
+          activeRide: activeRide,
           isActive: selectedTab == 1,
           onScan: _scanVehicle,
+          onRideStarted: _rideStarted,
           onError: (message) => _toast(message, PassengerToastType.error),
           onSuccess: (message) => _toast(message, PassengerToastType.success)),
-      PassengerScannerTab(
-          result: qrVerification,
-          scanning: scanning || startingRide,
-          onScan: _scanVehicle,
-          onPlanRide: _planAndStartRide),
+      PassengerScannerTab(scanning: scanning, onScan: _scanVehicle),
       PassengerRidesTab(
           api: widget.api,
           refreshVersion: rideHistoryVersion,

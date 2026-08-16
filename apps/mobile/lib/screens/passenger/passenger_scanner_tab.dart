@@ -1,21 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../models/vehicle_models.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/passenger_page_header.dart';
-import '../../widgets/vehicle_verification_card.dart';
 
 class PassengerScannerTab extends StatelessWidget {
-  final QrVerificationResult? result;
   final bool scanning;
   final VoidCallback onScan;
-  final VoidCallback onPlanRide;
 
   const PassengerScannerTab(
-      {super.key,
-      required this.result,
-      required this.scanning,
-      required this.onScan,
-      required this.onPlanRide});
+      {super.key, required this.scanning, required this.onScan});
 
   @override
   Widget build(BuildContext context) =>
@@ -72,13 +64,6 @@ class PassengerScannerTab extends StatelessWidget {
                           : const Icon(Icons.center_focus_strong_rounded),
                       label: Text(scanning ? 'Opening…' : 'Open QR scanner'))),
             ])),
-        if (result != null) ...[
-          const SizedBox(height: 16),
-          VehicleVerificationCard(
-              result: result!,
-              onContinue: result!.eligibleForRide ? onPlanRide : null,
-              onScanAgain: onScan)
-        ],
         const SizedBox(height: 16),
         const _ScannerGuide(),
       ]);

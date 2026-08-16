@@ -63,7 +63,7 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
             initialCenter: current ?? fallback,
             initialZoom: current == null ? 13 : 16,
             minZoom: 4,
-            maxZoom: 19,
+            maxZoom: 20,
             onMapReady: () => mapReady = true,
             onTap: current == null
                 ? null
@@ -71,15 +71,20 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate:
+                  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+              subdomains: const ['a', 'b', 'c', 'd'],
               userAgentPackageName: 'ph.gov.bohol.trisafe',
+              retinaMode: RetinaMode.isHighDensity(context),
+              maxNativeZoom: 20,
+              maxZoom: 20,
+              tileDisplay: const TileDisplay.instantaneous(),
+              tileBuilder: _solidMapTileBuilder,
             ),
-            if (current != null && destination != null)
+            if (roadRoute.isNotEmpty)
               PolylineLayer(polylines: [
                 Polyline(
-                    points: roadRoute.isNotEmpty
-                        ? roadRoute
-                        : [current, destination],
+                    points: roadRoute,
                     strokeWidth: 4,
                     color: TriSafeColors.forest),
               ]),
@@ -87,8 +92,8 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
               if (current != null)
                 Marker(
                   point: current,
-                  width: 52,
-                  height: 52,
+                  width: 42,
+                  height: 42,
                   child: const _MapPin(
                       icon: Icons.my_location_rounded,
                       color: TriSafeColors.deepGreen),
@@ -96,8 +101,8 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
               if (destination != null)
                 Marker(
                   point: destination,
-                  width: 52,
-                  height: 52,
+                  width: 42,
+                  height: 42,
                   child: const _MapPin(
                       icon: Icons.flag_rounded, color: TriSafeColors.black),
                 ),
@@ -105,7 +110,8 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
             const RichAttributionWidget(
               showFlutterMapAttribution: false,
               attributions: [
-                TextSourceAttribution('OpenStreetMap contributors')
+                TextSourceAttribution('OpenStreetMap contributors'),
+                TextSourceAttribution('CARTO'),
               ],
             ),
           ],
@@ -129,8 +135,10 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
                     : destination == null
                         ? 'Tap the map to choose your destination'
                         : 'Destination selected — tap elsewhere to change it',
-                style:
-                    const TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                    color: TriSafeColors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -145,13 +153,15 @@ class _PassengerFareMapState extends State<PassengerFareMap> {
             child: IconButton(
               onPressed: widget.locating ? null : _recenter,
               tooltip: 'Use my current location',
+              constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+              padding: const EdgeInsets.all(10),
               icon: widget.locating
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                      width: 16,
+                      height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.my_location_rounded,
-                      color: TriSafeColors.forest),
+                      color: TriSafeColors.forest, size: 20),
             ),
           ),
         ),
@@ -198,13 +208,40 @@ class _MapPin extends StatelessWidget {
         decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
-            border: Border.all(color: color, width: 3),
+            border: Border.all(color: color, width: 2.5),
             boxShadow: const [
               BoxShadow(
-                  color: Color(0x30000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 4))
+                  color: Color(0x30000000), blurRadius: 8, offset: Offset(0, 3))
             ]),
-        child: Icon(icon, color: color, size: 22),
+        child: Icon(icon, color: color, size: 18),
       );
+}
+
+Widget _solidMapTileBuilder(
+    BuildContext context, Widget tileWidget, TileImage tile) {
+  return ColorFiltered(
+    colorFilter: const ColorFilter.matrix(<double>[
+      1.16,
+      -0.08,
+      -0.02,
+      0,
+      -12,
+      -0.04,
+      1.14,
+      -0.02,
+      0,
+      -12,
+      -0.04,
+      -0.08,
+      1.18,
+      0,
+      -12,
+      0,
+      0,
+      0,
+      1,
+      0,
+    ]),
+    child: tileWidget,
+  );
 }

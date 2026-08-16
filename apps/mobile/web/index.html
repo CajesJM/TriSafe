@@ -18,29 +18,120 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="TriSafe passenger transport safety portal.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="trisafe_mobile">
+  <meta name="apple-mobile-web-app-title" content="TriSafe">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>trisafe_mobile</title>
+  <title>TriSafe</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #f8f8f8;
+      font-family: Arial, sans-serif;
+    }
+
+    #trisafe-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      background: #f8f8f8;
+      color: #0f0f0f;
+      transition: opacity 220ms ease, visibility 220ms ease;
+    }
+
+    #trisafe-loader.is-ready {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .trisafe-loader-card {
+      width: min(82vw, 320px);
+      text-align: center;
+    }
+
+    .trisafe-loader-mark {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 18px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      color: #0f0f0f;
+      background: #5dd62c;
+      font-size: 27px;
+      font-weight: 800;
+      box-shadow: 0 12px 30px rgba(51, 116, 24, 0.2);
+    }
+
+    .trisafe-loader-title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .trisafe-loader-message {
+      margin: 8px 0 18px;
+      color: #5d655d;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .trisafe-loader-line {
+      height: 4px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e2eadf;
+    }
+
+    .trisafe-loader-line::after {
+      content: "";
+      display: block;
+      width: 42%;
+      height: 100%;
+      border-radius: inherit;
+      background: #337418;
+      animation: trisafe-loading 1.1s ease-in-out infinite;
+    }
+
+    #trisafe-loader.is-error .trisafe-loader-mark {
+      color: #fff;
+      background: #b42318;
+    }
+
+    #trisafe-loader.is-error .trisafe-loader-line {
+      display: none;
+    }
+
+    @keyframes trisafe-loading {
+      from { transform: translateX(-110%); }
+      to { transform: translateX(350%); }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="trisafe-loader" role="status" aria-live="polite">
+    <div class="trisafe-loader-card">
+      <div class="trisafe-loader-mark" aria-hidden="true">T</div>
+      <h1 class="trisafe-loader-title">TriSafe</h1>
+      <p id="trisafe-loader-message" class="trisafe-loader-message">
+        Preparing your passenger safety dashboard…
+      </p>
+      <div class="trisafe-loader-line" aria-hidden="true"></div>
+    </div>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

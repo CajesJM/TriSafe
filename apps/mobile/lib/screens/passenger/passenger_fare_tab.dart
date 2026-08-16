@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../models/fare_models.dart';
+import '../../models/ride_models.dart';
 import '../../models/vehicle_models.dart';
 import '../../services/trisafe_api.dart';
 import '../../theme/trisafe_theme.dart';
@@ -12,19 +13,25 @@ import '../../widgets/passenger_page_header.dart';
 class PassengerFareTab extends StatefulWidget {
   final TriSafeApi api;
   final VerifiedVehicle? vehicle;
+  final String? qrToken;
+  final Ride? activeRide;
   final bool isActive;
   final VoidCallback onScan;
   final ValueChanged<String> onError;
   final ValueChanged<String> onSuccess;
+  final ValueChanged<Ride> onRideStarted;
 
   const PassengerFareTab({
     super.key,
     required this.api,
     required this.vehicle,
+    required this.qrToken,
+    required this.activeRide,
     required this.isActive,
     required this.onScan,
     required this.onError,
     required this.onSuccess,
+    required this.onRideStarted,
   });
 
   @override
@@ -41,6 +48,7 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
   bool locating = false;
   bool calculating = false;
   bool locationAnnounced = false;
+  bool startingRide = false;
 
   @override
   void initState() {
@@ -59,8 +67,14 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     }
     if (widget.vehicle?.vehicleType != null &&
         widget.vehicle?.vehicleType != oldWidget.vehicle?.vehicleType) {
-      setState(() => vehicleType = widget.vehicle!.vehicleType);
-      if (destination != null) _calculateFare(showValidation: false);
+      setState(() {
+        vehicleType = widget.vehicle!.vehicleType;
+        destination = null;
+        fare = null;
+      });
+      if (widget.isActive && currentLocation == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _ensureLocation());
+      }
     }
   }
 
@@ -249,6 +263,85 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     if (destination != null) _calculateFare(showValidation: false);
   }
 
+  Future<void> _startRide() async {
+    final vehicle = widget.vehicle;
+    final qrToken = widget.qrToken;
+    final origin = currentLocation;
+    final selectedDestination = destination;
+    final estimate = fare;
+    if (vehicle == null || qrToken == null) {
+      widget.onError(
+          'Scan an eligible LGU-issued driver QR before starting a ride.');
+      return;
+    }
+    if (widget.activeRide != null) {
+      widget.onError('Complete your active ride before starting another.');
+      return;
+    }
+    if (origin == null || selectedDestination == null || estimate == null) {
+      widget.onError(
+          'Select a destination and calculate the official fare first.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: const Icon(Icons.route_rounded,
+                color: TriSafeColors.forest, size: 34),
+            title: const Text('Start this ride?'),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 390),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                _ConfirmationRow(label: 'Driver', value: vehicle.driverName),
+                _ConfirmationRow(label: 'Vehicle', value: vehicle.plateNumber),
+                _ConfirmationRow(
+                    label: 'Road distance',
+                    value: _roadDistanceLabel(estimate.distanceKm ?? 0)),
+                _ConfirmationRow(
+                    label: 'Estimated fare',
+                    value: '₱${estimate.amount.toStringAsFixed(2)}'),
+                const SizedBox(height: 10),
+                const Text(
+                  'Starting enables live ride tracking and creates a temporary ride session in TriSafe.',
+                  style: TextStyle(fontSize: 11, color: TriSafeColors.muted),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel')),
+              FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Start ride')),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+
+    setState(() => startingRide = true);
+    try {
+      final ride = await widget.api.startMapRide(
+        vehicleId: vehicle.vehicleId,
+        qrToken: qrToken,
+        originLatitude: origin.latitude,
+        originLongitude: origin.longitude,
+        destinationLatitude: selectedDestination.latitude,
+        destinationLongitude: selectedDestination.longitude,
+        passengerCount: passengers,
+      );
+      if (!mounted) return;
+      widget.onRideStarted(ride);
+    } catch (error) {
+      if (!mounted) return;
+      widget.onError(_startRideError(error));
+    } finally {
+      if (mounted) setState(() => startingRide = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final distanceKm = fare?.distanceKm;
@@ -294,7 +387,12 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
               fare: fare,
               distanceKm: distanceKm,
               calculating: calculating,
-              onCalculate: _calculateFare);
+              startingRide: startingRide,
+              hasVerifiedDriver:
+                  widget.vehicle != null && widget.qrToken != null,
+              hasActiveRide: widget.activeRide != null,
+              onCalculate: _calculateFare,
+              onStartRide: _startRide);
           if (!wide) {
             return Column(
                 children: [controls, const SizedBox(height: 12), result]);
@@ -408,7 +506,7 @@ class _FareControls extends StatelessWidget {
                 DropdownMenuItem(
                     value: 'HABAL_HABAL', child: Text('Habal-habal'))
               ],
-              onChanged: onVehicleChanged,
+              onChanged: verifiedVehicle == null ? onVehicleChanged : null,
             ),
             if (verifiedVehicle != null) ...[
               const SizedBox(height: 9),
@@ -417,12 +515,20 @@ class _FareControls extends StatelessWidget {
                     size: 16, color: TriSafeColors.forest),
                 const SizedBox(width: 6),
                 Expanded(
-                    child: Text(
-                        'Scanned vehicle: ${verifiedVehicle!.plateNumber}',
-                        style: const TextStyle(
-                            fontSize: 9,
-                            color: TriSafeColors.forest,
-                            fontWeight: FontWeight.w800))),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(
+                          'Driver QR verified · ${verifiedVehicle!.plateNumber}',
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: TriSafeColors.forest,
+                              fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 2),
+                      Text(verifiedVehicle!.driverName,
+                          style: const TextStyle(
+                              fontSize: 9, color: TriSafeColors.muted)),
+                    ])),
                 TextButton(onPressed: onScan, child: const Text('Change'))
               ]),
             ] else ...[
@@ -465,12 +571,20 @@ class _FareResult extends StatelessWidget {
   final FareEstimate? fare;
   final double? distanceKm;
   final bool calculating;
+  final bool startingRide;
+  final bool hasVerifiedDriver;
+  final bool hasActiveRide;
   final Future<void> Function({bool showValidation}) onCalculate;
+  final VoidCallback onStartRide;
   const _FareResult(
       {required this.fare,
       required this.distanceKm,
       required this.calculating,
-      required this.onCalculate});
+      required this.startingRide,
+      required this.hasVerifiedDriver,
+      required this.hasActiveRide,
+      required this.onCalculate,
+      required this.onStartRide});
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(18),
@@ -510,7 +624,7 @@ class _FareResult extends StatelessWidget {
                     fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
             Text(
-                '${(fare!.distanceKm ?? distanceKm ?? 0).toStringAsFixed(2)} km · ${_durationLabel(fare!.routeDurationSeconds)} · ₱${(fare!.ratePerKm ?? 0).toStringAsFixed(2)}/km',
+                '${_roadDistanceLabel(fare!.distanceKm ?? distanceKm ?? 0)} · ${_durationLabel(fare!.routeDurationSeconds)} · ₱${(fare!.ratePerKm ?? 0).toStringAsFixed(2)}/km',
                 style: const TextStyle(
                     color: TriSafeColors.lime,
                     fontSize: 11,
@@ -535,8 +649,64 @@ class _FareResult extends StatelessWidget {
                   icon: const Icon(Icons.calculate_outlined),
                   label:
                       Text(fare == null ? 'Calculate fare' : 'Recalculate'))),
+          if (fare != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                    onPressed: hasVerifiedDriver &&
+                            !hasActiveRide &&
+                            !calculating &&
+                            !startingRide
+                        ? onStartRide
+                        : null,
+                    style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: TriSafeColors.black,
+                        disabledBackgroundColor: const Color(0xff343934),
+                        disabledForegroundColor: const Color(0xff9fa79f)),
+                    icon: startingRide
+                        ? const SizedBox(
+                            width: 17,
+                            height: 17,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.play_arrow_rounded),
+                    label:
+                        Text(startingRide ? 'Starting ride…' : 'Start ride'))),
+            if (!hasVerifiedDriver || hasActiveRide) ...[
+              const SizedBox(height: 8),
+              Text(
+                  hasActiveRide
+                      ? 'Complete your active ride before starting another.'
+                      : 'Scan an eligible driver QR to enable Start ride.',
+                  style: const TextStyle(
+                      color: Color(0xffbdc5bd), fontSize: 9, height: 1.35)),
+            ],
+          ],
         ]),
       );
+}
+
+class _ConfirmationRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _ConfirmationRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+            width: 105,
+            child: Text(label,
+                style:
+                    const TextStyle(fontSize: 11, color: TriSafeColors.muted))),
+        Expanded(
+            child: Text(value,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w800))),
+      ]));
 }
 
 class _ResultRow extends StatelessWidget {
@@ -578,6 +748,11 @@ class _FareNotice extends StatelessWidget {
 
 String _vehicleLabel(String value) =>
     value == 'HABAL_HABAL' ? 'habal-habal' : 'tricycle';
+String _roadDistanceLabel(double distanceKm) {
+  if (distanceKm < 1) return '${(distanceKm * 1000).round()} m road distance';
+  return '${distanceKm.toStringAsFixed(2)} km road distance';
+}
+
 String _durationLabel(double? seconds) {
   if (seconds == null || seconds <= 0) return 'time unavailable';
   return '${(seconds / 60).ceil()} min';
@@ -595,4 +770,19 @@ String _friendlyError(Object error, String vehicleType) {
     return 'The road routing service is temporarily unavailable. Please try again.';
   }
   return 'The official fare could not be calculated. Check your connection and try again.';
+}
+
+String _startRideError(Object error) {
+  final message = error.toString();
+  if (message.contains('active ride')) {
+    return 'Complete your active ride before starting another.';
+  }
+  if (message.contains('LGU-issued driver QR') ||
+      message.contains('eligible for rides')) {
+    return 'The scanned driver is no longer eligible. Scan the official QR again.';
+  }
+  if (message.contains('routing service')) {
+    return 'The road route could not be revalidated. Please try again.';
+  }
+  return 'The ride could not be started. Check your connection and try again.';
 }
