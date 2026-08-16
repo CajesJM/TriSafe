@@ -37,6 +37,12 @@ export class DriversController {
   @Get('drivers/me/announcements') announcements(@Req() req: RequestWithUser) { return this.service.announcements(req.user.id); }
 
   @Roles(UserRole.DRIVER)
+  @Patch('drivers/me/announcements/:announcementId/read') markAnnouncementRead(@Req() req: RequestWithUser, @Param('announcementId') announcementId: string) { return this.service.markAnnouncementRead(req.user.id, announcementId); }
+
+  @Roles(UserRole.DRIVER)
+  @Get('drivers/me/notifications') notifications(@Req() req: RequestWithUser) { return this.service.notifications(req.user.id); }
+
+  @Roles(UserRole.DRIVER)
   @Patch('drivers/me/contact') updateContact(@Req() req: RequestWithUser, @Body() dto: UpdateDriverContactDto) { return this.service.updateContact(req.user.id, dto); }
 
   @Roles(UserRole.LGU_ADMIN)

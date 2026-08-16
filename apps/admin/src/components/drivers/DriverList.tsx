@@ -11,6 +11,7 @@ import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { DriverRegistrationFileModal } from "./DriverRegistrationFileModal";
 import type { DriverFileFormat } from "../../utils/driverRegistrationFile";
+import { downloadVehicleQrPoster } from "../../utils/vehicleQrPoster";
 import {
   BadgeCheck,
   Download,
@@ -523,7 +524,8 @@ export function QrCodePanel({
   const vehicle = driver.vehicles[0];
   const token = vehicle?.qrCode?.token;
   if (!vehicle || !token) return null;
-  const qrValue = `trisafe://verify/${token}`;
+  const verifiedToken = token;
+  const qrValue = `trisafe://verify/${verifiedToken}`;
   function downloadQr() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -531,6 +533,18 @@ export function QrCodePanel({
     link.download = `trisafe-${vehicle.plateNumber}-qr.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
+    onDownloaded();
+  }
+  function downloadOfficialLayout() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    downloadVehicleQrPoster(canvas, {
+      driverName: displayPersonName(driver.fullName),
+      plateNumber: vehicle.plateNumber,
+      vehicleType: vehicle.vehicleType,
+      franchiseNumber: driver.franchise?.franchiseNumber ?? "Not assigned",
+      qrReference: verifiedToken.slice(0, 12).toUpperCase(),
+    });
     onDownloaded();
   }
   return (
@@ -546,8 +560,11 @@ export function QrCodePanel({
           <button className="secondary" onClick={onClose} type="button">
             Close
           </button>
-          <button className="primary" onClick={downloadQr} type="button">
-            Download PNG
+          <button className="secondary qr-download-button" onClick={downloadQr} type="button">
+            <Download aria-hidden="true" /> Download QR only
+          </button>
+          <button className="primary qr-download-button" onClick={downloadOfficialLayout} type="button">
+            <Download aria-hidden="true" /> Download official layout
           </button>
         </>
       }
@@ -579,16 +596,23 @@ export function QrCodePanel({
           </div>
           <code className="qr-token">{qrValue}</code>
         </div>
-        <div className="qr-preview">
+        <div className="qr-preview qr-official-preview">
+          <div className="qr-preview-branding" aria-label="Official LGU QR layout preview">
+            <span role="img" aria-label="TriSafe logo placeholder">TriSafe<br /><small>LOGO</small></span>
+            <b>OFFICIAL<br />VEHICLE QR</b>
+            <span role="img" aria-label="LGU Trinidad logo placeholder">LGU<br /><small>LOGO</small></span>
+          </div>
           <QRCodeCanvas
             ref={canvasRef}
             value={qrValue}
-            size={196}
+            size={512}
             bgColor="#ffffff"
             fgColor="#123f39"
             level="H"
             includeMargin
           />
+          <strong>SCAN TO VERIFY</strong>
+          <small>{vehicle.plateNumber} · LGU Trinidad, Bohol</small>
         </div>
       </div>
     </ModalShell>

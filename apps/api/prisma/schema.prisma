@@ -171,8 +171,10 @@ model Ride {
   id              String   @id @default(cuid())
   passengerId     String
   vehicleId       String
-  fromLocationId  String
-  toLocationId    String
+  fromLocationId  String?
+  toLocationId    String?
+  fromLocationName String?
+  toLocationName   String?
   estimatedFare   Decimal  @db.Decimal(10, 2)
   finalFare       Decimal? @db.Decimal(10, 2)
   actualDistanceMeters Float @default(0)
@@ -184,6 +186,8 @@ model Ride {
   endedAt         DateTime?
   startLatitude   Decimal? @db.Decimal(10, 7)
   startLongitude  Decimal? @db.Decimal(10, 7)
+  destinationLatitude  Decimal? @db.Decimal(10, 7)
+  destinationLongitude Decimal? @db.Decimal(10, 7)
   endLatitude     Decimal? @db.Decimal(10, 7)
   endLongitude    Decimal? @db.Decimal(10, 7)
   passenger       User     @relation("PassengerRides", fields: [passengerId], references: [id])

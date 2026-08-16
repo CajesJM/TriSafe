@@ -1,8 +1,8 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { RideStatus } from '@prisma/client';
+import { RideStatus, UserStatus } from '@prisma/client';
 import { FaresService } from '../fares/fares.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
+import { EndRideDto, StartMapRideDto, StartRideDto } from './dto/start-ride.dto';
 import { AuditService } from '../audit/audit.service';
 import { RecordRideLocationDto } from './dto/record-ride-location.dto';
 import { RideHistoryQueryDto } from './dto/ride-history-query.dto';
@@ -76,6 +76,77 @@ export class RidesService {
       });
     }
     await this.audit.record({ actorId: passengerId, action: 'RIDE_STARTED', entityType: 'Ride', entityId: ride.id, details: { vehicleId: dto.vehicleId, fromLocationId: dto.fromLocationId, toLocationId: dto.toLocationId } });
+    return this.addLocationNames(ride);
+  }
+
+  async startMapRide(passengerId: string, dto: StartMapRideDto) {
+    const vehicle = await this.getEligibleVehicle(dto.vehicleId, dto.qrToken);
+    const active = await this.prisma.ride.findFirst({
+      where: { passengerId, status: RideStatus.ACTIVE },
+    });
+    if (active) {
+      throw new ForbiddenException('Complete your active ride before starting another');
+    }
+
+    // Recalculate on the API so a passenger cannot alter the fare or route
+    // values returned earlier to the Fare Dashboard.
+    const estimate = await this.fares.estimateDistance({
+      vehicleType: this.fares.normalizeVehicleType(vehicle.vehicleType) as 'TRICYCLE' | 'HABAL_HABAL',
+      originLatitude: dto.originLatitude,
+      originLongitude: dto.originLongitude,
+      destinationLatitude: dto.destinationLatitude,
+      destinationLongitude: dto.destinationLongitude,
+      passengerCount: dto.passengerCount,
+    });
+    const fromLocationName = this.coordinateLabel(
+      'Current location',
+      dto.originLatitude,
+      dto.originLongitude,
+    );
+    const toLocationName = this.coordinateLabel(
+      'Map destination',
+      dto.destinationLatitude,
+      dto.destinationLongitude,
+    );
+    const ride = await this.prisma.ride.create({
+      data: {
+        passengerId,
+        vehicleId: vehicle.id,
+        fromLocationName,
+        toLocationName,
+        estimatedFare: estimate.amount,
+        fareVersion: estimate.matrixVersion,
+        passengerCount: dto.passengerCount,
+        vehicleType: this.fares.normalizeVehicleType(vehicle.vehicleType),
+        startLatitude: dto.originLatitude,
+        startLongitude: dto.originLongitude,
+        destinationLatitude: dto.destinationLatitude,
+        destinationLongitude: dto.destinationLongitude,
+        locationPoints: {
+          create: {
+            latitude: dto.originLatitude,
+            longitude: dto.originLongitude,
+          },
+        },
+      },
+      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+    });
+    await this.updatePresence(passengerId, {
+      latitude: dto.originLatitude,
+      longitude: dto.originLongitude,
+    });
+    await this.audit.record({
+      actorId: passengerId,
+      action: 'MAP_RIDE_STARTED',
+      entityType: 'Ride',
+      entityId: ride.id,
+      details: {
+        vehicleId: vehicle.id,
+        qrCodeId: vehicle.qrCode?.id,
+        destinationLatitude: dto.destinationLatitude,
+        destinationLongitude: dto.destinationLongitude,
+      },
+    });
     return this.addLocationNames(ride);
   }
 
@@ -188,13 +259,24 @@ export class RidesService {
 
   async share(passengerId: string, id: string, liveLocationUrl?: string) {
     const ride = await this.ownedRide(passengerId, id);
-    const [from, to] = await Promise.all([this.prisma.location.findUnique({ where: { id: ride.fromLocationId } }), this.prisma.location.findUnique({ where: { id: ride.toLocationId } })]);
-    return { rideId: ride.id, driverName: ride.vehicle.driver.user.fullName, vehiclePlateNumber: ride.vehicle.plateNumber, from: from?.name, to: to?.name, startedAt: ride.startedAt.toISOString(), liveLocationUrl };
+    const namedRide = await this.addLocationNames(ride);
+    return { rideId: ride.id, driverName: ride.vehicle.driver.user.fullName, vehiclePlateNumber: ride.vehicle.plateNumber, from: namedRide.fromLocationName, to: namedRide.toLocationName, startedAt: ride.startedAt.toISOString(), liveLocationUrl };
   }
 
-  private async getEligibleVehicle(vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, include: { driver: { include: { user: true, franchise: true } } } });
-    if (!vehicle || !vehicle.isActive || vehicle.driver.verification !== 'VERIFIED' || !vehicle.driver.franchise || vehicle.driver.franchise.status !== 'VERIFIED' || vehicle.driver.franchise.expiresAt <= new Date()) throw new ForbiddenException('Vehicle is not currently eligible for rides');
+  private async getEligibleVehicle(vehicleId: string, qrToken?: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, include: { qrCode: true, driver: { include: { user: true, franchise: true } } } });
+    if (
+      !vehicle ||
+      !vehicle.isActive ||
+      vehicle.driver.user.status !== UserStatus.ACTIVE ||
+      vehicle.driver.verification !== 'VERIFIED' ||
+      !vehicle.driver.franchise ||
+      vehicle.driver.franchise.status !== 'VERIFIED' ||
+      vehicle.driver.franchise.expiresAt <= new Date() ||
+      !vehicle.qrCode ||
+      vehicle.qrCode.revokedAt ||
+      (qrToken != null && vehicle.qrCode.token !== qrToken)
+    ) throw new ForbiddenException('Scan an active LGU-issued driver QR before starting this ride');
     return vehicle;
   }
 
@@ -250,16 +332,24 @@ export class RidesService {
     return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  private async addLocationNames<T extends { fromLocationId: string; toLocationId: string }>(ride: T) {
+  private coordinateLabel(prefix: string, latitude: number, longitude: number) {
+    return `${prefix} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+  }
+
+  private async addLocationNames<T extends { fromLocationId: string | null; toLocationId: string | null; fromLocationName?: string | null; toLocationName?: string | null }>(ride: T) {
     const [from, to] = await Promise.all([
-      this.prisma.location.findUnique({ where: { id: ride.fromLocationId } }),
-      this.prisma.location.findUnique({ where: { id: ride.toLocationId } }),
+      ride.fromLocationId
+        ? this.prisma.location.findUnique({ where: { id: ride.fromLocationId } })
+        : null,
+      ride.toLocationId
+        ? this.prisma.location.findUnique({ where: { id: ride.toLocationId } })
+        : null,
     ]);
 
     return {
       ...ride,
-      fromLocationName: from?.name ?? 'Unknown origin',
-      toLocationName: to?.name ?? 'Unknown destination',
+      fromLocationName: ride.fromLocationName ?? from?.name ?? 'Unknown origin',
+      toLocationName: ride.toLocationName ?? to?.name ?? 'Unknown destination',
     };
   }
 }

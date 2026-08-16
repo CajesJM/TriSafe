@@ -87,6 +87,7 @@ export class DriversService {
     const eligibleForRide = Boolean(
       !qr.revokedAt &&
       qr.vehicle.isActive &&
+      driver.user.status === 'ACTIVE' &&
       franchise &&
       driver.verification === 'VERIFIED' &&
       franchise.status === 'VERIFIED' &&
@@ -99,7 +100,7 @@ export class DriversService {
       transportStatus,
       accountStatus: driver.user.status,
       qrStatus,
-      message: this.qrVerificationMessage({ qrRevoked: Boolean(qr.revokedAt), vehicleActive: qr.vehicle.isActive, hasFranchise: Boolean(franchise), transportStatus, eligibleForRide }),
+      message: this.qrVerificationMessage({ qrRevoked: Boolean(qr.revokedAt), vehicleActive: qr.vehicle.isActive, accountActive: driver.user.status === 'ACTIVE', hasFranchise: Boolean(franchise), transportStatus, eligibleForRide }),
       vehicle: {
         driverId: driver.id,
         driverName: driver.user.fullName,
@@ -133,8 +134,116 @@ export class DriversService {
     return this.prisma.announcementRecipient.findMany({ where: { driver: { userId }, announcement: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } }, include: { announcement: true }, orderBy: { announcement: { publishedAt: 'desc' } } });
   }
 
-  updateContact(userId: string, dto: UpdateDriverContactDto) {
-    return this.prisma.user.update({ where: { id: userId }, data: { phone: dto.phone, email: dto.email }, select: { id: true, fullName: true, email: true, phone: true } });
+  async markAnnouncementRead(userId: string, announcementId: string) {
+    const driver = await this.prisma.driver.findUnique({ where: { userId }, select: { id: true } });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+    try {
+      return await this.prisma.announcementRecipient.update({
+        where: { announcementId_driverId: { announcementId, driverId: driver.id } },
+        data: { readAt: new Date() },
+        include: { announcement: true },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException('Announcement not found for this driver');
+      }
+      throw error;
+    }
+  }
+
+  async notifications(userId: string) {
+    await this.statuses.syncExpiredDrivers();
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId },
+      include: {
+        franchise: true,
+        vehicles: true,
+        announcements: {
+          where: { readAt: null, announcement: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } },
+          include: { announcement: true },
+        },
+      },
+    });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+
+    const now = new Date();
+    const daysUntil = (date: Date) => Math.ceil((date.getTime() - now.getTime()) / 86400000);
+    const notifications: Array<{ id: string; type: string; priority: string; title: string; message: string; createdAt: Date; read: boolean; announcementId?: string }> = [];
+    const franchise = driver.franchise;
+
+    if (franchise && franchise.status !== 'VERIFIED') {
+      notifications.push({
+        id: `franchise-status-${franchise.id}`,
+        type: 'FRANCHISE_STATUS',
+        priority: franchise.status === 'PENDING' ? 'WARNING' : 'CRITICAL',
+        title: `Franchise ${franchise.status.toLowerCase()}`,
+        message: 'Review your franchise status and coordinate with the LGU before accepting rides.',
+        createdAt: now,
+        read: false,
+      });
+    } else if (franchise && daysUntil(franchise.expiresAt) <= 30) {
+      notifications.push({
+        id: `franchise-renewal-${franchise.id}`,
+        type: 'RENEWAL',
+        priority: daysUntil(franchise.expiresAt) <= 7 ? 'CRITICAL' : 'WARNING',
+        title: 'Franchise renewal reminder',
+        message: `Your franchise expires in ${Math.max(0, daysUntil(franchise.expiresAt))} day(s). Contact the LGU to renew it.`,
+        createdAt: franchise.expiresAt,
+        read: false,
+      });
+    }
+
+    if (daysUntil(driver.renewalDate) <= 30) {
+      notifications.push({
+        id: `license-renewal-${driver.id}`,
+        type: 'RENEWAL',
+        priority: daysUntil(driver.renewalDate) <= 7 ? 'CRITICAL' : 'WARNING',
+        title: 'Driver license renewal reminder',
+        message: `Your recorded license renewal is due in ${Math.max(0, daysUntil(driver.renewalDate))} day(s).`,
+        createdAt: driver.renewalDate,
+        read: false,
+      });
+    }
+
+    for (const vehicle of driver.vehicles.filter((item) => !item.isActive)) {
+      notifications.push({
+        id: `vehicle-inactive-${vehicle.id}`,
+        type: 'VEHICLE_STATUS',
+        priority: 'CRITICAL',
+        title: 'Vehicle inactive',
+        message: `${vehicle.plateNumber} is inactive and cannot be used for verified rides.`,
+        createdAt: now,
+        read: false,
+      });
+    }
+
+    for (const recipient of driver.announcements) {
+      notifications.push({
+        id: `announcement-${recipient.announcementId}`,
+        type: 'ANNOUNCEMENT',
+        priority: 'INFO',
+        title: recipient.announcement.title,
+        message: 'A new LGU announcement is waiting for you.',
+        createdAt: recipient.announcement.publishedAt,
+        read: false,
+        announcementId: recipient.announcementId,
+      });
+    }
+
+    return notifications.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+  }
+
+  async updateContact(userId: string, dto: UpdateDriverContactDto) {
+    try {
+      const user = await this.prisma.user.update({ where: { id: userId }, data: { phone: dto.phone, email: dto.email.trim().toLowerCase() }, select: { id: true, fullName: true, email: true, phone: true } });
+      await this.audit.record({ actorId: userId, action: 'DRIVER_CONTACT_UPDATED', entityType: 'User', entityId: userId, details: { email: user.email, phone: user.phone } });
+      return user;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('That email address is already used by another account.');
+      }
+      throw error;
+    }
   }
 
   async rotateQr(actorId: string, vehicleId: string) {
@@ -188,9 +297,10 @@ export class DriversService {
     return { id: driver.id, userId: driver.user.id, fullName: driver.user.fullName, email: driver.user.email, phone: driver.user.phone, accountStatus: driver.user.status, verification: driver.verification, licenseNumber: driver.licenseNumber, renewalDate: driver.renewalDate, franchise: driver.franchise, vehicles: driver.vehicles };
   }
 
-  private qrVerificationMessage(input: { qrRevoked: boolean; vehicleActive: boolean; hasFranchise: boolean; transportStatus: string; eligibleForRide: boolean }) {
+  private qrVerificationMessage(input: { qrRevoked: boolean; vehicleActive: boolean; accountActive: boolean; hasFranchise: boolean; transportStatus: string; eligibleForRide: boolean }) {
     if (input.qrRevoked) return 'This LGU-issued QR code has been revoked. Do not continue the ride.';
     if (!input.vehicleActive) return 'This LGU-issued QR belongs to an inactive vehicle. Do not continue the ride.';
+    if (!input.accountActive) return 'This driver account is inactive. Do not continue the ride.';
     if (!input.hasFranchise) return 'This LGU-issued QR has no active franchise record. Do not continue the ride.';
     if (input.transportStatus === 'PENDING') return 'This driver is still pending LGU transport approval. Do not continue the ride.';
     if (input.transportStatus === 'SUSPENDED') return 'This driver is suspended by the LGU. Do not continue the ride.';

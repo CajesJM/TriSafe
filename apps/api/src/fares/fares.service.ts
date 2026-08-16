@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -17,6 +18,8 @@ import {
 
 @Injectable()
 export class FaresService {
+  private readonly logger = new Logger(FaresService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -57,7 +60,9 @@ export class FaresService {
     );
     const coordinates = `${dto.originLongitude},${dto.originLatitude};${dto.destinationLongitude},${dto.destinationLatitude}`;
     const url = new URL(`/route/v1/driving/${coordinates}`, baseUrl);
-    url.searchParams.set('overview', 'simplified');
+    // Full geometry lets the passenger map draw the measured road route
+    // accurately instead of visually cutting across bends and intersections.
+    url.searchParams.set('overview', 'full');
     url.searchParams.set('geometries', 'geojson');
     url.searchParams.set('steps', 'false');
 
@@ -67,7 +72,9 @@ export class FaresService {
         signal: AbortSignal.timeout(10000),
         headers: { 'user-agent': 'TriSafe/0.1 (LGU transport safety system)' },
       });
-    } catch {
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Road routing request failed: ${reason}`);
       throw new ServiceUnavailableException(
         'The road routing service is temporarily unavailable',
       );

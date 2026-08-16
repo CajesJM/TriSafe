@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import type { RequestWithUser } from '../auth/auth.types';
 import { Roles } from '../auth/roles.decorator';
-import { EndRideDto, StartRideDto } from './dto/start-ride.dto';
+import { EndRideDto, StartMapRideDto, StartRideDto } from './dto/start-ride.dto';
 import { RidesService } from './rides.service';
 import { RecordRideLocationDto } from './dto/record-ride-location.dto';
 import { RideHistoryQueryDto } from './dto/ride-history-query.dto';
@@ -13,6 +13,9 @@ export class RidesController {
   constructor(private readonly service: RidesService) {}
 
   @Post('preview') preview(@Body() dto: StartRideDto) { return this.service.preview(dto); }
+  @Post('map') startMapRide(@Req() req: RequestWithUser, @Body() dto: StartMapRideDto) {
+    return this.service.startMapRide(req.user.id, dto);
+  }
   @Post() start(@Req() req: RequestWithUser, @Body() dto: StartRideDto) { return this.service.start(req.user.id, dto); }
   @Get() history(@Req() req: RequestWithUser, @Query() query: RideHistoryQueryDto) {
     return this.service.history(req.user.id, query);
