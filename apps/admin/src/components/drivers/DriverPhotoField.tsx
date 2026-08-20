@@ -11,7 +11,7 @@ export function DriverPhotoField({
 }: {
   value?: string;
   fallbackName: string;
-  onChange: (value: string) => void;
+  onChange: (value: string | null) => void;
   onError: (message: string) => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -103,7 +103,7 @@ export function DriverPhotoField({
               <button
                 type="button"
                 className="text-button"
-                onClick={() => onChange("")}
+                onClick={() => onChange(null)}
               >
                 <Trash2 /> Remove
               </button>

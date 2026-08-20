@@ -11,6 +11,10 @@ import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
 import { BoholLocationService } from '../drivers/bohol-location.service';
 
 const canonicalPersonNamePattern = /^[\p{L}][\p{L} '-]{1,44}, [\p{L}][\p{L}'-]+(?: [\p{L}][\p{L}'-]+)*(?: \p{L}\.)?$/u;
+const dataImageByteLength = (value: string) => {
+  const payload = value.split(',')[1] ?? '';
+  return Math.floor((payload.length * 3) / 4) - (payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0);
+};
 
 @Injectable()
 export class AdminService {
@@ -346,7 +350,7 @@ export class AdminService {
   async user(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { id: true, verification: true } } },
+      select: { id: true, fullName: true, username: true, avatarData: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { id: true, verification: true } } },
     });
     if (!user) throw new NotFoundException('User account not found');
     return user;
@@ -395,6 +399,14 @@ export class AdminService {
     const unitNumber = dto.driverRecord
       ? (dto.driverRecord.vehicleType === 'TRICYCLE' ? dto.driverRecord.bodyNumber! : dto.driverRecord.permitNumber!)
       : null;
+    if (typeof dto.avatarData === 'string' && dataImageByteLength(dto.avatarData) > 2 * 1024 * 1024) {
+      throw new BadRequestException('The driver profile photo must be 2 MB or smaller.');
+    }
+    const currentVehicle = current.driverProfile?.vehicles[0];
+    const currentUnitNumber = currentVehicle?.vehicleType === 'HABAL_HABAL'
+      ? currentVehicle.permitNumber
+      : currentVehicle?.bodyNumber;
+    const unitNumberChanged = Boolean(unitNumber && unitNumber !== currentUnitNumber);
     const data: Prisma.UserUncheckedUpdateInput = {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
       ...(dto.username !== undefined ? { username: dto.username } : {}),
@@ -403,13 +415,14 @@ export class AdminService {
       ...(dto.role !== undefined ? { role: dto.role } : {}),
       ...(dto.status !== undefined ? { status: dto.status } : {}),
       ...(dto.newPassword ? { passwordHash: hashPassword(dto.newPassword) } : {}),
-      ...(unitNumber ? { email: null, passwordHash: hashPassword(unitNumber) } : {}),
+      ...(dto.avatarData !== undefined ? { avatarData: dto.avatarData || null } : {}),
+      ...(unitNumberChanged ? { email: null, passwordHash: hashPassword(unitNumber!) } : {}),
     };
     try {
       const updated = await this.prisma.$transaction(async (tx) => {
         const user = await tx.user.update({
           where: { id }, data,
-          select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true } } },
+          select: { id: true, fullName: true, username: true, avatarData: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true } } },
         });
         if (verifiedDriverAddress && current.driverProfile) {
           const record = dto.driverRecord!;
@@ -437,7 +450,7 @@ export class AdminService {
         return user;
       });
       const statusChanged = current.status !== updated.status;
-      await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword), driverRecordUpdated: Boolean(dto.driverRecord), unitNumber, barangayCode: verifiedDriverAddress?.barangayCode } });
+      await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword) || unitNumberChanged, driverRecordUpdated: Boolean(dto.driverRecord), profilePhotoUpdated: dto.avatarData !== undefined, unitNumber, barangayCode: verifiedDriverAddress?.barangayCode } });
       return updated;
     } catch (error) {
       this.handleUniqueUserError(error);
@@ -453,6 +466,33 @@ export class AdminService {
     if (user.driverProfile || rides > 0 || incidents > 0) throw new ConflictException('This account has linked operational records and cannot be deleted. Mark it inactive instead.');
     await this.prisma.user.delete({ where: { id } });
     await this.audit.record({ actorId, action: 'USER_DELETED', entityType: 'User', entityId: id, details: { email: user.email, role: user.role } });
+    return { deleted: true };
+  }
+
+  async deleteDriver(actorId: string, driverId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { id: driverId },
+      include: { user: true, owner: true, vehicles: { select: { id: true } } },
+    });
+    if (!driver) throw new NotFoundException('Driver record not found.');
+    const rideCount = await this.prisma.ride.count({ where: { vehicle: { driverId } } });
+    if (rideCount > 0) {
+      throw new ConflictException('This driver has ride history and cannot be permanently deleted. Deactivate the account and suspend transport instead.');
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.announcementRecipient.deleteMany({ where: { driverId } });
+      await tx.qrCode.deleteMany({ where: { vehicle: { driverId } } });
+      await tx.franchise.deleteMany({ where: { driverId } });
+      await tx.driverAddress.deleteMany({ where: { driverId } });
+      await tx.vehicle.deleteMany({ where: { driverId } });
+      await tx.driver.delete({ where: { id: driverId } });
+      await tx.user.delete({ where: { id: driver.userId } });
+      if (driver.ownerId) {
+        const remainingDrivers = await tx.driver.count({ where: { ownerId: driver.ownerId } });
+        if (remainingDrivers === 0) await tx.transportOwner.delete({ where: { id: driver.ownerId } });
+      }
+    });
+    await this.audit.record({ actorId, action: 'DRIVER_DELETED', entityType: 'Driver', entityId: driverId, details: { userId: driver.userId, fullName: driver.user.fullName, vehicleCount: driver.vehicles.length, ownerRemoved: Boolean(driver.ownerId) } });
     return { deleted: true };
   }
 

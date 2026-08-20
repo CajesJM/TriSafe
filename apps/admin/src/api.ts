@@ -326,6 +326,8 @@ export type UpdateUserInput = {
   role?: UserRole;
   status?: UserStatus;
   newPassword?: string;
+  /** Replaces the previous private profile photo; null removes it. */
+  avatarData?: string | null;
   driverRecord?: {
     ownerLastName: string;
     ownerFirstName: string;
@@ -596,6 +598,8 @@ export const api = {
     }),
   deleteUser: (id: string) =>
     request<{ deleted: true }>(`/admin/users/${id}`, { method: "DELETE" }),
+  deleteDriver: (id: string) =>
+    request<{ deleted: true }>(`/admin/drivers/${id}`, { method: "DELETE" }),
   roles: () => request<RoleDefinition[]>("/admin/roles"),
   createRole: (body: RoleInput) =>
     request<RoleDefinition>("/admin/roles", {

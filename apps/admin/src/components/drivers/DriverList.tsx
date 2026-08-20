@@ -22,6 +22,7 @@ import {
   UserCheck,
   UserRound,
   UserX,
+  Trash2,
 } from "lucide-react";
 
 const pageSize = 8;
@@ -48,6 +49,7 @@ type Props = {
     reason?: string,
   ) => Promise<void>;
   onUpdateAccountStatus: (driver: Driver, status: UserStatus) => Promise<void>;
+  onDeleteDriver: (driver: Driver) => Promise<void>;
   selectedDriverId: string | null;
   onViewProfile: (driverId: string) => void;
   onCloseProfile: () => void;
@@ -63,6 +65,7 @@ export function DriverList({
   onUpdateFranchise,
   onUpdateStatus,
   onUpdateAccountStatus,
+  onDeleteDriver,
   selectedDriverId,
   onViewProfile,
   onCloseProfile,
@@ -81,6 +84,7 @@ export function DriverList({
     null,
   );
   const [fileDriver, setFileDriver] = useState<Driver | null>(null);
+  const [deletingDriver, setDeletingDriver] = useState<Driver | null>(null);
   const filtered = useMemo(
     () =>
       drivers.filter((driver) => {
@@ -213,6 +217,7 @@ export function DriverList({
               onEditAccount={() => onEditAccount(driver)}
               onViewFile={() => setFileDriver(driver)}
               onChangeAccountStatus={() => setAccountStatusDriver(driver)}
+              onDelete={() => setDeletingDriver(driver)}
               onSuspend={() => setSuspendingDriver(driver)}
               onUpdateStatus={(nextStatus) =>
                 changeStatus(driver, nextStatus).catch(() => undefined)
@@ -241,6 +246,10 @@ export function DriverList({
           onViewQr={() => {
             onCloseProfile();
             onViewQr(selectedDriver);
+          }}
+          onEditAccount={() => {
+            onCloseProfile();
+            onEditAccount(selectedDriver);
           }}
         />
       )}
@@ -285,6 +294,20 @@ export function DriverList({
           }
         />
       )}
+      {deletingDriver && (
+        <ConfirmModal
+          title={`Delete ${displayPersonName(deletingDriver.fullName)}'s driver account?`}
+          message="This permanently removes the driver account, private photo, QR code, vehicle, franchise, address, and unused owner record. Drivers with ride history cannot be deleted; deactivate their account instead."
+          confirmLabel="Delete driver account"
+          tone="danger"
+          onCancel={() => setDeletingDriver(null)}
+          onError={onError}
+          onConfirm={async () => {
+            await onDeleteDriver(deletingDriver);
+            setDeletingDriver(null);
+          }}
+        />
+      )}
       {fileDriver && (
         <DriverRegistrationFileModal
           driver={fileDriver}
@@ -307,6 +330,7 @@ function DriverRow({
   onEditAccount,
   onViewFile,
   onChangeAccountStatus,
+  onDelete,
   onSuspend,
   onUpdateStatus,
 }: {
@@ -319,6 +343,7 @@ function DriverRow({
   onEditAccount: () => void;
   onViewFile: () => void;
   onChangeAccountStatus: () => void;
+  onDelete: () => void;
   onSuspend: () => void;
   onUpdateStatus: (status: DriverStatus) => Promise<void>;
 }) {
@@ -398,6 +423,17 @@ function DriverRow({
               },
             ]
           : []),
+      ],
+    },
+    {
+      label: "Danger zone",
+      items: [
+        {
+          label: "Delete driver account",
+          icon: <Trash2 />,
+          onSelect: onDelete,
+          tone: "danger",
+        },
       ],
     },
   ];

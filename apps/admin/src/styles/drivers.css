@@ -133,36 +133,56 @@
 .driver-account-boundary strong { color: var(--forest); font-size: 9px; }
 .driver-account-boundary span { color: var(--muted); font-size: 8px; line-height: 1.5; }
 .driver-profile-backdrop { position: fixed; inset: 0; z-index: 8500; display: grid; place-items: center; overflow-y: auto; padding: 22px; background: rgba(15,15,15,.6); backdrop-filter: blur(5px); animation: modal-backdrop-in .22s ease-out both; }
-.driver-profile-modal { width: min(100%, 880px); max-height: calc(100dvh - 44px); overflow-y: auto; border: 1px solid var(--line); border-radius: 17px; color: var(--charcoal); background: var(--off-white); box-shadow: 0 30px 90px rgba(15,15,15,.32); animation: modal-content-in .32s cubic-bezier(.16,1,.3,1) both; scrollbar-color: var(--forest) var(--surface-soft); }
-.driver-profile-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line-light); padding: 19px 21px; background: color-mix(in srgb, var(--off-white) 94%, transparent); backdrop-filter: blur(12px); }
+.driver-profile-modal { width: min(100%, 930px); max-height: calc(100dvh - 44px); overflow-y: auto; border: 1px solid rgba(15,15,15,.12); border-radius: 22px; color: var(--charcoal); background: #fff; box-shadow: 0 32px 110px rgba(15,15,15,.36); animation: modal-content-in .32s cubic-bezier(.16,1,.3,1) both; scrollbar-color: var(--forest) var(--surface-soft); }
+.driver-profile-cover { position: relative; display: flex; align-items: flex-start; height: 142px; padding: 19px 24px; overflow: hidden; color: rgba(255,255,255,.7); background: radial-gradient(circle at 87% 25%, rgba(148,242,99,.48), transparent 12%), radial-gradient(circle at 76% 120%, rgba(93,214,44,.28), transparent 36%), linear-gradient(130deg, #0f0f0f 0%, #173818 54%, #215b19 100%); font-size: 8px; font-weight: 850; letter-spacing: .13em; }
+.driver-profile-cover::after { position: absolute; right: -48px; bottom: -75px; width: 250px; height: 250px; border: 1px solid rgba(255,255,255,.15); border-radius: 50%; content: ""; box-shadow: 0 0 0 38px rgba(255,255,255,.045), 0 0 0 76px rgba(255,255,255,.035); }
+.driver-profile-cover span { position: relative; z-index: 1; }
+.driver-profile-header { position: relative; z-index: 2; display: flex; align-items: end; justify-content: space-between; gap: 16px; min-height: 101px; margin-top: -50px; border-bottom: 1px solid var(--line-light); padding: 0 24px 19px; background: linear-gradient(to bottom, transparent 0 51px, #fff 51px); }
 .driver-profile-identity { display: flex; align-items: center; gap: 12px; }
-.driver-profile-identity > span { display: grid; flex: 0 0 43px; height: 43px; place-items: center; border-radius: 12px; color: var(--black); background: var(--lime); font-size: 11px; font-weight: 900; }
+.driver-profile-identity > span { display: grid; flex: 0 0 92px; height: 92px; place-items: center; border: 5px solid #fff; border-radius: 50%; color: var(--black); background: linear-gradient(145deg, var(--lime), #c9f5aa); box-shadow: 0 12px 28px rgba(15,15,15,.20); font-size: 20px; font-weight: 900; }
 .driver-profile-identity > span.driver-profile-avatar { overflow: hidden; }
 .driver-profile-avatar img, .driver-list-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.driver-profile-identity h3 { margin: 0; color: var(--black); font-size: 18px; letter-spacing: -.03em; }
-.driver-profile-identity small { display: block; margin-top: 3px; color: var(--muted); font-size: 8px; }
+.driver-list-avatar { overflow: hidden; border-radius: 50% !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--forest) 16%, transparent); }
+.driver-profile-intro { display: grid; gap: 2px; padding-bottom: 2px; }
+.driver-profile-identity h3 { margin: 0; color: var(--black); font-size: 22px; line-height: 1.1; letter-spacing: -.04em; }
+.driver-profile-identity small { display: block; color: var(--muted); font-size: 9px; }
+.driver-profile-record-id { color: var(--forest); font-size: 8px; font-weight: 800; letter-spacing: .025em; }
 .driver-profile-header-actions { display: flex; align-items: center; gap: 9px; }
-.driver-profile-header-actions > button { display: grid; width: 33px; height: 33px; place-items: center; border: 0; border-radius: 9px; color: var(--muted); background: var(--line-light); cursor: pointer; }
+.driver-profile-header-actions > button { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line); border-radius: 11px; color: var(--muted); background: #fff; cursor: pointer; transition: .18s ease; }
+.driver-profile-header-actions > button:hover { color: var(--black); border-color: color-mix(in srgb,var(--forest) 45%,var(--line)); background: var(--primary-50); }
+.driver-profile-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 20px 24px 0; }
+.driver-profile-summary > div { display: grid; gap: 6px; min-width: 0; border: 1px solid var(--line-light); border-radius: 14px; padding: 14px 15px; background: linear-gradient(145deg,#fff,var(--surface-soft)); }
+.driver-profile-summary span { color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.driver-profile-summary strong:not(.status) { color: var(--charcoal); font-size: 12px; overflow-wrap: anywhere; }
+.driver-profile-summary small { color: var(--muted); font-size: 8px; }
 .driver-profile-notice { display: flex; align-items: flex-start; gap: 9px; margin: 18px 21px 0; border: 1px solid color-mix(in srgb, var(--forest) 18%, var(--line)); border-radius: 11px; padding: 11px 12px; color: var(--forest); background: var(--primary-50); }
 .driver-profile-notice div { display: grid; gap: 3px; }
 .driver-profile-notice strong { color: var(--charcoal); font-size: 9px; }
 .driver-profile-notice span { color: var(--muted); font-size: 8px; line-height: 1.45; }
-.driver-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 18px 21px 21px; }
-.driver-profile-section { border: 1px solid var(--line-light); border-radius: 12px; padding: 14px; background: var(--surface-soft); }
-.driver-profile-section > header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.driver-profile-section > header > span { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; color: var(--forest); background: var(--green-100); }
+.driver-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 20px 24px 24px; }
+.driver-profile-section { border: 1px solid var(--line-light); border-radius: 15px; padding: 16px; background: #fff; box-shadow: 0 7px 20px rgba(15,15,15,.025); }
+.driver-profile-section > header { display: flex; align-items: center; gap: 9px; margin-bottom: 13px; }
+.driver-profile-section > header > span { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; color: var(--forest); background: var(--green-100); }
 .driver-profile-section > header svg { width: 14px; height: 14px; }
-.driver-profile-section h4 { margin: 0; color: var(--black); font-size: 10px; }
+.driver-profile-section h4 { margin: 0; color: var(--black); font-size: 11px; }
 .driver-profile-section > div { display: grid; }
-.driver-profile-field { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-top: 1px solid var(--line-light); padding: 8px 0; }
+.driver-profile-field { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-top: 1px solid var(--line-light); padding: 10px 0; }
 .driver-profile-field:first-child { border-top: 0; }
 .driver-profile-field > span { color: var(--muted); font-size: 8px; }
-.driver-profile-field > strong { color: var(--charcoal); font-size: 9px; text-align: right; }
+.driver-profile-field > strong { color: var(--charcoal); font-size: 10px; text-align: right; }
 .driver-profile-field .status { font-size: 7px; }
-.driver-profile-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line-light); padding: 16px 21px 20px; }
+.driver-profile-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line-light); padding: 17px 24px 21px; background: color-mix(in srgb,var(--surface-soft) 46%,#fff); }
 .driver-profile-footer p { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-size: 8px; }
 .driver-profile-footer p svg { color: var(--forest); }
 .driver-profile-footer > div { display: flex; gap: 8px; }
+.driver-profile-footer button { display: inline-flex; align-items: center; gap: 6px; }
+.driver-edit-modal .driver-registration-overview footer small { max-width: 205px; }
+.driver-edit-password-warning { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; border: 1px solid #efc579; border-radius: 10px; padding: 11px 12px; color: #925d00; background: #fff8e8; }
+.driver-edit-password-warning > svg { flex: 0 0 16px; width: 16px; height: 16px; margin-top: 1px; }
+.driver-edit-password-warning div { display: grid; gap: 3px; }
+.driver-edit-password-warning strong { color: #724600; font-size: 9px; }
+.driver-edit-password-warning span { color: #765a2b; font-size: 8px; line-height: 1.5; }
+.driver-edit-password-warning b { color: var(--black); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 
 @media (max-width: 650px) {
   .driver-registration-backdrop { align-items: end; padding: 8px; }
@@ -180,9 +200,12 @@
   .driver-registration-actions button { width: 100%; }
   .driver-profile-backdrop { align-items: end; padding: 10px; }
   .driver-profile-modal { max-height: calc(100dvh - 20px); border-radius: 16px 16px 10px 10px; }
-  .driver-profile-header { align-items: flex-start; padding: 16px; }
+  .driver-profile-cover { height: 105px; padding: 15px 16px; }
+  .driver-profile-header { align-items: flex-end; min-height: 84px; margin-top: -40px; padding: 0 16px 14px; background: linear-gradient(to bottom, transparent 0 41px, #fff 41px); }
+  .driver-profile-identity > span { flex-basis: 67px; height: 67px; border-width: 3px; font-size: 14px; }
+  .driver-profile-identity h3 { font-size: 17px; }
+  .driver-profile-summary { grid-template-columns: 1fr; margin: 13px 16px 0; }
   .driver-profile-header-actions > .status { display: none; }
-  .driver-profile-notice { margin: 14px 16px 0; }
   .driver-profile-grid { grid-template-columns: 1fr; padding: 14px 16px 16px; }
   .driver-profile-footer { align-items: stretch; flex-direction: column; padding: 14px 16px 16px; }
   .driver-profile-footer > div { display: grid; grid-template-columns: 1fr 1fr; }

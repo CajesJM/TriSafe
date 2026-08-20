@@ -12,8 +12,6 @@ import {
   SessionUser,
   UpdateFranchiseInput,
   AdminUser,
-  RoleDefinition,
-  CreateUserInput,
   UpdateUserInput,
   UserStatus,
   getSessionUser,
@@ -44,7 +42,7 @@ import {
 } from "./components/shared/Feedback";
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
-import { UserForm } from "./components/users/UserForm";
+import { DriverEditForm } from "./components/drivers/DriverEditForm";
 import {
   ToastNotification,
   type ToastMessage,
@@ -72,7 +70,6 @@ export function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [driverProfileId, setDriverProfileId] = useState<string | null>(null);
   const [editingDriverAccount, setEditingDriverAccount] = useState<AdminUser | null>(null);
-  const [driverAccountRoles, setDriverAccountRoles] = useState<RoleDefinition[]>([]);
   const [driverReceipt, setDriverReceipt] = useState<DriverRegistrationReceiptData | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
@@ -155,14 +152,13 @@ export function App() {
   async function openDriverAccount(driver: Driver) {
     setError("");
     try {
-      const [account, roles] = await Promise.all([api.user(driver.userId), api.roles()]);
-      setDriverAccountRoles(roles);
+      const account = await api.user(driver.userId);
       setEditingDriverAccount(account);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to open the driver account.");
     }
   }
-  async function saveDriverAccount(input: CreateUserInput | UpdateUserInput) {
+  async function saveDriverAccount(input: UpdateUserInput) {
     if (!editingDriverAccount) return;
     const updated = await api.updateUser(editingDriverAccount.id, input as UpdateUserInput);
     setDrivers(await api.drivers());
@@ -249,6 +245,15 @@ export function App() {
     );
   }
 
+  async function deleteDriver(driver: Driver) {
+    await api.deleteDriver(driver.id);
+    setDrivers((items) => items.filter((item) => item.id !== driver.id));
+    setDriverProfileId(null);
+    setAuditLogs(await api.auditLogs());
+    void api.dashboard().then(setDashboard);
+    showToast("success", `${driver.fullName}'s driver account and unused registry record were deleted.`);
+  }
+
   return (
     <main className="shell">
       <Sidebar
@@ -299,6 +304,7 @@ export function App() {
                 onUpdateFranchise={setFranchiseDriver}
                 onUpdateStatus={updateDriverStatus}
                 onUpdateAccountStatus={updateDriverAccountStatus}
+                onDeleteDriver={deleteDriver}
                 selectedDriverId={driverProfileId}
                 onViewProfile={setDriverProfileId}
                 onCloseProfile={() => setDriverProfileId(null)}
@@ -340,12 +346,10 @@ export function App() {
                 onError={(message) => showToast("error", message)}
               />
             )}
-            {tab === "drivers" && editingDriverAccount && (
-              <UserForm
-                user={editingDriverAccount}
-                roles={driverAccountRoles}
-                defaultRole="DRIVER"
-                driver={drivers.find((driver) => driver.userId === editingDriverAccount.id)}
+            {tab === "drivers" && editingDriverAccount && drivers.find((driver) => driver.userId === editingDriverAccount.id) && (
+              <DriverEditForm
+                account={editingDriverAccount}
+                driver={drivers.find((driver) => driver.userId === editingDriverAccount.id)!}
                 onCancel={() => setEditingDriverAccount(null)}
                 onSave={saveDriverAccount}
                 onError={(message) => showToast("error", message)}

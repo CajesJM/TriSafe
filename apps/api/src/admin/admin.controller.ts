@@ -23,6 +23,7 @@ export class AdminController {
   @Post('users') createUser(@Req() req: RequestWithUser, @Body() dto: CreateUserDto) { return this.service.createUser(req.user.id, dto); }
   @Patch('users/:id') updateUser(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: UpdateUserDto) { return this.service.updateUser(req.user.id, id, dto); }
   @Delete('users/:id') deleteUser(@Req() req: RequestWithUser, @Param('id') id: string) { return this.service.deleteUser(req.user.id, id); }
+  @Delete('drivers/:id') deleteDriver(@Req() req: RequestWithUser, @Param('id') id: string) { return this.service.deleteDriver(req.user.id, id); }
   @Get('roles') roles() { return this.service.roles(); }
   @Post('roles') createRole(@Req() req: RequestWithUser, @Body() dto: CreateRoleDto) { return this.service.createRole(req.user.id, dto); }
   @Patch('roles/:id') updateRole(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: UpdateRoleDto) { return this.service.updateRole(req.user.id, id, dto); }

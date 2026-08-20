@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, FileText, ShieldCheck } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import type { Driver } from "../../api";
 import {
   createDriverRegistrationFileData,
@@ -62,13 +62,6 @@ export function DriverRegistrationFileModal({
         </>
       }
     >
-      <div className="driver-file-notice" role="note">
-        <ShieldCheck aria-hidden="true" />
-        <div>
-          <strong>Safe registry copy</strong>
-          <span>This regenerated file excludes the temporary password because TriSafe stores only its secure hash after registration.</span>
-        </div>
-      </div>
       <article className="driver-file-preview" aria-label="Driver registration file preview">
         <header>
           <div className="driver-file-brand"><FileText aria-hidden="true" /><span>TRISAFE</span></div>

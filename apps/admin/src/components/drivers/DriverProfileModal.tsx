@@ -2,7 +2,8 @@ import { useEffect, useId, type ReactNode } from "react";
 import {
   BadgeCheck,
   CarFront,
-  FileText,
+  ClipboardList,
+  Edit3,
   MapPin,
   QrCode,
   UserRound,
@@ -17,11 +18,13 @@ export function DriverProfileModal({
   onClose,
   onEditFranchise,
   onViewQr,
+  onEditAccount,
 }: {
   driver: Driver;
   onClose: () => void;
   onEditFranchise: () => void;
   onViewQr: () => void;
+  onEditAccount: () => void;
 }) {
   const titleId = useId();
   const vehicle = driver.vehicles[0];
@@ -46,6 +49,9 @@ export function DriverProfileModal({
         aria-modal="true"
         aria-labelledby={titleId}
       >
+        <div className="driver-profile-cover" aria-hidden="true">
+          <span>TRISAFE · LGU TRANSPORT REGISTRY</span>
+        </div>
         <header className="driver-profile-header">
           <div className="driver-profile-identity">
             <span className="driver-profile-avatar">
@@ -55,10 +61,11 @@ export function DriverProfileModal({
                 initials(driver.fullName)
               )}
             </span>
-            <div>
-              <p className="eyebrow">REGISTERED DRIVER PROFILE</p>
+            <div className="driver-profile-intro">
+              <p className="eyebrow">REGISTERED DRIVER</p>
               <h3 id={titleId}>{displayPersonName(driver.fullName)}</h3>
-              <small>{driver.username ?? "LGU record incomplete"}</small>
+              <small>@{driver.username ?? "account-pending"} · {vehicle?.vehicleType === "HABAL_HABAL" ? "Habal-habal" : "Tricycle"} driver</small>
+              <span className="driver-profile-record-id">LGU registry record · {vehicle?.bodyNumber ?? vehicle?.permitNumber ?? "Unit pending"}</span>
             </div>
           </div>
           <div className="driver-profile-header-actions">
@@ -75,23 +82,14 @@ export function DriverProfileModal({
           </div>
         </header>
 
-        <div className="driver-profile-notice">
-          <BadgeCheck size={17} />
-          <div>
-            <strong>Operational record</strong>
-            <span>
-              Owner, driver, vehicle, franchise, eligibility, and QR details are
-              maintained here—not in Accounts &amp; Access.
-            </span>
-          </div>
-        </div>
+        <section className="driver-profile-summary" aria-label="Driver profile summary">
+          <div><span>Account access</span><strong className={`status ${(driver.accountStatus ?? "ACTIVE").toLowerCase()}`}>{driver.accountStatus ?? "ACTIVE"}</strong><small>Controls driver sign-in</small></div>
+          <div><span>Transport status</span><strong className={`status ${operationalStatus.toLowerCase()}`}>{operationalStatus}</strong><small>Controls passenger eligibility</small></div>
+          <div><span>Registered vehicle</span><strong>{vehicle?.plateNumber ?? "Not assigned"}</strong><small>{vehicle?.vehicleType?.replaceAll("_", " ") ?? "Vehicle pending"}</small></div>
+        </section>
 
         <div className="driver-profile-grid">
-          <ProfileSection icon={<UserRound />} title="Account and contact">
-            <ProfileField
-              label="Full name"
-              value={displayPersonName(driver.fullName)}
-            />
+          <ProfileSection icon={<UserRound />} title="Personal account">
             <ProfileField
               label="Login identifier"
               value={driver.username ?? "Not assigned"}
@@ -107,7 +105,7 @@ export function DriverProfileModal({
             />
           </ProfileSection>
 
-          <ProfileSection icon={<FileText />} title="Owner and eligibility">
+          <ProfileSection icon={<ClipboardList />} title="Owner and eligibility">
             <ProfileField
               label="Owner / organization leader"
               value={
@@ -162,7 +160,7 @@ export function DriverProfileModal({
             />
           </ProfileSection>
 
-          <ProfileSection icon={<CarFront />} title="Vehicle and QR identity">
+          <ProfileSection icon={<CarFront />} title="Vehicle identity">
             <ProfileField
               label="Plate number"
               value={vehicle?.plateNumber ?? "Not assigned"}
@@ -208,6 +206,9 @@ export function DriverProfileModal({
             records.
           </p>
           <div>
+            <button className="secondary" type="button" onClick={onEditAccount}>
+              <Edit3 size={15} /> Edit profile
+            </button>
             <button
               className="secondary"
               type="button"

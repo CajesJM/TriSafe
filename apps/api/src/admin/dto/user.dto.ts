@@ -94,6 +94,12 @@ export class UpdateUserDto {
   newPassword?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(2800000)
+  @Matches(/^data:image\/(?:jpeg|jpg|png|webp);base64/i, { message: 'avatarData must be a JPG, PNG, or WebP image' })
+  avatarData?: string | null;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => UpdateDriverRecordDto)
   driverRecord?: UpdateDriverRecordDto;
