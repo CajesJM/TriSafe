@@ -416,6 +416,36 @@ export type AnnouncementInput = {
   body: string;
   expiresAt?: string;
 };
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  publishedAt: string;
+  expiresAt?: string | null;
+  recipientCount: number;
+  readCount: number;
+};
+export type ViolationStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "DISMISSED";
+export type PenaltyStatus = "NOT_APPLICABLE" | "PENDING" | "PAID" | "WAIVED";
+export type DriverViolation = {
+  id: string;
+  driverId: string;
+  category: string;
+  description: string;
+  occurredAt: string;
+  status: ViolationStatus;
+  penaltyAmount?: number | string | null;
+  penaltyStatus: PenaltyStatus;
+  dueAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  driver: { user: { fullName: string; username?: string | null; phone?: string | null }; vehicles: { plateNumber: string; vehicleType: string }[] };
+};
+export type CreateViolationInput = { driverId: string; category: string; description: string; occurredAt: string; penaltyAmount?: number; dueAt?: string; notes?: string; };
+export type UpdateViolationInput = { status?: ViolationStatus; penaltyStatus?: PenaltyStatus; penaltyAmount?: number | null; dueAt?: string | null; notes?: string | null; };
+export type DriverRatingSummary = { driverId: string; fullName: string; username?: string | null; vehicle: { plateNumber: string; vehicleType: string } | null; average: number | null; ratingCount: number; };
+export type DriverRating = { id: string; score: number; comment?: string | null; visible: boolean; moderationNotes?: string | null; createdAt: string; driver: { user: { fullName: string }; vehicles: { plateNumber: string; vehicleType: string }[] }; passenger: { fullName: string }; ride: { startedAt: string; fromLocationName?: string | null; toLocationName?: string | null }; };
 export type LocationOption = { id: string; name: string };
 export type FareRule = {
   id: string;
@@ -680,4 +710,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  announcements: () => request<Announcement[]>("/admin/announcements"),
+  violations: () => request<DriverViolation[]>("/admin/violations"),
+  createViolation: (body: CreateViolationInput) => request<DriverViolation>("/admin/violations", { method: "POST", body: JSON.stringify(body) }),
+  updateViolation: (id: string, body: UpdateViolationInput) => request<DriverViolation>(`/admin/violations/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  ratingSummaries: () => request<DriverRatingSummary[]>("/ratings/admin/summary"),
+  ratings: () => request<DriverRating[]>("/ratings/admin/all"),
+  moderateRating: (id: string, body: { visible: boolean; moderationNotes?: string }) => request<DriverRating>(`/ratings/admin/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 };

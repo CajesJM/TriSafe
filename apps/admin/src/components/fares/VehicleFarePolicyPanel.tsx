@@ -36,7 +36,13 @@ function toInput(policy: VehicleFarePolicy): VehicleFarePolicyInput {
   };
 }
 
-export function VehicleFarePolicyPanel() {
+export function VehicleFarePolicyPanel({
+  onChanged,
+  onNotify,
+}: {
+  onChanged: () => Promise<void>;
+  onNotify: (type: "success" | "error" | "info", message: string) => void;
+}) {
   const [policies, setPolicies] = useState<Record<string, VehicleFarePolicyInput>>(
     () =>
       Object.fromEntries(
@@ -93,15 +99,17 @@ export function VehicleFarePolicyPanel() {
         ...current,
         [vehicleType]: toInput(saved),
       }));
-      setNotice(
-        `${vehicleType.replaceAll("_", " ")} distance rate was published.`,
-      );
+      await onChanged();
+      const message = `${vehicleType === "TRICYCLE" ? "Tricycle" : "Habal-habal"} distance fare policy was published.`;
+      setNotice(message);
+      onNotify("success", message);
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
-          : "Unable to save the fare rate.",
-      );
+          : "Unable to save the fare rate.";
+      setError(message);
+      onNotify("error", message);
     } finally {
       setSaving("");
     }

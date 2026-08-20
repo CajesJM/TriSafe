@@ -1,0 +1,25 @@
+.violation-workspace { display: grid; gap: 18px; }
+.violation-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line-light); border-radius: 14px; background: var(--line-light); }
+.violation-metric { display: flex; align-items: center; gap: 11px; min-height: 88px; padding: 14px 16px; background: var(--surface-soft); }
+.violation-metric > span { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 10px; color: var(--forest); background: var(--green-100); }
+.violation-metric svg { width: 17px; height: 17px; }
+.violation-metric > div { display: grid; gap: 2px; }
+.violation-metric small { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.violation-metric strong { color: var(--black); font-size: 21px; line-height: 1; letter-spacing: -.04em; }
+.violation-metric em { color: var(--muted); font-size: 9px; font-style: normal; }
+.section-heading .primary svg { width: 15px; height: 15px; }
+.violation-list { display: grid; }
+.violation-row { display: grid; grid-template-columns: 102px minmax(250px,1fr) minmax(140px,.55fr) auto; align-items: center; gap: 16px; border-top: 1px solid var(--line-light); padding: 15px 3px; }
+.violation-row > .status { justify-self: start; }
+.violation-row strong { display: block; color: var(--black); font-size: 12px; }
+.violation-row p { display: -webkit-box; margin: 4px 0; overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.violation-row small { color: var(--muted); font-size: 8px; }
+.violation-penalty { display: grid; gap: 4px; }
+.violation-penalty b { color: var(--charcoal); font-size: 11px; }
+.violation-row .row-action { display: inline-flex; align-items: center; gap: 5px; }
+.violation-row .row-action svg { width: 14px; height: 14px; }
+.violation-loading { display: grid; min-height: 170px; place-items: center; color: var(--muted); font-size: 10px; }
+.violation-modal { width: min(100%, 840px); }
+.violation-form .form-grid { gap: 14px; }
+.violation-form textarea { resize: vertical; }
+@media (max-width: 720px) { .violation-summary { grid-template-columns: 1fr; } .violation-row { grid-template-columns: 1fr auto; gap: 8px 14px; } .violation-row > .status { grid-column: 1; } .violation-row > div { grid-column: 1 / -1; } .violation-row .row-action { grid-column: 2; grid-row: 1; } .violation-penalty { grid-column: 1; } }

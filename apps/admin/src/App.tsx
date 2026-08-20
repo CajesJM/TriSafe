@@ -39,12 +39,13 @@ import { Sidebar } from "./components/layout/Sidebar";
 import {
   ErrorMessage,
   LoadingState,
-  SuccessMessage,
 } from "./components/shared/Feedback";
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
 import { DriverEditForm } from "./components/drivers/DriverEditForm";
 import { FeatureRoadmapPanel } from "./components/shared/FeatureRoadmapPanel";
+import { ViolationManagement } from "./components/violations/ViolationManagement";
+import { RatingManagement } from "./components/ratings/RatingManagement";
 import {
   ToastNotification,
   type ToastMessage,
@@ -62,7 +63,6 @@ export function App() {
   const [loading, setLoading] = useState(hasAuthToken());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
-  const [announcementNotice, setAnnouncementNotice] = useState("");
   const [qrDriver, setQrDriver] = useState<Driver | null>(null);
   const [franchiseDriver, setFranchiseDriver] = useState<Driver | null>(null);
   const [authenticated, setAuthenticated] = useState(hasAuthToken());
@@ -149,7 +149,6 @@ export function App() {
     setTab(nextTab);
     if (nextTab !== "drivers") setDriverProfileId(null);
     if (nextTab !== "drivers") setEditingDriverAccount(null);
-    setAnnouncementNotice("");
   }
   async function openDriverAccount(driver: Driver) {
     setError("");
@@ -363,19 +362,17 @@ export function App() {
                 rules={fareRules}
                 locations={locations}
                 onChanged={refreshFareData}
+                onNotify={showToast}
               />
             )}
             {tab === "announcements" && (
-              <AnnouncementComposer onPublished={setAnnouncementNotice} />
-            )}
-            {tab === "announcements" && announcementNotice && (
-              <SuccessMessage message={announcementNotice} />
+              <AnnouncementComposer onNotify={showToast} />
             )}
             {tab === "incidents" && (
               <IncidentReview incidents={incidents} onReview={reviewIncident} />
             )}
-            {tab === "violations" && <FeatureRoadmapPanel tab="violations" />}
-            {tab === "ratings" && <FeatureRoadmapPanel tab="ratings" />}
+            {tab === "violations" && <ViolationManagement drivers={drivers} onNotify={showToast} />}
+            {tab === "ratings" && <RatingManagement onNotify={showToast} />}
             {tab === "terms" && <FeatureRoadmapPanel tab="terms" />}
             {tab === "settings" && (
               <AdminProfilePanel

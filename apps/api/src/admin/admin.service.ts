@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, UserRole, UserStatus } from '@prisma/client';
+import { PenaltyStatus, Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnouncementDto } from './dto/announcement.dto';
 import { AuditService } from '../audit/audit.service';
@@ -9,6 +9,7 @@ import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { hashPassword } from '../auth/password';
 import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
 import { BoholLocationService } from '../drivers/bohol-location.service';
+import { CreateViolationDto, UpdateViolationDto } from './dto/violation.dto';
 
 const canonicalPersonNamePattern = /^[\p{L}][\p{L} '-]{1,44}, [\p{L}][\p{L}'-]+(?: [\p{L}][\p{L}'-]+)*(?: \p{L}\.)?$/u;
 const dataImageByteLength = (value: string) => {
@@ -537,6 +538,75 @@ export class AdminService {
     const announcement = await this.prisma.announcement.create({ data: { title: dto.title, body: dto.body, expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined, recipients: { create: drivers.map(({ id }) => ({ driverId: id })) } }, include: { recipients: true } });
     await this.audit.record({ actorId, action: 'ANNOUNCEMENT_PUBLISHED', entityType: 'Announcement', entityId: announcement.id, details: { title: dto.title, recipientCount: drivers.length } });
     return announcement;
+  }
+
+  announcements() {
+    return this.prisma.announcement.findMany({
+      include: {
+        _count: { select: { recipients: true } },
+        recipients: { where: { readAt: { not: null } }, select: { announcementId: true } },
+      },
+      orderBy: { publishedAt: 'desc' },
+      take: 100,
+    }).then((announcements) => announcements.map(({ recipients, _count, ...announcement }) => ({
+      ...announcement,
+      recipientCount: _count.recipients,
+      readCount: recipients.length,
+    })));
+  }
+
+  violations() {
+    return this.prisma.driverViolation.findMany({
+      include: {
+        driver: {
+          include: { user: { select: { fullName: true, username: true, phone: true } }, vehicles: { take: 1, select: { plateNumber: true, vehicleType: true } } },
+        },
+      },
+      orderBy: [{ status: 'asc' }, { occurredAt: 'desc' }],
+      take: 200,
+    });
+  }
+
+  async createViolation(actorId: string, dto: CreateViolationDto) {
+    const driver = await this.prisma.driver.findUnique({ where: { id: dto.driverId }, select: { id: true, user: { select: { fullName: true } } } });
+    if (!driver) throw new NotFoundException('Registered driver not found');
+    if (dto.dueAt && new Date(dto.dueAt) < new Date(dto.occurredAt)) throw new BadRequestException('The penalty due date cannot be earlier than the violation date.');
+    const hasPenalty = dto.penaltyAmount !== undefined && dto.penaltyAmount > 0;
+    const violation = await this.prisma.driverViolation.create({
+      data: {
+        driverId: dto.driverId,
+        category: dto.category.trim(),
+        description: dto.description.trim(),
+        occurredAt: new Date(dto.occurredAt),
+        penaltyAmount: hasPenalty ? dto.penaltyAmount : null,
+        penaltyStatus: hasPenalty ? PenaltyStatus.PENDING : PenaltyStatus.NOT_APPLICABLE,
+        dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+        notes: dto.notes?.trim() || null,
+      },
+    });
+    await this.audit.record({ actorId, action: 'VIOLATION_RECORDED', entityType: 'DriverViolation', entityId: violation.id, details: { driverId: driver.id, driverName: driver.user.fullName, category: violation.category, penaltyAmount: violation.penaltyAmount?.toString() ?? null } });
+    return violation;
+  }
+
+  async updateViolation(actorId: string, id: string, dto: UpdateViolationDto) {
+    const current = await this.prisma.driverViolation.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Violation record not found');
+    const nextPenaltyAmount = dto.penaltyAmount === undefined ? current.penaltyAmount : dto.penaltyAmount;
+    const nextPenaltyStatus = dto.penaltyStatus ?? current.penaltyStatus;
+    if (nextPenaltyStatus !== PenaltyStatus.NOT_APPLICABLE && (!nextPenaltyAmount || Number(nextPenaltyAmount) <= 0)) throw new BadRequestException('Enter a penalty amount before assigning a penalty status.');
+    if (dto.dueAt && new Date(dto.dueAt) < current.occurredAt) throw new BadRequestException('The penalty due date cannot be earlier than the violation date.');
+    const updated = await this.prisma.driverViolation.update({
+      where: { id },
+      data: {
+        ...(dto.status ? { status: dto.status } : {}),
+        ...(dto.penaltyStatus ? { penaltyStatus: dto.penaltyStatus } : {}),
+        ...(dto.penaltyAmount !== undefined ? { penaltyAmount: dto.penaltyAmount } : {}),
+        ...(dto.dueAt !== undefined ? { dueAt: dto.dueAt ? new Date(dto.dueAt) : null } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes?.trim() || null } : {}),
+      },
+    });
+    await this.audit.record({ actorId, action: 'VIOLATION_UPDATED', entityType: 'DriverViolation', entityId: id, details: { previousStatus: current.status, status: updated.status, previousPenaltyStatus: current.penaltyStatus, penaltyStatus: updated.penaltyStatus, penaltyAmount: updated.penaltyAmount?.toString() ?? null } });
+    return updated;
   }
 
   auditLogs(limit?: number) { return this.audit.list(limit); }

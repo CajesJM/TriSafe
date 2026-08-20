@@ -47,6 +47,20 @@ enum IncidentStatus {
   DISMISSED
 }
 
+enum ViolationStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+enum PenaltyStatus {
+  NOT_APPLICABLE
+  PENDING
+  PAID
+  WAIVED
+}
+
 model User {
   id              String    @id @default(cuid())
   role            UserRole
@@ -63,6 +77,7 @@ model User {
   driverProfile   Driver?
   address         UserAddress?
   passengerRides  Ride[]    @relation("PassengerRides")
+  submittedRatings DriverRating[] @relation("PassengerRatings")
   incidents       Incident[]
   livePresence    LivePresence?
 }
@@ -112,6 +127,8 @@ model Driver {
   vehicles        Vehicle[]
   announcements   AnnouncementRecipient[]
   address         DriverAddress?
+  violations      DriverViolation[]
+  ratings         DriverRating[]
   createdAt       DateTime @default(now())
 }
 
@@ -249,6 +266,7 @@ model Ride {
   passenger       User     @relation("PassengerRides", fields: [passengerId], references: [id])
   vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
   incident        Incident?
+  rating          DriverRating?
   locationPoints  RideLocationPoint[]
   @@index([passengerId, status])
 }
@@ -293,6 +311,46 @@ model Incident {
   passenger       User     @relation(fields: [passengerId], references: [id])
   ride            Ride?    @relation(fields: [rideId], references: [id])
   @@index([status, createdAt])
+}
+
+model DriverViolation {
+  id            String        @id @default(cuid())
+  driverId      String
+  incidentId    String?
+  category      String
+  description   String
+  occurredAt    DateTime
+  status        ViolationStatus @default(OPEN)
+  penaltyAmount Decimal?      @db.Decimal(10, 2)
+  penaltyStatus PenaltyStatus @default(NOT_APPLICABLE)
+  dueAt         DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  driver        Driver        @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  @@index([driverId, status])
+  @@index([status, penaltyStatus, dueAt])
+  @@index([occurredAt])
+}
+
+model DriverRating {
+  id              String   @id @default(cuid())
+  driverId        String
+  passengerId     String
+  rideId          String   @unique
+  score           Int
+  comment         String?
+  visible         Boolean  @default(true)
+  moderationNotes String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  driver          Driver   @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  passenger       User     @relation("PassengerRatings", fields: [passengerId], references: [id], onDelete: Restrict)
+  ride            Ride     @relation(fields: [rideId], references: [id], onDelete: Restrict)
+
+  @@index([driverId, visible, createdAt])
+  @@index([passengerId, createdAt])
 }
 
 model EmergencyContact {

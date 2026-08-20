@@ -8,6 +8,7 @@ import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
+import { CreateViolationDto, UpdateViolationDto } from './dto/violation.dto';
 
 @Controller('admin')
 @Roles(UserRole.LGU_ADMIN)
@@ -29,5 +30,9 @@ export class AdminController {
   @Patch('roles/:id') updateRole(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: UpdateRoleDto) { return this.service.updateRole(req.user.id, id, dto); }
   @Delete('roles/:id') deleteRole(@Req() req: RequestWithUser, @Param('id') id: string) { return this.service.deleteRole(req.user.id, id); }
   @Get('audit-logs') auditLogs(@Query('limit') limit?: string) { return this.service.auditLogs(limit ? Number(limit) : undefined); }
+  @Get('announcements') announcements() { return this.service.announcements(); }
   @Post('announcements') announce(@Req() req: RequestWithUser, @Body() dto: CreateAnnouncementDto) { return this.service.createAnnouncement(req.user.id, dto); }
+  @Get('violations') violations() { return this.service.violations(); }
+  @Post('violations') createViolation(@Req() req: RequestWithUser, @Body() dto: CreateViolationDto) { return this.service.createViolation(req.user.id, dto); }
+  @Patch('violations/:id') updateViolation(@Req() req: RequestWithUser, @Param('id') id: string, @Body() dto: UpdateViolationDto) { return this.service.updateViolation(req.user.id, id, dto); }
 }

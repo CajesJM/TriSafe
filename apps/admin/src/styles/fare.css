@@ -1,6 +1,44 @@
 .fare-table-row, .fare-table-head { grid-template-columns: minmax(180px, 1fr) minmax(210px, 1.15fr) minmax(105px, .55fr) minmax(140px, .7fr) minmax(75px, .42fr) minmax(145px, .72fr); min-width: 1060px; }
 .fare-form { max-width: 980px; margin: 0 auto; }
 .fare-workspace { display: grid; gap: 18px; }
+.fare-matrix-summary { display: grid; grid-template-columns: minmax(190px,1.2fr) repeat(3,minmax(160px,1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line-light); border-radius: 14px; background: var(--line-light); }
+.fare-matrix-summary > div { min-width: 0; min-height: 94px; padding: 14px 16px; background: var(--surface-soft); }
+.fare-matrix-summary-lead { display: grid; align-content: center; gap: 3px; background: linear-gradient(135deg,color-mix(in srgb,var(--forest) 13%,var(--surface-soft)),var(--surface-soft)) !important; }
+.fare-matrix-summary-lead > span, .fare-matrix-metric > div > span { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.fare-matrix-summary-lead strong { color: var(--black); font-size: 27px; line-height: 1; letter-spacing: -.055em; }
+.fare-matrix-summary-lead small, .fare-matrix-metric small { color: var(--muted); font-size: 9px; line-height: 1.35; }
+.fare-matrix-metric { display: flex; align-items: center; gap: 11px; }
+.fare-matrix-metric-icon { display: grid; flex: 0 0 35px; width: 35px; height: 35px; place-items: center; border-radius: 10px; color: var(--forest); background: var(--green-100); }
+.fare-matrix-metric-icon svg { width: 17px; height: 17px; }
+.fare-matrix-metric > div { display: grid; min-width: 0; gap: 2px; }
+.fare-matrix-metric strong { color: var(--black); font-size: 19px; line-height: 1.05; letter-spacing: -.04em; }
+.fare-matrix-metric.needs-attention { background: color-mix(in srgb,#f4b740 13%,var(--surface-soft)); }
+.fare-matrix-metric.needs-attention .fare-matrix-metric-icon { color: #8c5a00; background: #ffefc9; }
+.fare-rule-modal { width: min(100%, 910px); }
+.fare-rule-form { display: grid; gap: 0; }
+.fare-rule-section { padding: 2px 0 22px; }
+.fare-rule-section + .fare-rule-section { border-top: 1px solid var(--line-light); padding-top: 21px; }
+.fare-rule-section > header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.fare-rule-section > header > span { display: grid; flex: 0 0 31px; width: 31px; height: 31px; place-items: center; border-radius: 9px; color: var(--forest); background: var(--green-100); }
+.fare-rule-section > header svg { width: 15px; height: 15px; }
+.fare-rule-section h3 { margin: 1px 0 3px; color: var(--black); font-size: 13px; }
+.fare-rule-section p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.48; }
+.fare-rule-route-preview { display: grid; grid-template-columns: 23px minmax(0,1fr); gap: 2px 7px; align-items: center; margin: 0 0 14px; border: 1px solid color-mix(in srgb,var(--forest) 17%,var(--line)); border-radius: 11px; padding: 10px 12px; color: var(--forest); background: var(--primary-50); }
+.fare-rule-route-preview > svg { grid-row: 1 / span 2; width: 16px; height: 16px; }
+.fare-rule-route-preview strong { overflow: hidden; color: var(--charcoal); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.fare-rule-route-preview strong span { margin: 0 4px; color: var(--forest); font-size: 9px; font-weight: 700; }
+.fare-rule-route-preview small { color: var(--muted); font-size: 8px; }
+.fare-rule-form .form-grid { gap: 13px; }
+.fare-rule-form .field > span { display: flex; align-items: baseline; gap: 4px; }
+.fare-rule-form .field > span small { color: var(--muted); font-size: 8px; font-weight: 500; }
+.fare-rule-form .field input, .fare-rule-form .field select { min-height: 42px; border-color: var(--line); background: #fff; font-size: 12px; }
+.fare-rule-form .field input:focus, .fare-rule-form .field select:focus { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb,var(--lime) 18%,transparent); outline: none; }
+.fare-number-input { position: relative; display: flex; align-items: center; }
+.fare-number-input > i { position: absolute; left: 12px; color: var(--forest); font-size: 12px; font-style: normal; font-weight: 800; pointer-events: none; }
+.fare-number-input > i + input { padding-left: 27px; }
+.fare-number-input > small { position: absolute; right: 11px; color: var(--muted); font-size: 9px; pointer-events: none; }
+.fare-number-input > input:has(+ small) { padding-right: 35px; }
+.field-hint { display: block; min-height: 20px; margin-top: 5px; color: var(--muted); font-size: 8px; line-height: 1.42; }
 .live-map-card, .fare-policy-card { padding: 24px; overflow: hidden; }
 .live-map-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 16px; }
 .live-map-header h3 { margin: 0; font-size: 20px; letter-spacing: -.03em; }
@@ -77,6 +115,7 @@
   .fare-simulator { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
   .fare-simulator > .eyebrow, .fare-simulator > h4, .fare-simulator > p { grid-column: 1 / -1; }
 }
+@media (max-width: 860px) { .fare-matrix-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 760px) {
   .live-map-header { display: grid; }
   .map-sync { width: 100%; min-width: 0; }
@@ -89,4 +128,7 @@
   .live-map-card, .fare-policy-card { padding: 16px; }
   .policy-fields, .fare-simulator { grid-template-columns: 1fr; }
   .fare-simulator > * { grid-column: 1 !important; }
+  .fare-matrix-summary { grid-template-columns: 1fr; }
+  .fare-matrix-summary > div { min-height: 76px; }
+  .fare-rule-modal { width: min(100%, calc(100vw - 16px)); }
 }
