@@ -1,5 +1,4 @@
-import { Download, KeyRound, LockKeyhole, Printer } from "lucide-react";
-import type { ReactNode } from "react";
+import { Download, Printer } from "lucide-react";
 import type { Driver, RegisterDriverInput } from "../../api";
 import { ModalShell } from "../shared/ModalShell";
 import { displayPersonName } from "../../utils/personName";
@@ -12,7 +11,7 @@ export type DriverRegistrationReceiptData = {
   driverName: string;
   username: string;
   phone: string;
-  temporaryPassword: string;
+  initialPassword: string;
   accountStatus: string;
   driverStatus: string;
   addressLine: string;
@@ -36,6 +35,12 @@ export function createDriverReceipt(
   const vehicle = driver.vehicles[0];
   const generatedAt = new Date().toISOString();
   const habal = (vehicle?.vehicleType ?? input.vehicleType) === "HABAL_HABAL";
+  const unitNumber =
+    vehicle?.permitNumber ??
+    vehicle?.bodyNumber ??
+    input.permitNumber ??
+    input.bodyNumber ??
+    "Not assigned";
   return {
     receiptNumber: `TRI-${generatedAt.slice(0, 10).replaceAll("-", "")}-${driver.id.slice(-6).toUpperCase()}`,
     generatedAt,
@@ -44,10 +49,9 @@ export function createDriverReceipt(
       ? `${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}`
       : `${input.ownerLastName}, ${input.ownerFirstName}${input.ownerMiddleName ? ` ${input.ownerMiddleName}` : ""}`,
     driverName: displayPersonName(driver.fullName),
-    username:
-      driver.username ?? (habal ? input.permitNumber! : input.bodyNumber!),
+    username: driver.username ?? "Not assigned",
     phone: driver.phone ?? input.phone,
-    temporaryPassword: input.temporaryPassword,
+    initialPassword: unitNumber,
     accountStatus: driver.accountStatus ?? "ACTIVE",
     driverStatus: driver.verification,
     addressLine: [
@@ -59,12 +63,7 @@ export function createDriverReceipt(
       .filter(Boolean)
       .join(", "),
     unitLabel: habal ? "Permit number" : "Body number",
-    unitNumber:
-      vehicle?.permitNumber ??
-      vehicle?.bodyNumber ??
-      input.permitNumber ??
-      input.bodyNumber ??
-      "Not assigned",
+    unitNumber,
     engineNumber: vehicle?.engineNumber ?? input.engineNumber,
     chassisNumber: vehicle?.chassisNumber ?? input.chassisNumber,
     plateNumber: vehicle?.plateNumber ?? input.plateNumber,
@@ -88,8 +87,9 @@ export function DriverRegistrationReceipt({
   onDownloaded: () => void;
   onError: (message: string) => void;
 }) {
+  const rows = receiptRows(receipt);
   function download() {
-    const blob = new Blob([documentHtml(receipt)], {
+    const blob = new Blob([receiptDocument(receipt)], {
       type: "text/html;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
@@ -109,14 +109,14 @@ export function DriverRegistrationReceipt({
       return;
     }
     target.opener = null;
-    target.document.write(documentHtml(receipt, true));
+    target.document.write(receiptDocument(receipt, true));
     target.document.close();
   }
   return (
     <ModalShell
       eyebrow="REGISTRATION COMPLETE"
       title="Driver registration receipt"
-      description="Give this confidential credential record only to the registered driver."
+      description="Review the official registration details before printing or downloading the record."
       onClose={onClose}
       size="large"
       className="driver-receipt-modal"
@@ -131,16 +131,6 @@ export function DriverRegistrationReceipt({
         </>
       }
     >
-      <div className="driver-receipt-alert">
-        <LockKeyhole />
-        <div>
-          <strong>Confidential one-time document</strong>
-          <span>
-            The temporary password is stored only as a secure hash after
-            registration.
-          </span>
-        </div>
-      </div>
       <div className="driver-receipt-heading">
         <div>
           <span>Receipt number</span>
@@ -151,60 +141,44 @@ export function DriverRegistrationReceipt({
           <strong>{formatDateTime(receipt.generatedAt)}</strong>
         </div>
       </div>
-      <Section title="Driver account">
-        <Field label="Driver name" value={receipt.driverName} />
-        <Field label="Login identifier" value={receipt.username} />
-        <Field label="Contact number" value={receipt.phone} />
-        <Field label="Account status" value={receipt.accountStatus} />
-        <div className="driver-receipt-password">
-          <span>
-            <KeyRound /> Temporary password
-          </span>
-          <strong>{receipt.temporaryPassword}</strong>
-          <small>Change this after first sign-in.</small>
-        </div>
-      </Section>
-      <Section title="Owner and present address">
-        <Field label="Owner / leader" value={receipt.ownerName} />
-        <Field label="Present address" value={receipt.addressLine} />
-      </Section>
-      <Section title="Vehicle identity">
-        <Field
-          label="Vehicle type"
-          value={receipt.vehicleType.replaceAll("_", " ")}
-        />
-        <Field label={receipt.unitLabel} value={receipt.unitNumber} />
-        <Field label="Engine number" value={receipt.engineNumber} />
-        <Field label="Chassis number" value={receipt.chassisNumber} />
-        <Field label="Plate number" value={receipt.plateNumber} />
-        <Field label="QR status" value={receipt.qrStatus} />
-      </Section>
-      <Section title="Internal franchise control">
-        <Field label="Franchise number" value={receipt.franchiseNumber} />
-        <Field label="Issued" value={formatDate(receipt.franchiseIssuedAt)} />
-        <Field label="Expires" value={formatDate(receipt.franchiseExpiresAt)} />
-        <Field label="Status" value={receipt.franchiseStatus} />
-        <Field label="Transport status" value={receipt.driverStatus} />
-      </Section>
+      <div className="driver-receipt-uniform-grid">
+        {rows.map(([label, value]) => (
+          <div
+            className={`driver-receipt-field ${label === "Initial password" ? "driver-receipt-initial-password" : ""}`}
+            key={label}
+          >
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
     </ModalShell>
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="driver-receipt-section">
-      <h3>{title}</h3>
-      <div>{children}</div>
-    </section>
-  );
-}
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="driver-receipt-field">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
+function receiptRows(
+  receipt: DriverRegistrationReceiptData,
+): [string, string][] {
+  return [
+    ["Owner / leader", receipt.ownerName],
+    ["Driver name", receipt.driverName],
+    ["Login identifier", receipt.username],
+    ["Driver contact", receipt.phone],
+    ["Initial password", receipt.initialPassword],
+    ["Account status", receipt.accountStatus],
+    ["Present address", receipt.addressLine],
+    ["Vehicle type", receipt.vehicleType.replaceAll("_", " ")],
+    [receipt.unitLabel, receipt.unitNumber],
+    ["Engine number", receipt.engineNumber],
+    ["Chassis number", receipt.chassisNumber],
+    ["Plate number", receipt.plateNumber],
+    ["Franchise number", receipt.franchiseNumber],
+    ["Franchise issued", formatDate(receipt.franchiseIssuedAt)],
+    ["Franchise expires", formatDate(receipt.franchiseExpiresAt)],
+    ["Franchise status", receipt.franchiseStatus],
+    ["Transport status", receipt.driverStatus],
+    ["QR status", receipt.qrStatus],
+  ];
 }
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-PH", {
@@ -234,27 +208,10 @@ function escapeHtml(value: string) {
       ] ?? c,
   );
 }
-function documentHtml(
+function receiptDocument(
   receipt: DriverRegistrationReceiptData,
   autoPrint = false,
 ) {
-  const rows: [string, string][] = [
-    ["Owner / leader", receipt.ownerName],
-    ["Driver name", receipt.driverName],
-    ["Login identifier", receipt.username],
-    ["Driver contact", receipt.phone],
-    ["Temporary password", receipt.temporaryPassword],
-    ["Present address", receipt.addressLine],
-    ["Vehicle type", receipt.vehicleType.replaceAll("_", " ")],
-    [receipt.unitLabel, receipt.unitNumber],
-    ["Engine number", receipt.engineNumber],
-    ["Chassis number", receipt.chassisNumber],
-    ["Plate number", receipt.plateNumber],
-    ["Account status", receipt.accountStatus],
-    ["Transport status", receipt.driverStatus],
-    ["Franchise number", receipt.franchiseNumber],
-    ["Franchise expires", formatDate(receipt.franchiseExpiresAt)],
-    ["QR status", receipt.qrStatus],
-  ];
-  return `<!doctype html><html><head><meta charset="utf-8"><title>TriSafe Driver Receipt</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;background:#fff;border-top:8px solid #337418;padding:40px}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}h1{margin:8px 0}.meta{color:#666;font-size:12px}.notice{margin:22px 0;padding:14px;background:#eef8e9;color:#245b11}.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd}.row{padding:12px 14px;border-bottom:1px solid #eee}.row span{display:block;color:#777;font-size:10px;text-transform:uppercase}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.password{background:#dff7d4}@media print{body{background:#fff}.page{margin:0}}@media(max-width:600px){.grid{grid-template-columns:1fr}.page{margin:0;padding:24px}}</style></head><body><main class="page"><div class="brand">TRISAFE · LGU DRIVER REGISTRY</div><h1>Driver registration receipt</h1><div class="meta">${escapeHtml(receipt.receiptNumber)} · ${escapeHtml(formatDateTime(receipt.generatedAt))}</div><div class="notice"><strong>CONFIDENTIAL:</strong> Give this record only to the registered driver.</div><section class="grid">${rows.map(([l, v]) => `<div class="row ${l === "Temporary password" ? "password" : ""}"><span>${escapeHtml(l)}</span><strong>${escapeHtml(v)}</strong></div>`).join("")}</section></main>${autoPrint ? "<script>window.addEventListener('load',()=>window.print())<\/script>" : ""}</body></html>`;
+  const rows = receiptRows(receipt);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>TriSafe Driver Receipt</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;background:#fff;border-top:8px solid #337418;padding:40px}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}h1{margin:8px 0}.meta{color:#666;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd;margin-top:22px}.row{padding:12px 14px;border-bottom:1px solid #eee}.row:nth-child(odd){border-right:1px solid #eee}.row span{display:block;color:#777;font-size:10px;text-transform:uppercase;letter-spacing:.06em}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.password{background:#dff7d4}@media print{body{background:#fff}.page{margin:0}}@media(max-width:600px){.grid{grid-template-columns:1fr}.row:nth-child(odd){border-right:0}.page{margin:0;padding:24px}}</style></head><body><main class="page"><div class="brand">TRISAFE · LGU DRIVER REGISTRY</div><h1>Driver registration receipt</h1><div class="meta">${escapeHtml(receipt.receiptNumber)} · ${escapeHtml(formatDateTime(receipt.generatedAt))}</div><section class="grid">${rows.map(([label, value]) => `<div class="row ${label === "Initial password" ? "password" : ""}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</section></main>${autoPrint ? "<script>window.addEventListener('load',()=>window.print())<\/script>" : ""}</body></html>`;
 }

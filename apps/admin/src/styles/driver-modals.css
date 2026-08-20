@@ -26,6 +26,11 @@
 .driver-receipt-heading > div { display: grid; gap: 4px; border-radius: 10px; padding: 11px 12px; background: var(--surface-soft); }
 .driver-receipt-heading span, .driver-receipt-field span { color: var(--muted); font-size: 7px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
 .driver-receipt-heading strong { color: var(--black); font-size: 9px; overflow-wrap: anywhere; }
+.driver-receipt-uniform-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--line-light); border-radius: 12px; background: #fff; }
+.driver-receipt-uniform-grid .driver-receipt-field { min-height: 67px; }
+.driver-receipt-uniform-grid .driver-receipt-field:nth-child(odd) { border-right: 1px solid var(--line-light); }
+.driver-receipt-uniform-grid .driver-receipt-initial-password { color: var(--black); background: color-mix(in srgb, var(--lime) 18%, var(--off-white)); }
+.driver-receipt-uniform-grid .driver-receipt-initial-password strong { border: 1px dashed color-mix(in srgb, var(--forest) 42%, var(--line)); border-radius: 7px; padding: 5px 7px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .035em; }
 .driver-receipt-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 13px; }
 .driver-receipt-section { border: 1px solid var(--line-light); border-radius: 12px; overflow: hidden; background: #fff; }
 .driver-receipt-section + .driver-receipt-section { margin-top: 13px; }
@@ -88,8 +93,8 @@
 
 @media (max-width: 650px) {
   .franchise-modal-form, .driver-receipt-columns, .driver-receipt-heading { grid-template-columns: 1fr; }
-  .driver-receipt-section > div { grid-template-columns: 1fr; }
-  .driver-receipt-field:nth-child(odd) { border-right: 0; }
+  .driver-receipt-section > div, .driver-receipt-uniform-grid { grid-template-columns: 1fr; }
+  .driver-receipt-field:nth-child(odd), .driver-receipt-uniform-grid .driver-receipt-field:nth-child(odd) { border-right: 0; }
   .driver-file-preview { padding: 18px; }
   .driver-file-preview > section > div { grid-template-columns: 1fr; }
   .driver-file-preview dl:nth-child(odd) { border-right: 0; }

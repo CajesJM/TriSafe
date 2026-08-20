@@ -2,6 +2,7 @@ class DriverProfile {
   final String id;
   final String fullName;
   final String username;
+  final String? avatarData;
   final String phone;
   final String accountStatus;
   final String verification;
@@ -15,6 +16,7 @@ class DriverProfile {
       : id = json['id'] as String,
         fullName = json['fullName'] as String,
         username = json['username'] as String? ?? '',
+        avatarData = json['avatarData'] as String?,
         phone = json['phone'] as String? ?? '',
         accountStatus = json['accountStatus'] as String? ?? 'ACTIVE',
         verification = json['verification'] as String,

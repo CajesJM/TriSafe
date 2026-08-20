@@ -196,18 +196,18 @@ async function main() {
   await prisma.user.upsert({
     where: { id: "driver-demo-user" },
     update: {
-      username: "tri-demo-001",
+      username: "delacruz.juan",
       email: null,
-      passwordHash: hashPassword("driver12345"),
+      passwordHash: hashPassword("TRI-DEMO-001"),
     },
     create: {
       id: "driver-demo-user",
       role: "DRIVER",
       fullName: "Juan Dela Cruz",
-      username: "tri-demo-001",
+      username: "delacruz.juan",
       email: null,
       phone: "+639171234567",
-      passwordHash: hashPassword("driver12345"),
+      passwordHash: hashPassword("TRI-DEMO-001"),
     },
   });
   await prisma.transportOwner.upsert({

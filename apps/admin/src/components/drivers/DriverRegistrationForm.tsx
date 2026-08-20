@@ -1,15 +1,21 @@
 import { FormEvent, ReactNode, useEffect, useId, useState } from "react";
-import { Eye, EyeOff, ShieldCheck, X } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { api, Driver, RegisterDriverInput } from "../../api";
 import {
   createDriverReceipt,
   type DriverRegistrationReceiptData,
 } from "./DriverRegistrationReceipt";
+import { DriverPhotoField } from "./DriverPhotoField";
 import {
   DriverPresentAddressFields,
   type DriverPresentAddressValue,
 } from "./DriverPresentAddressFields";
+import {
+  DriverRegistrationOverview,
+  type DriverRegistrationDraft,
+  generatedDriverUsername,
+} from "./DriverRegistrationOverview";
 
 type FormState = Omit<RegisterDriverInput, "address"> &
   DriverPresentAddressValue;
@@ -22,7 +28,7 @@ const emptyForm: FormState = {
   driverMiddleName: "",
   accountStatus: "ACTIVE",
   phone: "",
-  temporaryPassword: "",
+  avatarData: "",
   vehicleType: "TRICYCLE",
   bodyNumber: "",
   permitNumber: "",
@@ -42,7 +48,6 @@ const emptyForm: FormState = {
 };
 const recordPattern = /^[A-Z0-9-]+$/;
 const namePattern = /^[\p{L}][\p{L} .'-]*$/u;
-const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 const cleanName = (value: string) =>
   value
     .replace(/[^\p{L} .'-]/gu, "")
@@ -71,17 +76,19 @@ export function DriverRegistrationForm({
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   useEffect(() => {
     const close = (event: KeyboardEvent) =>
       event.key === "Escape" && !saving && onCancel();
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
   }, [onCancel, saving]);
-
   function change(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setError("");
+  }
+  function fail(message: string) {
+    setError(message);
+    onError(message);
   }
   function validate() {
     const names = [
@@ -94,11 +101,6 @@ export function DriverRegistrationForm({
       return "Complete the owner and driver names using letters only.";
     if (!/^9\d{9}$/.test(form.phone))
       return "Driver contact number must contain 10 digits beginning with 9 after +63.";
-    if (
-      form.temporaryPassword.length < 10 ||
-      !passwordPattern.test(form.temporaryPassword)
-    )
-      return "Temporary password must contain uppercase, lowercase, number, and symbol.";
     const unit =
       form.vehicleType === "TRICYCLE" ? form.bodyNumber : form.permitNumber;
     if (!unit || !recordPattern.test(unit))
@@ -128,8 +130,7 @@ export function DriverRegistrationForm({
     event.preventDefault();
     const message = validate();
     if (message) {
-      setError(message);
-      onError(message);
+      fail(message);
       return;
     }
     setSaving(true);
@@ -143,7 +144,7 @@ export function DriverRegistrationForm({
         driverMiddleName: form.driverMiddleName?.trim() || undefined,
         accountStatus: form.accountStatus,
         phone: `+63${form.phone}`,
-        temporaryPassword: form.temporaryPassword,
+        avatarData: form.avatarData || undefined,
         vehicleType: form.vehicleType,
         bodyNumber:
           form.vehicleType === "TRICYCLE" ? form.bodyNumber : undefined,
@@ -168,17 +169,19 @@ export function DriverRegistrationForm({
       const driver = await api.registerDriver(registration);
       onCreated(driver, createDriverReceipt(driver, registration));
     } catch (requestError) {
-      const message =
+      fail(
         requestError instanceof Error
           ? requestError.message
-          : "Unable to register the driver.";
-      setError(message);
-      onError(message);
+          : "Unable to register the driver.",
+      );
     } finally {
       setSaving(false);
     }
   }
-
+  const username = generatedDriverUsername(
+    form.driverLastName,
+    form.driverFirstName,
+  );
   return createPortal(
     <div
       className="driver-registration-backdrop"
@@ -198,15 +201,15 @@ export function DriverRegistrationForm({
               <span className="eyebrow">LGU TRANSPORT REGISTRY</span>
               <h2 id={titleId}>Register driver and vehicle</h2>
               <p>
-                Record the official owner, member driver, present address, and
-                motorcycle identity.
+                Create the official owner, driver, vehicle, account, and
+                QR-linked transport record.
               </p>
             </div>
             <button
               type="button"
               onClick={onCancel}
               disabled={saving}
-              aria-label="Close"
+              aria-label="Close registration form"
             >
               <X />
             </button>
@@ -220,87 +223,99 @@ export function DriverRegistrationForm({
             <Section
               number="01"
               title="Owner / organization leader"
-              description="One owner record can be linked to multiple member drivers."
+              description="The owner can be connected to multiple registered member drivers."
             >
               <div className="driver-name-fields">
                 <NameField
                   label="Owner last name"
                   value={form.ownerLastName}
-                  onChange={(v) => change("ownerLastName", cleanName(v))}
+                  onChange={(value) =>
+                    change("ownerLastName", cleanName(value))
+                  }
                 />
                 <NameField
                   label="Owner first name"
                   value={form.ownerFirstName}
-                  onChange={(v) => change("ownerFirstName", cleanName(v))}
+                  onChange={(value) =>
+                    change("ownerFirstName", cleanName(value))
+                  }
                 />
                 <NameField
                   label="Owner middle name"
                   value={form.ownerMiddleName ?? ""}
-                  onChange={(v) => change("ownerMiddleName", cleanName(v))}
+                  onChange={(value) =>
+                    change("ownerMiddleName", cleanName(value))
+                  }
                   required={false}
                 />
               </div>
             </Section>
             <Section
               number="02"
-              title="Driver and account"
-              description="The actual member driver receives the TriSafe login account."
+              title="Driver account"
+              description="The driver receives a private account. Their photo is optional and never shown in public QR verification."
             >
+              <DriverPhotoField
+                value={form.avatarData}
+                fallbackName={`${form.driverFirstName} ${form.driverLastName}`}
+                onChange={(value) => change("avatarData", value)}
+                onError={fail}
+              />
               <div className="driver-name-fields">
                 <NameField
                   label="Driver last name"
                   value={form.driverLastName}
-                  onChange={(v) => change("driverLastName", cleanName(v))}
+                  onChange={(value) =>
+                    change("driverLastName", cleanName(value))
+                  }
                 />
                 <NameField
                   label="Driver first name"
                   value={form.driverFirstName}
-                  onChange={(v) => change("driverFirstName", cleanName(v))}
+                  onChange={(value) =>
+                    change("driverFirstName", cleanName(value))
+                  }
                 />
                 <NameField
                   label="Driver middle name"
                   value={form.driverMiddleName ?? ""}
-                  onChange={(v) => change("driverMiddleName", cleanName(v))}
+                  onChange={(value) =>
+                    change("driverMiddleName", cleanName(value))
+                  }
                   required={false}
                 />
               </div>
               <div className="form-grid driver-registration-grid">
                 <PhoneField
                   value={form.phone}
-                  onChange={(v) => change("phone", v)}
+                  onChange={(value) => change("phone", value)}
                 />
-                <label className="field">
-                  <span>
-                    Temporary password <em>*</em>
-                  </span>
-                  <div className="driver-password-input">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={form.temporaryPassword}
-                      onChange={(e) =>
-                        change("temporaryPassword", e.target.value.slice(0, 72))
-                      }
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      {showPassword ? <EyeOff /> : <Eye />}
-                    </button>
-                  </div>
-                  <small>The Body or Permit Number becomes the username.</small>
-                </label>
+                <CredentialField
+                  label="Username"
+                  value={username}
+                  note="Generated automatically from last name and first name. Similar names receive a number only when needed."
+                />
+                <CredentialField
+                  label="Initial password"
+                  value={
+                    form.vehicleType === "TRICYCLE"
+                      ? form.bodyNumber || "Enter body number below"
+                      : form.permitNumber || "Enter permit number below"
+                  }
+                  note="Set automatically to the Body Number or Permit Number. The driver should change it after first sign-in."
+                />
                 <label className="field">
                   <span>
                     Account status <em>*</em>
                   </span>
                   <select
                     value={form.accountStatus}
-                    onChange={(e) => change("accountStatus", e.target.value)}
+                    onChange={(event) =>
+                      change("accountStatus", event.target.value)
+                    }
                   >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
+                    <option value="ACTIVE">Active — can sign in</option>
+                    <option value="INACTIVE">Inactive — sign-in blocked</option>
                   </select>
                 </label>
               </div>
@@ -308,7 +323,7 @@ export function DriverRegistrationForm({
             <Section
               number="03"
               title="Present address"
-              description="Official Bohol hierarchy with the Purok written on the LGU form."
+              description="Official Bohol hierarchy, followed by the Purok recorded on the LGU form."
             >
               <DriverPresentAddressFields
                 value={form}
@@ -321,7 +336,7 @@ export function DriverRegistrationForm({
             <Section
               number="04"
               title="Motorcycle information"
-              description="The unit number changes according to the selected vehicle type."
+              description="Select the vehicle type first. TriSafe then uses the correct identifying number."
             >
               <div className="form-grid driver-registration-grid">
                 <label className="field">
@@ -330,10 +345,10 @@ export function DriverRegistrationForm({
                   </span>
                   <select
                     value={form.vehicleType}
-                    onChange={(e) => {
-                      change("vehicleType", e.target.value);
-                      setForm((c) => ({
-                        ...c,
+                    onChange={(event) => {
+                      change("vehicleType", event.target.value);
+                      setForm((current) => ({
+                        ...current,
                         bodyNumber: "",
                         permitNumber: "",
                       }));
@@ -354,55 +369,61 @@ export function DriverRegistrationForm({
                       ? (form.bodyNumber ?? "")
                       : (form.permitNumber ?? "")
                   }
-                  onChange={(v) =>
+                  onChange={(value) =>
                     change(
                       form.vehicleType === "TRICYCLE"
                         ? "bodyNumber"
                         : "permitNumber",
-                      cleanRecord(v, 30),
+                      cleanRecord(value, 30),
                     )
                   }
                 />
                 <RecordField
                   label="Engine number"
                   value={form.engineNumber}
-                  onChange={(v) => change("engineNumber", cleanRecord(v))}
+                  onChange={(value) =>
+                    change("engineNumber", cleanRecord(value))
+                  }
                 />
                 <RecordField
                   label="Chassis number"
                   value={form.chassisNumber}
-                  onChange={(v) => change("chassisNumber", cleanRecord(v))}
+                  onChange={(value) =>
+                    change("chassisNumber", cleanRecord(value))
+                  }
                 />
                 <RecordField
                   label="Plate number"
                   value={form.plateNumber}
-                  onChange={(v) => change("plateNumber", cleanRecord(v, 15))}
+                  onChange={(value) =>
+                    change("plateNumber", cleanRecord(value, 15))
+                  }
                 />
               </div>
             </Section>
             <Section
               number="05"
               title="Internal franchise control"
-              description="Retained for QR eligibility and expiration enforcement; not part of the driver identity."
+              description="Used by TriSafe to enforce franchise validity, status, and QR ride eligibility."
             >
               <div className="form-grid driver-registration-grid">
                 <RecordField
                   label="Franchise number"
                   value={form.franchiseNumber}
-                  onChange={(v) =>
-                    change("franchiseNumber", cleanRecord(v, 40))
+                  onChange={(value) =>
+                    change("franchiseNumber", cleanRecord(value, 40))
                   }
                 />
                 <DateField
                   label="Issued date"
                   value={form.franchiseIssuedAt}
-                  onChange={(v) => change("franchiseIssuedAt", v)}
+                  onChange={(value) => change("franchiseIssuedAt", value)}
                   max={todayDate()}
                 />
                 <DateField
                   label="Expiration date"
                   value={form.franchiseExpiresAt}
-                  onChange={(v) => change("franchiseExpiresAt", v)}
+                  onChange={(value) => change("franchiseExpiresAt", value)}
                   min={form.franchiseIssuedAt || todayDate()}
                 />
               </div>
@@ -410,10 +431,16 @@ export function DriverRegistrationForm({
           </div>
           <footer className="driver-registration-actions">
             <p>
-              <ShieldCheck /> All records are validated before creation.
+              <ShieldCheck /> Validated against the LGU transport registry
+              before creation.
             </p>
             <div>
-              <button className="secondary" type="button" onClick={onCancel}>
+              <button
+                className="secondary"
+                type="button"
+                onClick={onCancel}
+                disabled={saving}
+              >
                 Cancel
               </button>
               <button className="primary" disabled={saving} type="submit">
@@ -422,17 +449,7 @@ export function DriverRegistrationForm({
             </div>
           </footer>
         </form>
-        <aside className="driver-registration-help">
-          <span className="driver-registration-help-icon">
-            <ShieldCheck />
-          </span>
-          <span className="eyebrow">OFFICIAL LGU RECORD</span>
-          <h3>Owner, driver, and vehicle—correctly separated</h3>
-          <p>
-            The Body or Permit Number identifies the driver account while the QR
-            remains linked to the registered vehicle.
-          </p>
-        </aside>
+        <DriverRegistrationOverview draft={form as DriverRegistrationDraft} />
       </section>
     </div>,
     document.body,
@@ -471,7 +488,7 @@ function NameField({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
   required?: boolean;
 }) {
   return (
@@ -482,7 +499,7 @@ function NameField({
       </span>
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         required={required}
         maxLength={60}
       />
@@ -496,7 +513,7 @@ function RecordField({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="field">
@@ -505,7 +522,7 @@ function RecordField({
       </span>
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         required
       />
     </label>
@@ -520,7 +537,7 @@ function DateField({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
   min?: string;
   max?: string;
 }) {
@@ -532,7 +549,7 @@ function DateField({
       <input
         type="date"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         min={min}
         max={max}
         required
@@ -545,7 +562,7 @@ function PhoneField({
   onChange,
 }: {
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="field">
@@ -556,14 +573,33 @@ function PhoneField({
         <b>+63</b>
         <input
           value={value}
-          onChange={(e) =>
-            onChange(e.target.value.replace(/\D/g, "").slice(0, 10))
+          onChange={(event) =>
+            onChange(event.target.value.replace(/\D/g, "").slice(0, 10))
           }
           inputMode="numeric"
           placeholder="9171234567"
           required
         />
       </div>
+    </label>
+  );
+}
+function CredentialField({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <label className="field driver-auto-field">
+      <span>
+        {label} <small>Automatic</small>
+      </span>
+      <input value={value} readOnly aria-readonly="true" />
+      <small>{note}</small>
     </label>
   );
 }

@@ -1,6 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import { UserStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength, ValidateIf, ValidateNested } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsOptional, IsString, Length, Matches, MaxLength, ValidateIf, ValidateNested } from 'class-validator';
 import { DriverPresentAddressDto } from './driver-present-address.dto';
 
 const trimText = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value;
@@ -25,9 +25,9 @@ export class RegisterDriverDto {
   @Transform(uppercaseText) @IsString() @Length(3, 50) @Matches(recordNumber) chassisNumber!: string;
   @Transform(uppercaseText) @IsString() @Length(3, 15) @Matches(recordNumber) plateNumber!: string;
   @IsString() @Matches(/^\+639\d{9}$/, { message: 'phone must be a Philippine mobile number in +639XXXXXXXXX format' }) phone!: string;
-  @IsString() @MinLength(10) @MaxLength(72)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, { message: 'temporaryPassword must include uppercase, lowercase, number, and symbol' })
-  temporaryPassword!: string;
+  @IsOptional() @IsString() @MaxLength(2800000)
+  @Matches(/^data:image\/(?:jpeg|jpg|png|webp);base64,/i, { message: 'avatarData must be a JPG, PNG, or WebP image' })
+  avatarData?: string;
   @ValidateNested() @Type(() => DriverPresentAddressDto) address!: DriverPresentAddressDto;
   @Transform(uppercaseText) @IsString() @Length(4, 40) @Matches(recordNumber) franchiseNumber!: string;
   @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) franchiseIssuedAt!: string;

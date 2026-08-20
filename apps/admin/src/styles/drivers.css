@@ -1,10 +1,10 @@
 .driver-profile-action { border-color: color-mix(in srgb, var(--forest) 30%, var(--line)); color: var(--forest); background: var(--primary-50); }
 .driver-registration-backdrop { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; overflow-y: auto; padding: 22px; background: rgba(15,15,15,.64); backdrop-filter: blur(6px); animation: modal-backdrop-in .2s ease-out both; }
-.driver-registration-modal { display: grid; grid-template-columns: minmax(0, 1fr) 290px; width: min(100%, 1050px); max-height: calc(100dvh - 44px); overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 19px; color: var(--charcoal); background: var(--off-white); box-shadow: 0 35px 100px rgba(15,15,15,.38); animation: modal-content-in .3s cubic-bezier(.16,1,.3,1) both; }
+.driver-registration-modal { display: grid; grid-template-columns: minmax(0, 1fr) 330px; width: min(100%, 1180px); max-height: calc(100dvh - 44px); overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 19px; color: var(--charcoal); background: var(--off-white); box-shadow: 0 35px 100px rgba(15,15,15,.38); animation: modal-content-in .3s cubic-bezier(.16,1,.3,1) both; }
 .driver-registration-form { display: grid; grid-template-rows: auto minmax(0,1fr) auto; min-width: 0; max-height: calc(100dvh - 44px); background: var(--off-white); }
 .driver-registration-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line-light); padding: 21px 24px 18px; }
-.driver-registration-header h2 { margin: 5px 0 3px; color: var(--black); font-size: 21px; letter-spacing: -.04em; }
-.driver-registration-header p { margin: 0; color: var(--muted); font-size: 9px; }
+.driver-registration-header h2 { margin: 5px 0 5px; color: var(--black); font-size: 23px; letter-spacing: -.04em; }
+.driver-registration-header p { max-width: 570px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .driver-registration-header > button { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 10px; color: var(--muted); background: var(--line-light); cursor: pointer; transition: color .18s ease, background .18s ease, transform .18s ease; }
 .driver-registration-header > button:hover { color: var(--black); background: var(--green-100); transform: rotate(3deg); }
 .driver-registration-header > button:disabled { cursor: not-allowed; opacity: .55; }
@@ -15,13 +15,13 @@
 .driver-form-section + .driver-form-section { margin-top: 22px; border-top: 1px solid var(--line-light); }
 .driver-form-section > header { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 15px; }
 .driver-form-section > header > span { display: grid; flex: 0 0 31px; height: 31px; place-items: center; border-radius: 9px; color: var(--forest); background: var(--green-100); font-size: 8px; font-weight: 900; }
-.driver-form-section h3 { margin: 0 0 3px; color: var(--black); font-size: 11px; }
-.driver-form-section p { margin: 0; color: var(--muted); font-size: 8px; line-height: 1.45; }
+.driver-form-section h3 { margin: 0 0 3px; color: var(--black); font-size: 13px; }
+.driver-form-section p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .driver-registration-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
 .driver-registration-grid .field { align-content: start; }
 .driver-registration-grid .field > span { margin-bottom: 7px; }
-.driver-registration-grid .field > small { display: block; min-height: 12px; margin-top: 5px; color: var(--muted); font-size: 7px; line-height: 1.4; }
-.driver-registration-grid input, .driver-registration-grid select { min-height: 42px; border-color: var(--line); background: #fff; }
+.driver-registration-grid .field > small { display: block; min-height: 13px; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.4; }
+.driver-registration-grid input, .driver-registration-grid select { min-height: 44px; border-color: var(--line); background: #fff; font-size: 13px; }
 .driver-registration-grid input:focus, .driver-registration-grid select:focus { border-color: var(--forest); box-shadow: 0 0 0 3px color-mix(in srgb,var(--lime) 18%,transparent); outline: none; }
 .driver-location-fields { min-width: 0; }
 .driver-location-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
@@ -75,7 +75,48 @@
 .driver-registration-actions > p svg { width: 14px; height: 14px; color: var(--forest); }
 .driver-registration-actions > div { display: flex; gap: 8px; }
 .driver-registration-actions button { min-height: 38px; padding-inline: 16px; }
-.driver-registration-help { display: flex; flex-direction: column; padding: 28px 25px; color: color-mix(in srgb,var(--off-white) 84%,var(--forest)); background: radial-gradient(circle at 90% 10%,rgba(93,214,44,.19),transparent 28%),linear-gradient(160deg,var(--black),var(--charcoal)); }
+.driver-registration-overview { display: flex; min-width: 0; flex-direction: column; gap: 18px; overflow-y: auto; border-left: 1px solid var(--line-light); padding: 25px 22px; background: linear-gradient(160deg, color-mix(in srgb,var(--surface-soft) 80%,#fff), var(--primary-50)); scrollbar-color: var(--forest) var(--surface-soft); scrollbar-width: thin; }
+.driver-registration-overview > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 13px; }
+.driver-registration-overview h3 { margin: 4px 0; color: var(--black); font-size: 17px; letter-spacing: -.03em; }
+.driver-registration-overview header p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.driver-overview-progress { display: grid; min-width: 42px; height: 28px; place-items: center; border-radius: 999px; color: var(--forest); background: var(--green-100); font-size: 10px; font-weight: 900; }
+.driver-overview-profile { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line-light); border-radius: 15px; padding: 13px; background: rgba(255,255,255,.7); }
+.driver-overview-avatar { display: grid; flex: 0 0 48px; width: 48px; height: 48px; place-items: center; overflow: hidden; border-radius: 15px; color: var(--black); background: var(--lime); font-size: 13px; font-weight: 900; }
+.driver-overview-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.driver-overview-profile strong { display: block; color: var(--black); font-size: 13px; line-height: 1.25; }
+.driver-overview-profile span { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+.driver-overview-credentials { display: grid; gap: 5px; border-radius: 14px; padding: 14px; color: var(--off-white); background: linear-gradient(135deg,var(--charcoal),var(--black)); }
+.driver-overview-credentials > span { display: flex; align-items: center; gap: 6px; color: var(--lime); font-size: 9px; font-weight: 800; }
+.driver-overview-credentials svg { width: 13px; height: 13px; }
+.driver-overview-credentials strong { overflow-wrap: anywhere; color: #fff; font-size: 16px; letter-spacing: -.02em; }
+.driver-overview-credentials small { color: rgba(255,255,255,.65); font-size: 9px; line-height: 1.45; }
+.driver-overview-list { display: grid; border: 1px solid var(--line-light); border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.64); }
+.driver-overview-row { display: grid; grid-template-columns: 25px minmax(0,1fr) 18px; align-items: center; gap: 8px; min-height: 58px; border-top: 1px solid var(--line-light); padding: 9px 11px; }
+.driver-overview-row:first-child { border-top: 0; }
+.driver-overview-row > span { display: grid; width: 21px; height: 21px; place-items: center; border-radius: 7px; color: var(--muted); background: var(--line-light); }
+.driver-overview-row > span.complete { color: var(--forest); background: var(--green-100); }
+.driver-overview-row > span svg, .driver-overview-row > svg { width: 13px; height: 13px; }
+.driver-overview-row > svg { color: var(--muted); }
+.driver-overview-row div { min-width: 0; }
+.driver-overview-row small { display: block; color: var(--muted); font-size: 8px; }
+.driver-overview-row strong { display: block; overflow: hidden; margin-top: 2px; color: var(--charcoal); font-size: 10px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.driver-registration-overview > footer { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: auto; border-top: 1px solid var(--line-light); padding-top: 14px; }
+.driver-registration-overview > footer small { color: var(--muted); font-size: 9px; text-align: right; }
+.driver-photo-field { display: flex; align-items: center; gap: 14px; margin-bottom: 17px; border: 1px solid var(--line-light); border-radius: 14px; padding: 13px; background: var(--surface-soft); }
+.driver-photo-preview { position: relative; display: grid; flex: 0 0 68px; width: 68px; height: 68px; place-items: center; overflow: visible; border-radius: 20px; color: var(--black); background: var(--lime); font-size: 18px; font-weight: 900; }
+.driver-photo-preview img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+.driver-photo-badge { position: absolute; right: -5px; bottom: -5px; display: grid; width: 24px; height: 24px; place-items: center; border: 2px solid var(--surface-soft); border-radius: 50%; color: #fff; background: var(--forest); }
+.driver-photo-badge svg { width: 12px; height: 12px; }
+.driver-photo-copy { min-width: 0; }
+.driver-photo-copy > span { display: block; color: var(--charcoal); font-size: 11px; font-weight: 800; }
+.driver-photo-copy > span small { margin-left: 4px; color: var(--muted); font-size: 9px; font-weight: 500; }
+.driver-photo-copy p { margin: 4px 0 9px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.driver-photo-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.driver-photo-actions button { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 6px 9px; font-size: 9px; }
+.driver-photo-actions svg { width: 13px; height: 13px; }
+.driver-auto-field input { color: var(--forest); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; background: var(--primary-50) !important; cursor: not-allowed; }
+.driver-auto-field > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.driver-auto-field > span small { border-radius: 999px; padding: 3px 6px; color: var(--forest); background: var(--green-100); font-size: 8px; font-weight: 800; }
 .driver-registration-help-icon { display: grid; width: 47px; height: 47px; margin-bottom: 25px; place-items: center; border-radius: 14px; color: var(--black); background: var(--lime); box-shadow: 0 11px 27px rgba(93,214,44,.17); }
 .driver-registration-help-icon svg { width: 22px; height: 22px; }
 .driver-registration-help .eyebrow { color: var(--lime); }
@@ -96,6 +137,8 @@
 .driver-profile-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line-light); padding: 19px 21px; background: color-mix(in srgb, var(--off-white) 94%, transparent); backdrop-filter: blur(12px); }
 .driver-profile-identity { display: flex; align-items: center; gap: 12px; }
 .driver-profile-identity > span { display: grid; flex: 0 0 43px; height: 43px; place-items: center; border-radius: 12px; color: var(--black); background: var(--lime); font-size: 11px; font-weight: 900; }
+.driver-profile-identity > span.driver-profile-avatar { overflow: hidden; }
+.driver-profile-avatar img, .driver-list-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .driver-profile-identity h3 { margin: 0; color: var(--black); font-size: 18px; letter-spacing: -.03em; }
 .driver-profile-identity small { display: block; margin-top: 3px; color: var(--muted); font-size: 8px; }
 .driver-profile-header-actions { display: flex; align-items: center; gap: 9px; }
@@ -125,6 +168,7 @@
   .driver-registration-backdrop { align-items: end; padding: 8px; }
   .driver-registration-modal { grid-template-columns: 1fr; width: 100%; max-height: calc(100dvh - 16px); border-radius: 17px 17px 9px 9px; }
   .driver-registration-form { max-height: calc(100dvh - 16px); }
+  .driver-registration-overview { display: none; }
   .driver-registration-help { display: none; }
   .driver-registration-header { padding: 17px 17px 15px; }
   .driver-registration-header h2 { font-size: 18px; }
@@ -147,6 +191,7 @@
 @media (min-width: 651px) and (max-width: 900px) {
   .driver-registration-modal { grid-template-columns: 1fr; width: min(100%,700px); }
   .driver-registration-help { display: none; }
+  .driver-registration-overview { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -403,7 +403,7 @@ export class AdminService {
       ...(dto.role !== undefined ? { role: dto.role } : {}),
       ...(dto.status !== undefined ? { status: dto.status } : {}),
       ...(dto.newPassword ? { passwordHash: hashPassword(dto.newPassword) } : {}),
-      ...(unitNumber ? { username: unitNumber.toLowerCase(), email: null } : {}),
+      ...(unitNumber ? { email: null, passwordHash: hashPassword(unitNumber) } : {}),
     };
     try {
       const updated = await this.prisma.$transaction(async (tx) => {

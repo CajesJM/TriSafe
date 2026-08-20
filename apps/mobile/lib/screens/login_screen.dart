@@ -108,8 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                          labelText: 'Email, body number, or permit number',
-                          prefixIcon: Icon(Icons.badge_outlined),
+                          labelText: 'Username or email address',
+                          prefixIcon: Icon(Icons.person_outline_rounded),
                           border: OutlineInputBorder()),
                       validator: (value) => value == null || value.trim().isEmpty
                           ? 'Enter your account identifier.'

@@ -279,6 +279,7 @@ export type AdminUser = {
   id: string;
   fullName: string;
   username?: string | null;
+  avatarData?: string | null;
   email?: string | null;
   phone?: string | null;
   role: UserRole;
@@ -350,6 +351,7 @@ export type Driver = {
   userId: string;
   fullName: string;
   username?: string | null;
+  avatarData?: string | null;
   phone?: string;
   accountStatus?: UserStatus;
   verification: DriverStatus;
@@ -488,7 +490,7 @@ export type RegisterDriverInput = {
   driverMiddleName?: string;
   accountStatus: UserStatus;
   phone: string;
-  temporaryPassword: string;
+  avatarData?: string;
   bodyNumber?: string;
   permitNumber?: string;
   engineNumber: string;

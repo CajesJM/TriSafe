@@ -48,7 +48,13 @@ export function DriverProfileModal({
       >
         <header className="driver-profile-header">
           <div className="driver-profile-identity">
-            <span>{initials(driver.fullName)}</span>
+            <span className="driver-profile-avatar">
+              {driver.avatarData ? (
+                <img src={driver.avatarData} alt="Driver profile" />
+              ) : (
+                initials(driver.fullName)
+              )}
+            </span>
             <div>
               <p className="eyebrow">REGISTERED DRIVER PROFILE</p>
               <h3 id={titleId}>{displayPersonName(driver.fullName)}</h3>
@@ -74,8 +80,8 @@ export function DriverProfileModal({
           <div>
             <strong>Operational record</strong>
             <span>
-              Owner, driver, vehicle, franchise, eligibility, and QR details
-              are maintained here—not in Accounts &amp; Access.
+              Owner, driver, vehicle, franchise, eligibility, and QR details are
+              maintained here—not in Accounts &amp; Access.
             </span>
           </div>
         </div>
@@ -102,7 +108,14 @@ export function DriverProfileModal({
           </ProfileSection>
 
           <ProfileSection icon={<FileText />} title="Owner and eligibility">
-            <ProfileField label="Owner / organization leader" value={driver.owner ? `${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}` : "Not recorded"} />
+            <ProfileField
+              label="Owner / organization leader"
+              value={
+                driver.owner
+                  ? `${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}`
+                  : "Not recorded"
+              }
+            />
             <ProfileField
               label="Driver status"
               value={driver.verification}
@@ -160,9 +173,24 @@ export function DriverProfileModal({
                 vehicle?.vehicleType?.replaceAll("_", " ") ?? "Not assigned"
               }
             />
-            <ProfileField label={vehicle?.vehicleType === "HABAL_HABAL" ? "Permit number" : "Body number"} value={vehicle?.permitNumber ?? vehicle?.bodyNumber ?? "Not assigned"} />
-            <ProfileField label="Engine number" value={vehicle?.engineNumber ?? "Not assigned"} />
-            <ProfileField label="Chassis number" value={vehicle?.chassisNumber ?? "Not assigned"} />
+            <ProfileField
+              label={
+                vehicle?.vehicleType === "HABAL_HABAL"
+                  ? "Permit number"
+                  : "Body number"
+              }
+              value={
+                vehicle?.permitNumber ?? vehicle?.bodyNumber ?? "Not assigned"
+              }
+            />
+            <ProfileField
+              label="Engine number"
+              value={vehicle?.engineNumber ?? "Not assigned"}
+            />
+            <ProfileField
+              label="Chassis number"
+              value={vehicle?.chassisNumber ?? "Not assigned"}
+            />
             <ProfileField
               label="LGU QR code"
               value={

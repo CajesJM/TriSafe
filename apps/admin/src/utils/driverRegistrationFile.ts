@@ -40,6 +40,11 @@ export function createDriverRegistrationFileData(
             label: "Login identifier",
             value: driver.username ?? "Not assigned",
           },
+          {
+            label: "Initial password",
+            value:
+              vehicle?.permitNumber ?? vehicle?.bodyNumber ?? "Not assigned",
+          },
           { label: "Mobile number", value: driver.phone ?? "Not recorded" },
           { label: "Account status", value: driver.accountStatus ?? "ACTIVE" },
           { label: "Driver ID", value: driver.id },
@@ -166,7 +171,7 @@ function createHtml(data: DriverRegistrationFileData) {
     </div></section>`,
     )
     .join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(data.title)}</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;border-top:8px solid #337418;padding:40px;background:#fff;box-shadow:0 10px 35px #0001}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}h1{margin:8px 0 4px;font-size:28px}.meta{color:#666;font-size:12px}.notice{margin:24px 0;padding:14px 16px;border-radius:8px;background:#eef8e9;color:#245b11;font-size:12px;line-height:1.5}section{margin-top:18px;border:1px solid #ddd}h2{margin:0;padding:10px 14px;color:#245b11;background:#eef8e9;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.grid{display:grid;grid-template-columns:1fr 1fr}.row{min-width:0;border-top:1px solid #eee;padding:12px 14px}.row:nth-child(odd){border-right:1px solid #eee}.row span{display:block;color:#777;font-size:10px;letter-spacing:.08em;text-transform:uppercase}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.footer{margin-top:24px;border-top:1px solid #ddd;padding-top:14px;color:#777;font-size:10px;line-height:1.5}@media print{body{background:#fff}.page{margin:0;box-shadow:none}}@media(max-width:600px){.page{margin:0;padding:24px}.grid{grid-template-columns:1fr}.row:nth-child(odd){border-right:0}}</style></head><body><main class="page"><div class="brand">TRISAFE · LGU DRIVER REGISTRY</div><h1>${escapeHtml(data.title)}</h1><div class="meta">Generated ${escapeHtml(formatDateTime(data.generatedAt))} from live registry data</div><div class="notice"><strong>Current database record.</strong> Temporary passwords are intentionally excluded because TriSafe stores only secure password hashes.</div>${sections}<p class="footer">This document reflects the TriSafe record at the generation time shown above. Confirm current account and transport eligibility through the live LGU registry before relying on a previously downloaded copy.</p></main></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(data.title)}</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;border-top:8px solid #337418;padding:40px;background:#fff;box-shadow:0 10px 35px #0001}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}h1{margin:8px 0 4px;font-size:28px}.meta{color:#666;font-size:12px}.notice{margin:24px 0;padding:14px 16px;border-radius:8px;background:#eef8e9;color:#245b11;font-size:12px;line-height:1.5}section{margin-top:18px;border:1px solid #ddd}h2{margin:0;padding:10px 14px;color:#245b11;background:#eef8e9;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.grid{display:grid;grid-template-columns:1fr 1fr}.row{min-width:0;border-top:1px solid #eee;padding:12px 14px}.row:nth-child(odd){border-right:1px solid #eee}.row span{display:block;color:#777;font-size:10px;letter-spacing:.08em;text-transform:uppercase}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.footer{margin-top:24px;border-top:1px solid #ddd;padding-top:14px;color:#777;font-size:10px;line-height:1.5}@media print{body{background:#fff}.page{margin:0;box-shadow:none}}@media(max-width:600px){.page{margin:0;padding:24px}.grid{grid-template-columns:1fr}.row:nth-child(odd){border-right:0}}</style></head><body><main class="page"><div class="brand">TRISAFE · LGU DRIVER REGISTRY</div><h1>${escapeHtml(data.title)}</h1><div class="meta">Generated ${escapeHtml(formatDateTime(data.generatedAt))} from live registry data</div><div class="notice"><strong>Current database record.</strong> The initial password is the registered Body Number or Permit Number; TriSafe stores only its secure hash.</div>${sections}<p class="footer">This document reflects the TriSafe record at the generation time shown above. Confirm current account and transport eligibility through the live LGU registry before relying on a previously downloaded copy.</p></main></body></html>`;
 }
 
 function createPdf(data: DriverRegistrationFileData) {
@@ -197,7 +202,7 @@ function createPdf(data: DriverRegistrationFileData) {
   commands.push("0.933 0.973 0.914 rg 42 695 511 36 re f");
   text("CURRENT DATABASE RECORD", 54, 717, 8, true, "0.137 0.357 0.067");
   text(
-    "Temporary passwords are excluded because TriSafe stores secure password hashes only.",
+    "The initial password is the Body Number or Permit Number; TriSafe stores its secure hash only.",
     54,
     704,
     7,
@@ -268,7 +273,7 @@ function createDocx(data: DriverRegistrationFileData) {
     <w:p><w:pPr><w:pStyle w:val="Brand"/></w:pPr><w:r><w:t>TRISAFE  |  LGU DRIVER REGISTRY</w:t></w:r></w:p>
     <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>${xml(data.title)}</w:t></w:r></w:p>
     <w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr><w:r><w:t>Generated ${xml(formatDateTime(data.generatedAt))} from live registry data</w:t></w:r></w:p>
-    <w:p><w:pPr><w:shd w:fill="EEF8E9"/><w:spacing w:before="180" w:after="180"/><w:ind w:left="180" w:right="180"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="245B11"/></w:rPr><w:t>Current database record. </w:t></w:r><w:r><w:rPr><w:color w:val="3F5737"/></w:rPr><w:t>Temporary passwords are intentionally excluded because TriSafe stores only secure password hashes.</w:t></w:r></w:p>
+    <w:p><w:pPr><w:shd w:fill="EEF8E9"/><w:spacing w:before="180" w:after="180"/><w:ind w:left="180" w:right="180"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="245B11"/></w:rPr><w:t>Current database record. </w:t></w:r><w:r><w:rPr><w:color w:val="3F5737"/></w:rPr><w:t>The initial password is the Body Number or Permit Number; TriSafe stores its secure hash only.</w:t></w:r></w:p>
     ${sectionXml}
     <w:p><w:pPr><w:spacing w:before="220"/><w:pBdr><w:top w:val="single" w:sz="4" w:space="8" w:color="D9E2D5"/></w:pBdr></w:pPr><w:r><w:rPr><w:color w:val="6B7468"/><w:sz w:val="16"/></w:rPr><w:t>Confirm current account and transport eligibility through the live TriSafe registry before relying on a previously downloaded copy.</w:t></w:r></w:p>
     <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1440" w:bottom="1080" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>

@@ -77,7 +77,9 @@ export function DriverList({
   const [changing, setChanging] = useState("");
   const [error, setError] = useState("");
   const [suspendingDriver, setSuspendingDriver] = useState<Driver | null>(null);
-  const [accountStatusDriver, setAccountStatusDriver] = useState<Driver | null>(null);
+  const [accountStatusDriver, setAccountStatusDriver] = useState<Driver | null>(
+    null,
+  );
   const [fileDriver, setFileDriver] = useState<Driver | null>(null);
   const filtered = useMemo(
     () =>
@@ -256,17 +258,31 @@ export function DriverList({
       {accountStatusDriver && (
         <ConfirmModal
           title={`${(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "Deactivate" : "Activate"} ${displayPersonName(accountStatusDriver.fullName)}'s account?`}
-          message={(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
-            ? "The driver will be signed out and unable to log in. Their franchise and transport status will remain unchanged."
-            : "The driver will be allowed to sign in again. Their transport eligibility will still follow the separate franchise status."}
-          confirmLabel={(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "Deactivate account" : "Activate account"}
-          tone={(accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "danger" : "warning"}
+          message={
+            (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
+              ? "The driver will be signed out and unable to log in. Their franchise and transport status will remain unchanged."
+              : "The driver will be allowed to sign in again. Their transport eligibility will still follow the separate franchise status."
+          }
+          confirmLabel={
+            (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
+              ? "Deactivate account"
+              : "Activate account"
+          }
+          tone={
+            (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
+              ? "danger"
+              : "warning"
+          }
           onCancel={() => setAccountStatusDriver(null)}
           onError={onError}
-          onConfirm={() => onUpdateAccountStatus(
-            accountStatusDriver,
-            (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "INACTIVE" : "ACTIVE",
-          )}
+          onConfirm={() =>
+            onUpdateAccountStatus(
+              accountStatusDriver,
+              (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
+                ? "INACTIVE"
+                : "ACTIVE",
+            )
+          }
         />
       )}
       {fileDriver && (
@@ -319,10 +335,21 @@ function DriverRow({
           onSelect: onEditAccount,
         },
         {
-          label: (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "Deactivate account" : "Activate account",
-          icon: (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? <UserX /> : <UserCheck />,
+          label:
+            (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
+              ? "Deactivate account"
+              : "Activate account",
+          icon:
+            (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? (
+              <UserX />
+            ) : (
+              <UserCheck />
+            ),
           onSelect: onChangeAccountStatus,
-          tone: (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? "danger" : "default",
+          tone:
+            (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
+              ? "danger"
+              : "default",
         },
       ],
     },
@@ -380,11 +407,18 @@ function DriverRow({
         {number}
       </span>
       <div className="identity-cell">
-        <span className="avatar">{initials(driver.fullName)}</span>
+        <span className="avatar driver-list-avatar">
+          {driver.avatarData ? (
+            <img src={driver.avatarData} alt="" />
+          ) : (
+            initials(driver.fullName)
+          )}
+        </span>
         <span>
           <b>{displayPersonName(driver.fullName)}</b>
           <small>
-            {driver.username ?? "Login not assigned"} · {driver.phone ?? "No phone"}
+            {driver.username ?? "Login not assigned"} ·{" "}
+            {driver.phone ?? "No phone"}
           </small>
         </span>
       </div>
@@ -401,8 +435,20 @@ function DriverRow({
         </small>
       </span>
       <span>
-        <b>{driver.owner ? displayPersonName(`${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}`) : "Record incomplete"}</b>
-        <small>{vehicle?.bodyNumber ? `Body ${vehicle.bodyNumber}` : vehicle?.permitNumber ? `Permit ${vehicle.permitNumber}` : "No unit number"}</small>
+        <b>
+          {driver.owner
+            ? displayPersonName(
+                `${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}`,
+              )
+            : "Record incomplete"}
+        </b>
+        <small>
+          {vehicle?.bodyNumber
+            ? `Body ${vehicle.bodyNumber}`
+            : vehicle?.permitNumber
+              ? `Permit ${vehicle.permitNumber}`
+              : "No unit number"}
+        </small>
       </span>
       <span
         className={`status ${(driver.accountStatus ?? "ACTIVE").toLowerCase()}`}
@@ -560,10 +606,18 @@ export function QrCodePanel({
           <button className="secondary" onClick={onClose} type="button">
             Close
           </button>
-          <button className="secondary qr-download-button" onClick={downloadQr} type="button">
+          <button
+            className="secondary qr-download-button"
+            onClick={downloadQr}
+            type="button"
+          >
             <Download aria-hidden="true" /> Download QR only
           </button>
-          <button className="primary qr-download-button" onClick={downloadOfficialLayout} type="button">
+          <button
+            className="primary qr-download-button"
+            onClick={downloadOfficialLayout}
+            type="button"
+          >
             <Download aria-hidden="true" /> Download official layout
           </button>
         </>
@@ -597,10 +651,25 @@ export function QrCodePanel({
           <code className="qr-token">{qrValue}</code>
         </div>
         <div className="qr-preview qr-official-preview">
-          <div className="qr-preview-branding" aria-label="Official LGU QR layout preview">
-            <span role="img" aria-label="TriSafe logo placeholder">TriSafe<br /><small>LOGO</small></span>
-            <b>OFFICIAL<br />VEHICLE QR</b>
-            <span role="img" aria-label="LGU Trinidad logo placeholder">LGU<br /><small>LOGO</small></span>
+          <div
+            className="qr-preview-branding"
+            aria-label="Official LGU QR layout preview"
+          >
+            <span role="img" aria-label="TriSafe logo placeholder">
+              TriSafe
+              <br />
+              <small>LOGO</small>
+            </span>
+            <b>
+              OFFICIAL
+              <br />
+              VEHICLE QR
+            </b>
+            <span role="img" aria-label="LGU Trinidad logo placeholder">
+              LGU
+              <br />
+              <small>LOGO</small>
+            </span>
           </div>
           <QRCodeCanvas
             ref={canvasRef}
