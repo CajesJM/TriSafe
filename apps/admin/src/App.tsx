@@ -32,7 +32,8 @@ import { FareMatrixPanel } from "./components/fares/FareMatrixPanel";
 import { AnnouncementComposer } from "./components/announcements/AnnouncementComposer";
 import { IncidentReview } from "./components/incidents/IncidentReview";
 import { AuditLogPanel } from "./components/audit/AuditLogPanel";
-import { UserDirectory } from "./components/users/UserDirectory";
+import { PassengerManagement } from "./components/users/PassengerManagement";
+import { AdministratorManagement } from "./components/users/AdministratorManagement";
 import { PageHeader } from "./components/layout/PageHeader";
 import { Sidebar } from "./components/layout/Sidebar";
 import {
@@ -43,6 +44,7 @@ import {
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
 import { DriverEditForm } from "./components/drivers/DriverEditForm";
+import { FeatureRoadmapPanel } from "./components/shared/FeatureRoadmapPanel";
 import {
   ToastNotification,
   type ToastMessage,
@@ -295,7 +297,8 @@ export function App() {
                 onRegister={openRegistration}
               />
             )}
-            {tab === "users" && <UserDirectory />}
+            {tab === "passengers" && <PassengerManagement />}
+            {tab === "administrators" && <AdministratorManagement />}
             {tab === "drivers" && (
               <DriverList
                 drivers={drivers}
@@ -370,6 +373,20 @@ export function App() {
             )}
             {tab === "incidents" && (
               <IncidentReview incidents={incidents} onReview={reviewIncident} />
+            )}
+            {tab === "violations" && <FeatureRoadmapPanel tab="violations" />}
+            {tab === "ratings" && <FeatureRoadmapPanel tab="ratings" />}
+            {tab === "terms" && <FeatureRoadmapPanel tab="terms" />}
+            {tab === "settings" && (
+              <AdminProfilePanel
+                open
+                embedded
+                onClose={() => changeTab("overview")}
+                onSaved={(user) => {
+                  setSessionUser(user);
+                  updateSessionUser(user);
+                }}
+              />
             )}
             {tab === "audit" && <AuditLogPanel logs={auditLogs} />}
           </>

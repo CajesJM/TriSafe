@@ -3,27 +3,38 @@ import type { Tab } from "../../types/admin";
 import { Menu, UserRound } from "lucide-react";
 
 const titleByTab: Record<Tab, string> = {
-  overview: "Operations dashboard",
-  users: "Accounts and access",
-  drivers: "Drivers and vehicles",
-  fares: "Fare matrix and live operations",
-  announcements: "Driver announcements",
-  incidents: "Incident review",
-  audit: "Activity audit trail",
+  overview: "Dashboard",
+  passengers: "Passenger Management",
+  administrators: "Administrator Management",
+  drivers: "Registered Driver Management",
+  fares: "Fare Matrix Management",
+  announcements: "Announcement Management",
+  incidents: "Incident Report Management",
+  violations: "Violation & Penalty Management",
+  ratings: "Rating Management",
+  terms: "Terms & Conditions Management",
+  settings: "Administrator Account Settings",
+  audit: "Audit Trail",
 };
 
 const hintByTab: Record<Tab, string> = {
   overview:
     "Monitor registered transport activity and items needing LGU action.",
-  users:
-    "Manage passenger and Administrator accounts, access status, and role definitions.",
+  passengers:
+    "Register, review, update, search, filter, activate, deactivate, and manage Passenger accounts.",
+  administrators:
+    "Manage authorized BPLO Administrator accounts responsible for operating and maintaining TriSafe.",
   drivers:
-    "Manage approved drivers, franchises, vehicles, and LGU-issued QR identities.",
+    "Manage verified drivers, owner records, vehicles, franchises, credentials, and BPLO-issued QR identities.",
   fares:
     "Configure vehicle rates, inspect live locations, and monitor fare transparency.",
   announcements:
-    "Send renewal reminders and safety advisories to verified drivers.",
-  incidents: "Review passenger reports and record the final LGU decision.",
+    "Create and manage official announcements delivered to registered Drivers.",
+  incidents: "Review transportation-related incident reports, evidence, and administrative responses.",
+  violations: "Record and manage driver violations and corresponding penalties.",
+  ratings: "Review driver rating statistics and rating records generated through TriSafe.",
+  terms: "Manage the official terms and conditions presented to TriSafe users.",
+  settings: "Manage your BPLO Administrator profile and account-related settings.",
   audit: "Trace recent administrative and safety actions recorded by the API.",
 };
 
@@ -91,7 +102,7 @@ export function PageHeader({
       </div>
       <div className="page-title-row">
         <div>
-          <p className="eyebrow">TRINIDAD LGU · TRANSPORT SAFETY</p>
+          <p className="eyebrow">TRINIDAD BPLO · TRANSPORT SAFETY</p>
           <h1>{titleByTab[tab]}</h1>
           <p>{hintByTab[tab]}</p>
         </div>

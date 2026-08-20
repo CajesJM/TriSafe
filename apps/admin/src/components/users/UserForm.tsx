@@ -30,6 +30,7 @@ type Props = {
   onSave: (input: CreateUserInput | UpdateUserInput) => Promise<void>;
   onError: (message: string) => void;
   defaultRole?: UserRole;
+  fixedRole?: "PASSENGER" | "LGU_ADMIN";
   driver?: Driver;
 };
 
@@ -40,10 +41,11 @@ export function UserForm({
   onSave,
   onError,
   defaultRole = "PASSENGER",
+  fixedRole,
   driver,
 }: Props) {
   const titleId = useId();
-  const [role, setRole] = useState<UserRole>(user?.role ?? defaultRole);
+  const [role, setRole] = useState<UserRole>(fixedRole ?? user?.role ?? defaultRole);
   const isDriver = role === "DRIVER";
   const isPassenger = role === "PASSENGER";
   const usesStructuredName = isDriver || isPassenger;
@@ -83,8 +85,8 @@ export function UserForm({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const assignableRoles = roles.filter(
-    (item) => item.active && (item.key !== "DRIVER" || user?.role === "DRIVER"),
+  const assignableRoles = roles.filter((item) =>
+    item.active && (fixedRole ? item.key === fixedRole : item.key !== "DRIVER" || user?.role === "DRIVER"),
   );
 
   useEffect(() => {
@@ -169,7 +171,7 @@ export function UserForm({
           ...(isPassenger ? { username: normalizedUsername } : {}),
           ...(!isDriver ? { email } : {}),
           phone: `+63${phone}`,
-          role,
+          role: fixedRole ?? role,
           status,
           ...(password ? { newPassword: password } : {}),
           ...(isDriver
@@ -201,7 +203,7 @@ export function UserForm({
           ...(isPassenger ? { username: normalizedUsername } : {}),
           email,
           phone: `+63${phone}`,
-          role,
+          role: fixedRole ?? role,
           status,
           temporaryPassword: password,
         });
@@ -595,7 +597,7 @@ export function UserForm({
                 </span>
                 <select
                   value={role}
-                  disabled={user?.role === "DRIVER"}
+                  disabled={Boolean(fixedRole) || user?.role === "DRIVER"}
                   onChange={(event) => setRole(event.target.value as UserRole)}
                 >
                   {assignableRoles.map((item) => (

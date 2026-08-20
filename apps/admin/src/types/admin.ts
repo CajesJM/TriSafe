@@ -1,8 +1,13 @@
 export type Tab =
   | "overview"
-  | "users"
+  | "passengers"
+  | "administrators"
   | "drivers"
   | "fares"
   | "announcements"
   | "incidents"
+  | "violations"
+  | "ratings"
+  | "terms"
+  | "settings"
   | "audit";

@@ -20,10 +20,11 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSaved: (user: SessionUser) => void;
+  embedded?: boolean;
 };
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
-export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
+export function AdminProfilePanel({ open, onClose, onSaved, embedded = false }: Props) {
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [form, setForm] = useState({
     fullName: "",
@@ -221,16 +222,16 @@ export function AdminProfilePanel({ open, onClose, onSaved }: Props) {
   return (
     <>
       <div
-        className="profile-overlay"
+        className={embedded ? "profile-settings-page" : "profile-overlay"}
         role="presentation"
         onMouseDown={(event) => {
-          if (event.target === event.currentTarget) onClose();
+          if (!embedded && event.target === event.currentTarget) onClose();
         }}
       >
         <section
-          className="profile-panel"
-          role="dialog"
-          aria-modal="true"
+          className={`profile-panel ${embedded ? "profile-panel-embedded" : ""}`}
+          role={embedded ? undefined : "dialog"}
+          aria-modal={embedded ? undefined : true}
           aria-labelledby="profile-title"
         >
           <div className="profile-panel-heading">

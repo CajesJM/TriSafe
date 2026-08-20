@@ -148,11 +148,11 @@ export function DashboardHome({
       <section className="metric-grid" aria-label="Current TriSafe metrics">
         <MetricCard
           icon={<UsersRound />}
-          label="Registered users"
-          value={dashboard.users.total}
-          detail={`${dashboard.users.passengers} passenger accounts`}
-          onClick={() => onNavigate("users")}
-          action="View users"
+          label="Passenger accounts"
+          value={dashboard.users.passengers}
+          detail={`${dashboard.users.total} total TriSafe accounts`}
+          onClick={() => onNavigate("passengers")}
+          action="Manage passengers"
         />
         <MetricCard
           icon={<ShieldCheck />}
@@ -523,7 +523,7 @@ function AccountDistributionCard({
         action={
           <button
             className="link-button"
-            onClick={() => onNavigate("users")}
+            onClick={() => onNavigate("passengers")}
             type="button"
           >
             <ArrowUpRight size={14} />

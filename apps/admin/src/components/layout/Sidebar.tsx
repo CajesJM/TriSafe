@@ -4,11 +4,15 @@ import {
   Banknote,
   CarFront,
   ClipboardList,
+  FileSignature,
   LayoutDashboard,
   LogOut,
   Megaphone,
+  Scale,
   ShieldAlert,
   ShieldCheck,
+  Star,
+  UserCog,
   UsersRound,
   X,
   type LucideIcon,
@@ -27,25 +31,42 @@ type NavItem = { tab: Tab; icon: LucideIcon; label: string };
 const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "OVERVIEW",
+    items: [{ tab: "overview", icon: LayoutDashboard, label: "Dashboard" }],
+  },
+  {
+    label: "ACCOUNT MANAGEMENT",
     items: [
-      { tab: "overview", icon: LayoutDashboard, label: "Dashboard" },
-      { tab: "users", icon: UsersRound, label: "Accounts & access" },
+      { tab: "passengers", icon: UsersRound, label: "Passengers" },
+      { tab: "administrators", icon: ShieldCheck, label: "Administrators" },
+      { tab: "drivers", icon: CarFront, label: "Registered Drivers" },
     ],
   },
   {
-    label: "TRANSPORT REGISTRY",
-    items: [
-      { tab: "drivers", icon: CarFront, label: "Drivers & QR" },
-      { tab: "fares", icon: Banknote, label: "Fare matrix" },
-    ],
+    label: "TRANSPORT MANAGEMENT",
+    items: [{ tab: "fares", icon: Banknote, label: "Fare Matrix" }],
   },
   {
     label: "SAFETY & COMPLIANCE",
     items: [
-      { tab: "incidents", icon: ShieldAlert, label: "Incident review" },
-      { tab: "announcements", icon: Megaphone, label: "Announcements" },
-      { tab: "audit", icon: ClipboardList, label: "Audit trail" },
+      { tab: "incidents", icon: ShieldAlert, label: "Incident Reports" },
+      { tab: "violations", icon: Scale, label: "Violations & Penalties" },
+      { tab: "ratings", icon: Star, label: "Driver Ratings" },
     ],
+  },
+  {
+    label: "COMMUNICATION & POLICY",
+    items: [
+      { tab: "announcements", icon: Megaphone, label: "Announcements" },
+      { tab: "terms", icon: FileSignature, label: "Terms & Conditions" },
+    ],
+  },
+  {
+    label: "SYSTEM",
+    items: [{ tab: "audit", icon: ClipboardList, label: "Audit trail" }],
+  },
+  {
+    label: "ACCOUNT SETTINGS",
+    items: [{ tab: "settings", icon: UserCog, label: "Account Settings" }],
   },
 ];
 
@@ -71,10 +92,12 @@ export function Sidebar({
       />
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true"><ShieldCheck size={22} strokeWidth={2.4} /></div>
+          <div className="brand-mark" aria-hidden="true">
+            <ShieldCheck size={22} strokeWidth={2.4} />
+          </div>
           <div>
             <strong>TriSafe</strong>
-            <small>Administrator Portal</small>
+            <small>BPLO Administrator Portal</small>
           </div>
           <button
             className="sidebar-close"
@@ -97,7 +120,9 @@ export function Sidebar({
                   onClick={() => select(item.tab)}
                   type="button"
                 >
-                  <span className="nav-icon" aria-hidden="true"><item.icon size={18} strokeWidth={2} /></span>
+                  <span className="nav-icon" aria-hidden="true">
+                    <item.icon size={18} strokeWidth={2} />
+                  </span>
                   <span>{item.label}</span>
                   {item.tab === "incidents" && incidentCount > 0 && (
                     <em>{incidentCount}</em>

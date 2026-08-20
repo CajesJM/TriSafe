@@ -4,7 +4,6 @@ import {
   api,
   CreateUserInput,
   RoleDefinition,
-  RoleInput,
   UpdateUserInput,
   UserPage,
   UserStatus,
@@ -16,7 +15,6 @@ import {
   type ToastMessage,
 } from "../shared/ToastNotification";
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { RoleManager } from "./RoleManager";
 import { UserForm } from "./UserForm";
 import { displayPersonName } from "../../utils/personName";
 
@@ -41,12 +39,14 @@ type Confirmation = {
   tone: "danger" | "warning";
   action: () => Promise<void>;
 };
-export function UserDirectory() {
-  const initialCacheKey = accountCacheKey("PASSENGER", "", "", 1);
+export function UserDirectory({
+  managementRole,
+}: {
+  managementRole: "PASSENGER" | "LGU_ADMIN";
+}) {
+  const isAdministrator = managementRole === "LGU_ADMIN";
+  const initialCacheKey = accountCacheKey(managementRole, "", "", 1);
   const initialCachedPage = accountPageCache.get(initialCacheKey);
-  const [view, setView] = useState<"passengers" | "administrators" | "roles">(
-    "passengers",
-  );
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -85,10 +85,8 @@ export function UserDirectory() {
   }, [reloadKey]);
 
   useEffect(() => {
-    if (view === "roles") return;
     const controller = new AbortController();
-    const selectedRole = view === "administrators" ? "LGU_ADMIN" : "PASSENGER";
-    const cacheKey = accountCacheKey(selectedRole, search, status, page);
+    const cacheKey = accountCacheKey(managementRole, search, status, page);
     const cachedPage = accountPageCache.get(cacheKey);
     if (cachedPage) {
       setData(cachedPage);
@@ -108,7 +106,7 @@ export function UserDirectory() {
         }, 350);
         setError("");
         api
-          .users({ search, role: selectedRole, status, page, pageSize })
+          .users({ search, role: managementRole, status, page, pageSize })
           .then((response) => {
             if (!controller.signal.aborted) {
               accountPageCache.set(cacheKey, response);
@@ -134,25 +132,7 @@ export function UserDirectory() {
       window.clearTimeout(timer);
       if (skeletonTimer !== undefined) window.clearTimeout(skeletonTimer);
     };
-  }, [search, status, page, reloadKey, view]);
-
-  function changeView(nextView: "passengers" | "administrators" | "roles") {
-    if (nextView === view) return;
-    setView(nextView);
-    setPage(1);
-    setSearch("");
-    setStatus("");
-    if (nextView !== "roles") {
-      const nextRole =
-        nextView === "administrators" ? "LGU_ADMIN" : "PASSENGER";
-      const cachedPage = accountPageCache.get(
-        accountCacheKey(nextRole, "", "", 1),
-      );
-      setData(cachedPage ?? emptyUserPage);
-      setWaitingForAccounts(!cachedPage);
-      setLoading(false);
-    }
-  }
+  }, [search, status, page, reloadKey, managementRole]);
 
   function reload(message?: string) {
     if (message) showToast("success", message);
@@ -215,88 +195,30 @@ export function UserDirectory() {
     });
   }
 
-  async function saveRole(roleId: string | null, input: RoleInput) {
-    if (!roleId)
-      throw new Error("System roles cannot be created from this workspace.");
-    await api.updateRole(roleId, input);
-    reload("Role definition updated.");
-  }
-
   return (
-    <section className="card data-card users-workspace">
+    <section className={`card data-card users-workspace ${isAdministrator ? "administrator-workspace" : "passenger-workspace"}`}>
       <div className="section-heading">
         <div>
-          <span className="eyebrow">ACCESS CONTROL</span>
-          <h3>Accounts &amp; access</h3>
+          <span className="eyebrow">{isAdministrator ? "BPLO ADMINISTRATION" : "PASSENGER ACCOUNTS"}</span>
+          <h3>{isAdministrator ? "Administrator Management" : "Passenger Management"}</h3>
           <p className="section-description">
-            Manage passenger and Administrator access. Driver accounts and
-            transport records are maintained in Drivers &amp; QR.
+            {isAdministrator
+              ? "Manage authorized BPLO Administrator accounts, access status, and account details."
+              : "Manage Passenger registration, account details, search, status, and secure account access."}
           </p>
         </div>
-        {view !== "roles" && (
-          <button
-            className="primary"
-            onClick={() => setCreatingUser(true)}
-            type="button"
-          >
-            ＋ Create{" "}
-            {view === "administrators" ? "Administrator" : "passenger"}
-          </button>
-        )}
-      </div>
-      <div
-        className="workspace-tabs"
-        role="tablist"
-        aria-label="User management sections"
-      >
-        <button
-          className={view === "passengers" ? "active" : ""}
-          onClick={() => changeView("passengers")}
-          role="tab"
-          aria-selected={view === "passengers"}
-          type="button"
-        >
-          Passengers{" "}
-          <span>
-            {roles.find((item) => item.key === "PASSENGER")?._count.users ?? 0}
-          </span>
-        </button>
-        <button
-          className={view === "administrators" ? "active" : ""}
-          onClick={() => changeView("administrators")}
-          role="tab"
-          aria-selected={view === "administrators"}
-          type="button"
-        >
-          Administrators{" "}
-          <span>
-            {roles.find((item) => item.key === "LGU_ADMIN")?._count.users ?? 0}
-          </span>
-        </button>
-        <button
-          className={view === "roles" ? "active" : ""}
-          onClick={() => changeView("roles")}
-          role="tab"
-          aria-selected={view === "roles"}
-          type="button"
-        >
-          Roles <span>{roles.length}</span>
+        <button className="primary" onClick={() => setCreatingUser(true)} type="button">
+          ＋ Create {isAdministrator ? "Administrator" : "passenger"}
         </button>
       </div>
+      <ManagementSummary role={managementRole} total={data.total} visible={data.items} />
       {error && (
         <ErrorMessage
           message={error}
           onRetry={() => setReloadKey((value) => value + 1)}
         />
       )}
-      {view === "roles" ? (
-        <RoleManager
-          roles={roles}
-          onSave={saveRole}
-          onError={(message) => showToast("error", message)}
-        />
-      ) : (
-        <>
+      <>
           <DataToolbar
             search={search}
             onSearch={(value) => {
@@ -332,14 +254,15 @@ export function UserDirectory() {
             />
           ) : data.items.length === 0 ? (
             <EmptyState
-              title="No matching users"
-              text="Try changing your search or account-status filter."
+              title={isAdministrator ? "No matching Administrator accounts" : "No matching Passenger accounts"}
+              text={isAdministrator ? "Create an authorized BPLO Administrator or change your search and account-status filter." : "Create a Passenger account or change your search and account-status filter."}
             />
           ) : (
             <UserTable
               users={data.items}
               startNumber={(page - 1) * pageSize + 1}
-              showUsername={view === "passengers"}
+              showUsername={!isAdministrator}
+              roleLabel={isAdministrator ? "Administrator" : "Passenger"}
               onEdit={setEditingUser}
               onToggleStatus={toggleStatus}
               onDelete={deleteUser}
@@ -353,8 +276,7 @@ export function UserDirectory() {
               onPageChange={setPage}
             />
           )}
-        </>
-      )}
+      </>
       {toast && (
         <ToastNotification
           key={toast.id}
@@ -383,7 +305,8 @@ export function UserDirectory() {
           }}
           onSave={saveUser}
           onError={(message) => showToast("error", message)}
-          defaultRole={view === "administrators" ? "LGU_ADMIN" : "PASSENGER"}
+          defaultRole={managementRole}
+          fixedRole={managementRole}
         />
       )}
     </section>
@@ -394,6 +317,7 @@ function UserTable({
   users,
   startNumber,
   showUsername,
+  roleLabel,
   onEdit,
   onToggleStatus,
   onDelete,
@@ -401,18 +325,19 @@ function UserTable({
   users: DirectoryUser[];
   startNumber: number;
   showUsername: boolean;
+  roleLabel: "Passenger" | "Administrator";
   onEdit: (user: AdminUser) => void;
   onToggleStatus: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
 }) {
   return (
-    <div className="responsive-table" role="table" aria-label="TriSafe users">
+    <div className="responsive-table" role="table" aria-label={`TriSafe ${roleLabel.toLowerCase()} accounts`}>
       <div
         className={`data-row account-user-head data-head ${showUsername ? "account-user-with-username" : ""}`}
         role="row"
       >
         <span className="table-number">No.</span>
-        <span>User</span>
+        <span>{roleLabel}</span>
         {showUsername && <span>Username</span>}
         <span>Contact</span>
         <span>Account</span>
@@ -431,7 +356,9 @@ function UserTable({
             {startNumber + index}
           </span>
           <div className="identity-cell">
-            <span className="avatar">{initials(user.fullName)}</span>
+            <span className="avatar">
+              {user.avatarData ? <img src={user.avatarData} alt="" /> : initials(user.fullName)}
+            </span>
             <span>
               <b>
                 {user.role === "PASSENGER"
@@ -488,6 +415,28 @@ function UserTable({
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ManagementSummary({
+  role,
+  total,
+  visible,
+}: {
+  role: "PASSENGER" | "LGU_ADMIN";
+  total: number;
+  visible: DirectoryUser[];
+}) {
+  const activeOnPage = visible.filter((user) => user.status === "ACTIVE").length;
+  const inactiveOnPage = visible.filter((user) => user.status === "INACTIVE").length;
+  const label = role === "LGU_ADMIN" ? "Administrator" : "Passenger";
+  return (
+    <div className="management-summary" aria-label={`${label} management summary`}>
+      <div><span>Registered {label.toLowerCase()}s</span><strong>{total}</strong></div>
+      <div><span>Active on this page</span><strong>{activeOnPage}</strong></div>
+      <div><span>Inactive on this page</span><strong>{inactiveOnPage}</strong></div>
+      <p>{role === "LGU_ADMIN" ? "Administrator access is protected by continuity safeguards." : "Passenger records are kept separate from driver and Administrator records."}</p>
     </div>
   );
 }
