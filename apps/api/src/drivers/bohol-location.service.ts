@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { BoholAddressDto } from './dto/bohol-address.dto';
+import type { DriverPresentAddressDto } from './dto/driver-present-address.dto';
 
 type PsgcItem = {
   code: string;
@@ -126,6 +127,28 @@ export class BoholLocationService {
       externalPlaceId: selected.id,
       latitude: selected.latitude,
       longitude: selected.longitude,
+    };
+  }
+
+  async validateDriverPresentAddress(dto: DriverPresentAddressDto) {
+    if (dto.provinceCode !== BOHOL_CODE || dto.provinceName.toLowerCase() !== 'bohol') {
+      throw new BadRequestException('Driver addresses are currently limited to Bohol.');
+    }
+    const hierarchy = await this.requireHierarchy(dto.municipalityCode, dto.barangayCode);
+    if (
+      !sameLocationName(hierarchy.municipality.name, dto.municipalityName) ||
+      !sameLocationName(hierarchy.barangay.name, dto.barangayName)
+    ) {
+      throw new BadRequestException('The municipality and barangay do not match their official PSGC records.');
+    }
+    return {
+      provinceCode: BOHOL_CODE,
+      provinceName: 'Bohol',
+      municipalityCode: hierarchy.municipality.code,
+      municipalityName: hierarchy.municipality.name,
+      barangayCode: hierarchy.barangay.code,
+      barangayName: hierarchy.barangay.name,
+      purok: dto.purok.trim().replace(/\s+/g, ' '),
     };
   }
 

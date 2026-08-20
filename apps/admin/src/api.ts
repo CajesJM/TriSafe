@@ -116,13 +116,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function login(email: string, password: string) {
+export async function login(identifier: string, password: string) {
   let response: Response;
   try {
     response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
   } catch {
     throw new Error(
@@ -289,7 +289,6 @@ export type AdminUser = {
   driverProfile?: {
     id?: string;
     verification: DriverStatus;
-    licenseNumber: string;
   } | null;
 };
 export type UserPage = {
@@ -326,7 +325,18 @@ export type UpdateUserInput = {
   role?: UserRole;
   status?: UserStatus;
   newPassword?: string;
-  driverAddress?: BoholAddressInput;
+  driverRecord?: {
+    ownerLastName: string;
+    ownerFirstName: string;
+    ownerMiddleName?: string;
+    vehicleType: "TRICYCLE" | "HABAL_HABAL";
+    bodyNumber?: string;
+    permitNumber?: string;
+    engineNumber: string;
+    chassisNumber: string;
+    plateNumber: string;
+    address: DriverPresentAddressInput;
+  };
 };
 export type RoleInput = {
   key: UserRole;
@@ -339,13 +349,12 @@ export type Driver = {
   id: string;
   userId: string;
   fullName: string;
-  email?: string | null;
+  username?: string | null;
   phone?: string;
   accountStatus?: UserStatus;
   verification: DriverStatus;
-  licenseNumber: string;
-  renewalDate: string;
-  address?: StoredBoholAddress | null;
+  owner?: { id: string; lastName: string; firstName: string; middleName?: string | null } | null;
+  address?: DriverPresentAddressInput | null;
   franchise?: {
     franchiseNumber: string;
     issuedAt: string;
@@ -355,6 +364,10 @@ export type Driver = {
   vehicles: {
     plateNumber: string;
     vehicleType: string;
+    bodyNumber?: string | null;
+    permitNumber?: string | null;
+    engineNumber?: string | null;
+    chassisNumber?: string | null;
     qrCode?: { token: string };
   }[];
 };
@@ -467,29 +480,34 @@ export type LivePresence = {
   activeRide?: { id: string; actualDistanceMeters: number } | null;
 };
 export type RegisterDriverInput = {
-  fullName: string;
+  ownerLastName: string;
+  ownerFirstName: string;
+  ownerMiddleName?: string;
+  driverLastName: string;
+  driverFirstName: string;
+  driverMiddleName?: string;
   accountStatus: UserStatus;
   phone: string;
-  email: string;
   temporaryPassword: string;
-  licenseNumber: string;
-  renewalDate: string;
+  bodyNumber?: string;
+  permitNumber?: string;
+  engineNumber: string;
+  chassisNumber: string;
   franchiseNumber: string;
   franchiseIssuedAt: string;
   franchiseExpiresAt: string;
   plateNumber: string;
   vehicleType: string;
+  address: DriverPresentAddressInput;
+};
+export type DriverPresentAddressInput = {
   provinceCode: string;
   provinceName: string;
   municipalityCode: string;
   municipalityName: string;
   barangayCode: string;
   barangayName: string;
-  streetPurok: string;
-  postalCode: string;
-  streetPlaceId: string;
-  addressLatitude: number;
-  addressLongitude: number;
+  purok: string;
 };
 export type PhilippineLocationOption = {
   code: string;

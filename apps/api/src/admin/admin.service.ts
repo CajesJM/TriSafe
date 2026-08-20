@@ -42,10 +42,10 @@ export class AdminService {
         orderBy: { publishedAt: 'desc' },
         take: 8,
       }),
-      this.prisma.driver.findMany({
-        where: { renewalDate: { gte: today } },
-        select: { id: true, renewalDate: true, user: { select: { fullName: true } } },
-        orderBy: { renewalDate: 'asc' },
+      this.prisma.franchise.findMany({
+        where: { expiresAt: { gte: today } },
+        select: { id: true, expiresAt: true, driver: { select: { user: { select: { fullName: true } } } } },
+        orderBy: { expiresAt: 'asc' },
         take: 8,
       }),
     ]);
@@ -100,10 +100,10 @@ export class AdminService {
             ? `Active until ${announcement.expiresAt.toLocaleDateString('en-PH')}`
             : 'Published announcement',
         })),
-        ...renewals.map((driver) => ({
-          id: `renewal-${driver.id}`,
-          date: driver.renewalDate.toISOString(),
-          label: `${driver.user.fullName} renewal`,
+        ...renewals.map((franchise) => ({
+          id: `renewal-${franchise.id}`,
+          date: franchise.expiresAt.toISOString(),
+          label: `${franchise.driver.user.fullName} franchise renewal`,
           type: 'RENEWAL',
           detail: 'Driver franchise renewal date',
         })),
@@ -335,7 +335,7 @@ export class AdminService {
           createdAt: true,
           updatedAt: true,
           roleDefinition: { select: { name: true } },
-          driverProfile: { select: { id: true, verification: true, licenseNumber: true } },
+          driverProfile: { select: { id: true, verification: true } },
         },
       }),
       this.prisma.user.count({ where }),
@@ -346,7 +346,7 @@ export class AdminService {
   async user(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { id: true, verification: true, licenseNumber: true } } },
+      select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { id: true, verification: true } } },
     });
     if (!user) throw new NotFoundException('User account not found');
     return user;
@@ -359,7 +359,7 @@ export class AdminService {
     try {
       const user = await this.prisma.user.create({
         data: { fullName: dto.fullName.trim(), username: dto.username, email: dto.email.trim().toLowerCase(), phone: dto.phone, role: dto.role, status: dto.status ?? UserStatus.ACTIVE, passwordHash: hashPassword(dto.temporaryPassword) },
-        select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
+        select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true } } },
       });
       await this.audit.record({ actorId, action: 'USER_CREATED', entityType: 'User', entityId: user.id, details: { role: user.role, status: user.status, email: user.email } });
       return user;
@@ -369,7 +369,7 @@ export class AdminService {
   }
 
   async updateUser(actorId: string, id: string, dto: UpdateUserDto) {
-    const current = await this.prisma.user.findUnique({ where: { id }, include: { driverProfile: true } });
+    const current = await this.prisma.user.findUnique({ where: { id }, include: { driverProfile: { include: { vehicles: true } } } });
     if (!current) throw new NotFoundException('User account not found');
     if (current.driverProfile && dto.fullName && !canonicalPersonNamePattern.test(dto.fullName.trim())) {
       throw new BadRequestException('Driver names must use Last Name, First Name M. format.');
@@ -386,11 +386,14 @@ export class AdminService {
       if (!current.driverProfile && dto.role === UserRole.DRIVER) throw new BadRequestException('Use the Drivers & QR workflow to create a complete driver profile.');
     }
     await this.ensureAdminContinuity(current.role, current.status, dto.role ?? current.role, dto.status ?? current.status, id);
-    if (dto.driverAddress && !current.driverProfile) {
-      throw new BadRequestException('Driver address information can only be assigned to a registered driver.');
+    if (dto.driverRecord && !current.driverProfile) {
+      throw new BadRequestException('Driver transport information can only be assigned to a registered driver.');
     }
-    const verifiedDriverAddress = dto.driverAddress
-      ? await this.locations.validateRegistrationAddress(dto.driverAddress)
+    const verifiedDriverAddress = dto.driverRecord
+      ? await this.locations.validateDriverPresentAddress(dto.driverRecord.address)
+      : null;
+    const unitNumber = dto.driverRecord
+      ? (dto.driverRecord.vehicleType === 'TRICYCLE' ? dto.driverRecord.bodyNumber! : dto.driverRecord.permitNumber!)
       : null;
     const data: Prisma.UserUncheckedUpdateInput = {
       ...(dto.fullName !== undefined ? { fullName: dto.fullName.trim() } : {}),
@@ -400,23 +403,41 @@ export class AdminService {
       ...(dto.role !== undefined ? { role: dto.role } : {}),
       ...(dto.status !== undefined ? { status: dto.status } : {}),
       ...(dto.newPassword ? { passwordHash: hashPassword(dto.newPassword) } : {}),
+      ...(unitNumber ? { username: unitNumber.toLowerCase(), email: null } : {}),
     };
     try {
       const updated = await this.prisma.$transaction(async (tx) => {
         const user = await tx.user.update({
           where: { id }, data,
-          select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true, licenseNumber: true } } },
+          select: { id: true, fullName: true, username: true, email: true, phone: true, role: true, status: true, createdAt: true, updatedAt: true, roleDefinition: { select: { name: true } }, driverProfile: { select: { verification: true } } },
         });
         if (verifiedDriverAddress && current.driverProfile) {
+          const record = dto.driverRecord!;
+          const identityKey = [record.ownerLastName, record.ownerFirstName, record.ownerMiddleName ?? ''].map(normalizeIdentityPart).join('|');
+          const owner = await tx.transportOwner.upsert({
+            where: { identityKey },
+            update: { lastName: record.ownerLastName, firstName: record.ownerFirstName, middleName: record.ownerMiddleName || null },
+            create: { identityKey, lastName: record.ownerLastName, firstName: record.ownerFirstName, middleName: record.ownerMiddleName || null },
+          });
           await tx.driver.update({
             where: { id: current.driverProfile.id },
-            data: { address: { upsert: { create: verifiedDriverAddress, update: verifiedDriverAddress } } },
+            data: { ownerId: owner.id, address: { upsert: { create: verifiedDriverAddress, update: verifiedDriverAddress } } },
           });
+          const vehicle = current.driverProfile.vehicles[0];
+          if (!vehicle) throw new BadRequestException('The driver has no registered vehicle to update.');
+          await tx.vehicle.update({ where: { id: vehicle.id }, data: {
+            vehicleType: record.vehicleType,
+            bodyNumber: record.vehicleType === 'TRICYCLE' ? record.bodyNumber : null,
+            permitNumber: record.vehicleType === 'HABAL_HABAL' ? record.permitNumber : null,
+            engineNumber: record.engineNumber,
+            chassisNumber: record.chassisNumber,
+            plateNumber: record.plateNumber,
+          } });
         }
         return user;
       });
       const statusChanged = current.status !== updated.status;
-      await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword), driverAddressUpdated: Boolean(verifiedDriverAddress), postalCode: verifiedDriverAddress?.postalCode } });
+      await this.audit.record({ actorId, action: statusChanged ? 'USER_STATUS_CHANGED' : 'USER_UPDATED', entityType: 'User', entityId: id, details: { previousRole: current.role, role: updated.role, previousStatus: current.status, status: updated.status, passwordReset: Boolean(dto.newPassword), driverRecordUpdated: Boolean(dto.driverRecord), unitNumber, barangayCode: verifiedDriverAddress?.barangayCode } });
       return updated;
     } catch (error) {
       this.handleUniqueUserError(error);
@@ -539,4 +560,8 @@ function formatAnalyticsDay(value: string) {
     month: 'short',
     day: 'numeric',
   }).format(new Date(`${value}T00:00:00+08:00`));
+}
+
+function normalizeIdentityPart(value: string) {
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toLowerCase();
 }

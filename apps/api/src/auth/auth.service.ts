@@ -16,8 +16,8 @@ export class AuthService {
   constructor(private readonly prisma: PrismaService, private readonly tokens: TokenService, private readonly audit: AuditService, private readonly locations: BoholLocationService) {}
 
   async login(dto: LoginDto, ipAddress = 'unknown'): Promise<LoginResponse> {
-    const email = dto.email.trim().toLowerCase();
-    const key = `${ipAddress}:${email}`;
+    const identifier = dto.identifier.trim().toLowerCase();
+    const key = `${ipAddress}:${identifier}`;
     const now = Date.now();
     const current = this.failedAttempts.get(key);
     if (current && now - current.windowStartedAt < 15 * 60 * 1000 && current.count >= 5) {
@@ -27,11 +27,11 @@ export class AuthService {
       this.failedAttempts.delete(key);
     }
 
-    const user = await this.prisma.user.findUnique({ where: { email }, include: { roleDefinition: true } });
+    const user = await this.prisma.user.findFirst({ where: { OR: [{ email: identifier }, { username: identifier }] }, include: { roleDefinition: true } });
     if (!user?.passwordHash || !verifyPassword(dto.password, user.passwordHash)) {
       const attempt = this.failedAttempts.get(key);
       this.failedAttempts.set(key, { count: (attempt?.count ?? 0) + 1, windowStartedAt: attempt?.windowStartedAt ?? now });
-      throw new UnauthorizedException('Email or password is incorrect');
+      throw new UnauthorizedException('Login identifier or password is incorrect');
     }
 
     if (user.status === UserStatus.INACTIVE) {
@@ -45,7 +45,7 @@ export class AuthService {
 
     return {
       accessToken: this.tokens.sign({ id: user.id, role: user.role }),
-      user: { id: user.id, role: user.role, status: user.status, fullName: user.fullName, username: user.username, email, phone: user.phone, avatarData: user.avatarData },
+      user: { id: user.id, role: user.role, status: user.status, fullName: user.fullName, username: user.username, email: user.email, phone: user.phone, avatarData: user.avatarData },
     };
   }
 

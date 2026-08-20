@@ -6,7 +6,6 @@ import '../theme/trisafe_theme.dart';
 
 Future<bool> showDriverContactEditor(
     BuildContext context, TriSafeApi api, DriverProfile profile) async {
-  final emailController = TextEditingController(text: profile.email);
   final storedDigits = profile.phone.replaceAll(RegExp(r'\D'), '');
   final localPhone =
       storedDigits.startsWith('63') ? storedDigits.substring(2) : storedDigits;
@@ -28,26 +27,6 @@ Future<bool> showDriverContactEditor(
               child: Form(
                 key: formKey,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    autocorrect: false,
-                    decoration: const InputDecoration(
-                        labelText: 'Email address',
-                        prefixIcon: Icon(Icons.email_outlined)),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (email.isEmpty) return 'Email address is required.';
-                      if (email.contains(' ') ||
-                          !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                              .hasMatch(email)) {
-                        return 'Enter a valid email address.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 13),
                   TextFormField(
                     controller: phoneController,
                     keyboardType: TextInputType.number,
@@ -102,8 +81,7 @@ Future<bool> showDriverContactEditor(
                         });
                         try {
                           await api.updateDriverContact(
-                              phone: '+63${phoneController.text}',
-                              email: emailController.text.trim());
+                              phone: '+63${phoneController.text}');
                           if (dialogContext.mounted) {
                             Navigator.pop(dialogContext, true);
                           }
@@ -128,7 +106,6 @@ Future<bool> showDriverContactEditor(
       ) ??
       false;
 
-  emailController.dispose();
   phoneController.dispose();
   return saved;
 }
@@ -136,10 +113,10 @@ Future<bool> showDriverContactEditor(
 String _friendlyContactError(Object error) {
   final message = error.toString();
   if (message.contains('already used')) {
-    return 'That email address is already used by another account.';
+    return 'That contact number is already used by another account.';
   }
   if (message.contains('400')) {
-    return 'Check the email and phone number, then try again.';
+    return 'Check the phone number, then try again.';
   }
   return 'Contact information could not be updated. Please try again.';
 }

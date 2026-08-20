@@ -9,7 +9,7 @@ import {
 import {
   api,
   type PhilippineLocationOption,
-  type RegisterDriverInput,
+  type BoholAddressInput,
   type StreetLocationSuggestion,
 } from "../../api";
 
@@ -26,7 +26,7 @@ export type DriverLocationField =
   | "addressLatitude"
   | "addressLongitude";
 
-type LocationValue = Pick<RegisterDriverInput, DriverLocationField>;
+type LocationValue = BoholAddressInput;
 
 export function DriverLocationFields({
   value,
@@ -314,7 +314,7 @@ export function DriverLocationFields({
 export const BoholAddressFields = DriverLocationFields;
 export type BoholAddressField = DriverLocationField;
 
-function SearchableHierarchyField({
+export function SearchableHierarchyField({
   label,
   searchLabel,
   value,

@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailController = TextEditingController();
+  final identifierController = TextEditingController();
   final passwordController = TextEditingController();
   final formKey = GlobalKey<FormState>();
   bool submitting = false;
@@ -22,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    emailController.dispose();
+    identifierController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final session = await widget.api.login(
-          email: emailController.text, password: passwordController.text);
+          identifier: identifierController.text, password: passwordController.text);
       if (!mounted) {
         return;
       }
@@ -104,16 +104,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     if (error != null) const SizedBox(height: 14),
                     TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: identifierController,
+                      keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                          labelText: 'Email address',
-                          prefixIcon: Icon(Icons.email_outlined),
+                          labelText: 'Email, body number, or permit number',
+                          prefixIcon: Icon(Icons.badge_outlined),
                           border: OutlineInputBorder()),
-                      validator: (value) =>
-                          value == null || !value.contains('@')
-                              ? 'Enter a valid email address.'
+                      validator: (value) => value == null || value.trim().isEmpty
+                          ? 'Enter your account identifier.'
+                          : value.contains(' ')
+                              ? 'The login identifier cannot contain spaces.'
                               : null,
                     ),
                     const SizedBox(height: 16),

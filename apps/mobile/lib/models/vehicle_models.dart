@@ -25,7 +25,11 @@ class VerifiedVehicle {
   final String driverId;
   final String driverName;
   final String? driverAddress;
-  final String? postalCode;
+  final String? ownerName;
+  final String? bodyNumber;
+  final String? permitNumber;
+  final String? engineNumber;
+  final String? chassisNumber;
   final String? franchiseNumber;
   final String? franchiseExpiresAt;
   final String vehicleId;
@@ -37,7 +41,11 @@ class VerifiedVehicle {
       : driverId = json['driverId'] as String,
         driverName = json['driverName'] as String,
         driverAddress = json['driverAddress'] as String?,
-        postalCode = json['postalCode'] as String?,
+        ownerName = json['ownerName'] as String?,
+        bodyNumber = json['bodyNumber'] as String?,
+        permitNumber = json['permitNumber'] as String?,
+        engineNumber = json['engineNumber'] as String?,
+        chassisNumber = json['chassisNumber'] as String?,
         franchiseNumber = json['franchiseNumber'] as String?,
         franchiseExpiresAt = json['franchiseExpiresAt'] as String?,
         vehicleId = json['vehicleId'] as String,

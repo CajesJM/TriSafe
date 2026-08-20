@@ -52,7 +52,7 @@ export function DriverProfileModal({
             <div>
               <p className="eyebrow">REGISTERED DRIVER PROFILE</p>
               <h3 id={titleId}>{displayPersonName(driver.fullName)}</h3>
-              <small>{driver.licenseNumber}</small>
+              <small>{driver.username ?? "LGU record incomplete"}</small>
             </div>
           </div>
           <div className="driver-profile-header-actions">
@@ -74,8 +74,8 @@ export function DriverProfileModal({
           <div>
             <strong>Operational record</strong>
             <span>
-              License, franchise, vehicle, eligibility, and QR details are
-              maintained here—not in Users &amp; Roles.
+              Owner, driver, vehicle, franchise, eligibility, and QR details
+              are maintained here—not in Accounts &amp; Access.
             </span>
           </div>
         </div>
@@ -87,8 +87,8 @@ export function DriverProfileModal({
               value={displayPersonName(driver.fullName)}
             />
             <ProfileField
-              label="Email"
-              value={driver.email ?? "No email address"}
+              label="Login identifier"
+              value={driver.username ?? "Not assigned"}
             />
             <ProfileField
               label="Phone"
@@ -101,23 +101,19 @@ export function DriverProfileModal({
             />
           </ProfileSection>
 
-          <ProfileSection icon={<FileText />} title="License and eligibility">
-            <ProfileField label="License number" value={driver.licenseNumber} />
+          <ProfileSection icon={<FileText />} title="Owner and eligibility">
+            <ProfileField label="Owner / organization leader" value={driver.owner ? `${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}` : "Not recorded"} />
             <ProfileField
               label="Driver status"
               value={driver.verification}
               badge
             />
-            <ProfileField
-              label="Renewal date"
-              value={formatDate(driver.renewalDate)}
-            />
           </ProfileSection>
 
           <ProfileSection icon={<MapPin />} title="Registered address">
             <ProfileField
-              label="Street / Purok"
-              value={driver.address?.streetPurok ?? "Not recorded"}
+              label="Purok"
+              value={driver.address?.purok ?? "Not recorded"}
             />
             <ProfileField
               label="Barangay"
@@ -130,10 +126,6 @@ export function DriverProfileModal({
             <ProfileField
               label="Province"
               value={driver.address?.provinceName ?? "Not recorded"}
-            />
-            <ProfileField
-              label="Postal / ZIP code"
-              value={driver.address?.postalCode ?? "Not recorded"}
             />
           </ProfileSection>
 
@@ -168,6 +160,9 @@ export function DriverProfileModal({
                 vehicle?.vehicleType?.replaceAll("_", " ") ?? "Not assigned"
               }
             />
+            <ProfileField label={vehicle?.vehicleType === "HABAL_HABAL" ? "Permit number" : "Body number"} value={vehicle?.permitNumber ?? vehicle?.bodyNumber ?? "Not assigned"} />
+            <ProfileField label="Engine number" value={vehicle?.engineNumber ?? "Not assigned"} />
+            <ProfileField label="Chassis number" value={vehicle?.chassisNumber ?? "Not assigned"} />
             <ProfileField
               label="LGU QR code"
               value={

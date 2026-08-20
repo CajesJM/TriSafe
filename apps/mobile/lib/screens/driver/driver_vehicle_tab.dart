@@ -107,6 +107,9 @@ class _VehicleCard extends StatelessWidget {
             _VehicleRow(
                 label: 'Vehicle type',
                 value: _vehicleLabel(vehicle.vehicleType)),
+            _VehicleRow(label: vehicle.vehicleType == 'HABAL_HABAL' ? 'Permit number' : 'Body number', value: vehicle.permitNumber ?? vehicle.bodyNumber ?? 'Not recorded'),
+            _VehicleRow(label: 'Engine number', value: vehicle.engineNumber ?? 'Not recorded'),
+            _VehicleRow(label: 'Chassis number', value: vehicle.chassisNumber ?? 'Not recorded'),
             _VehicleRow(
                 label: 'Make / model',
                 value: vehicle.makeModel ?? 'Not recorded'),

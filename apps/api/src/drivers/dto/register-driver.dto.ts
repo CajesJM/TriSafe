@@ -1,86 +1,35 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { UserStatus } from '@prisma/client';
-import {
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsIn,
-  IsString,
-  Length,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
-import { BoholAddressDto } from './bohol-address.dto';
+import { IsDateString, IsEnum, IsIn, IsOptional, IsString, Length, Matches, MaxLength, MinLength, ValidateIf, ValidateNested } from 'class-validator';
+import { DriverPresentAddressDto } from './driver-present-address.dto';
 
-const trimText = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value;
-const uppercaseText = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().toUpperCase() : value;
-const lowercaseText = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim().toLowerCase() : value;
+const trimText = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value;
+const uppercaseText = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().toUpperCase() : value;
+const personPart = /^[\p{L}][\p{L} .'-]*$/u;
+const recordNumber = /^[A-Z0-9-]+$/;
 
-export class RegisterDriverDto extends BoholAddressDto {
-  @Transform(trimText)
-  @IsString()
-  @Length(5, 100)
-  @Matches(/^[\p{L}][\p{L} '-]{1,44}, [\p{L}][\p{L}'-]+(?: [\p{L}][\p{L}'-]+)*(?: \p{L}\.)?$/u, {
-    message: 'fullName must use Last Name, First Name M. format',
-  })
-  fullName!: string;
-
-  @IsEnum(UserStatus)
-  accountStatus!: UserStatus;
-
-  @Transform(uppercaseText)
-  @IsString()
-  @Length(4, 30)
-  @Matches(/^[A-Z0-9-]+$/, { message: 'licenseNumber may contain only letters, numbers, and hyphens' })
-  licenseNumber!: string;
-
-  @IsDateString({ strict: true })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'renewalDate must use YYYY-MM-DD format' })
-  renewalDate!: string;
-
-  @Transform(uppercaseText)
-  @IsString()
-  @Length(4, 40)
-  @Matches(/^[A-Z0-9-]+$/, { message: 'franchiseNumber may contain only letters, numbers, and hyphens' })
-  franchiseNumber!: string;
-
-  @IsDateString({ strict: true })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'franchiseIssuedAt must use YYYY-MM-DD format' })
-  franchiseIssuedAt!: string;
-
-  @IsDateString({ strict: true })
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'franchiseExpiresAt must use YYYY-MM-DD format' })
-  franchiseExpiresAt!: string;
-
-  @Transform(uppercaseText)
-  @IsString()
-  @Length(3, 15)
-  @Matches(/^[A-Z0-9-]+$/, { message: 'plateNumber may contain only letters, numbers, and hyphens' })
-  plateNumber!: string;
-
-  @Transform(uppercaseText)
-  @IsIn(['TRICYCLE', 'HABAL_HABAL'])
-  vehicleType!: 'TRICYCLE' | 'HABAL_HABAL';
-
-  @IsString()
-  @Matches(/^\+639\d{9}$/, { message: 'phone must be a Philippine mobile number in +639XXXXXXXXX format' })
-  phone!: string;
-
-  @Transform(lowercaseText)
-  @IsEmail({}, { message: 'email must be a valid email address' })
-  @MaxLength(160)
-  email!: string;
-
-  @IsString()
-  @MinLength(10)
-  @MaxLength(72)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, {
-    message: 'temporaryPassword must include uppercase, lowercase, number, and symbol',
-  })
+export class RegisterDriverDto {
+  @Transform(trimText) @IsString() @Length(1, 60) @Matches(personPart) ownerLastName!: string;
+  @Transform(trimText) @IsString() @Length(1, 60) @Matches(personPart) ownerFirstName!: string;
+  @IsOptional() @Transform(trimText) @IsString() @MaxLength(60) @Matches(personPart) ownerMiddleName?: string;
+  @Transform(trimText) @IsString() @Length(1, 60) @Matches(personPart) driverLastName!: string;
+  @Transform(trimText) @IsString() @Length(1, 60) @Matches(personPart) driverFirstName!: string;
+  @IsOptional() @Transform(trimText) @IsString() @MaxLength(60) @Matches(personPart) driverMiddleName?: string;
+  @IsEnum(UserStatus) accountStatus!: UserStatus;
+  @Transform(uppercaseText) @IsIn(['TRICYCLE', 'HABAL_HABAL']) vehicleType!: 'TRICYCLE' | 'HABAL_HABAL';
+  @ValidateIf((value: RegisterDriverDto) => value.vehicleType === 'TRICYCLE')
+  @Transform(uppercaseText) @IsString() @Length(2, 30) @Matches(recordNumber) bodyNumber?: string;
+  @ValidateIf((value: RegisterDriverDto) => value.vehicleType === 'HABAL_HABAL')
+  @Transform(uppercaseText) @IsString() @Length(2, 30) @Matches(recordNumber) permitNumber?: string;
+  @Transform(uppercaseText) @IsString() @Length(3, 50) @Matches(recordNumber) engineNumber!: string;
+  @Transform(uppercaseText) @IsString() @Length(3, 50) @Matches(recordNumber) chassisNumber!: string;
+  @Transform(uppercaseText) @IsString() @Length(3, 15) @Matches(recordNumber) plateNumber!: string;
+  @IsString() @Matches(/^\+639\d{9}$/, { message: 'phone must be a Philippine mobile number in +639XXXXXXXXX format' }) phone!: string;
+  @IsString() @MinLength(10) @MaxLength(72)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, { message: 'temporaryPassword must include uppercase, lowercase, number, and symbol' })
   temporaryPassword!: string;
-
+  @ValidateNested() @Type(() => DriverPresentAddressDto) address!: DriverPresentAddressDto;
+  @Transform(uppercaseText) @IsString() @Length(4, 40) @Matches(recordNumber) franchiseNumber!: string;
+  @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) franchiseIssuedAt!: string;
+  @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) franchiseExpiresAt!: string;
 }

@@ -196,27 +196,72 @@ async function main() {
   await prisma.user.upsert({
     where: { id: "driver-demo-user" },
     update: {
-      email: "driver@trisafe.local",
+      username: "tri-demo-001",
+      email: null,
       passwordHash: hashPassword("driver12345"),
     },
     create: {
       id: "driver-demo-user",
       role: "DRIVER",
       fullName: "Juan Dela Cruz",
-      email: "driver@trisafe.local",
+      username: "tri-demo-001",
+      email: null,
       phone: "+639171234567",
       passwordHash: hashPassword("driver12345"),
     },
   });
+  await prisma.transportOwner.upsert({
+    where: { identityKey: "dela cruz|pedro|santos" },
+    update: { lastName: "Dela Cruz", firstName: "Pedro", middleName: "Santos" },
+    create: {
+      id: "owner-demo",
+      identityKey: "dela cruz|pedro|santos",
+      lastName: "Dela Cruz",
+      firstName: "Pedro",
+      middleName: "Santos",
+    },
+  });
   await prisma.driver.upsert({
     where: { id: "driver-demo" },
-    update: { verification: "VERIFIED", renewalDate: new Date("2027-12-31") },
+    update: { verification: "VERIFIED", ownerId: "owner-demo" },
     create: {
       id: "driver-demo",
       userId: "driver-demo-user",
+      ownerId: "owner-demo",
       verification: "VERIFIED",
-      licenseNumber: "DL-DEMO-001",
-      renewalDate: new Date("2027-12-31"),
+      address: {
+        create: {
+          provinceCode: "071200000",
+          provinceName: "Bohol",
+          municipalityCode: "071244000",
+          municipalityName: "Trinidad",
+          barangayCode: "071244015",
+          barangayName: "Poblacion",
+          purok: "Purok 1",
+        },
+      },
+    },
+  });
+  await prisma.driverAddress.upsert({
+    where: { driverId: "driver-demo" },
+    update: {
+      provinceCode: "071200000",
+      provinceName: "Bohol",
+      municipalityCode: "071244000",
+      municipalityName: "Trinidad",
+      barangayCode: "071244015",
+      barangayName: "Poblacion",
+      purok: "Purok 1",
+    },
+    create: {
+      driverId: "driver-demo",
+      provinceCode: "071200000",
+      provinceName: "Bohol",
+      municipalityCode: "071244000",
+      municipalityName: "Trinidad",
+      barangayCode: "071244015",
+      barangayName: "Poblacion",
+      purok: "Purok 1",
     },
   });
   await prisma.franchise.upsert({
@@ -232,12 +277,22 @@ async function main() {
   });
   await prisma.vehicle.upsert({
     where: { id: "vehicle-demo" },
-    update: { isActive: true, vehicleType: "Tricycle" },
+    update: {
+      isActive: true,
+      vehicleType: "TRICYCLE",
+      bodyNumber: "TRI-DEMO-001",
+      permitNumber: null,
+      engineNumber: "ENG-DEMO-001",
+      chassisNumber: "CHS-DEMO-001",
+    },
     create: {
       id: "vehicle-demo",
       driverId: "driver-demo",
       plateNumber: "TRI-2026",
-      vehicleType: "Tricycle",
+      vehicleType: "TRICYCLE",
+      bodyNumber: "TRI-DEMO-001",
+      engineNumber: "ENG-DEMO-001",
+      chassisNumber: "CHS-DEMO-001",
       qrCode: { create: { token: "demo-trinidad-qr" } },
     },
   });

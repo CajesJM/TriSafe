@@ -149,12 +149,14 @@ class _PassengerQrResultDialog extends StatelessWidget {
                     value: vehicle?.driverName ?? 'Not available'),
                 const Divider(height: 1),
                 _VerificationRow(
+                    icon: Icons.groups_outlined,
+                    label: 'Owner / leader',
+                    value: vehicle?.ownerName ?? 'Not recorded'),
+                const Divider(height: 1),
+                _VerificationRow(
                     icon: Icons.location_on_outlined,
                     label: 'Registered address',
-                    value: vehicle?.driverAddress ?? 'Not recorded',
-                    detail: vehicle?.postalCode == null
-                        ? null
-                        : 'Postal code ${vehicle!.postalCode}'),
+                    value: vehicle?.driverAddress ?? 'Not recorded'),
                 const Divider(height: 1),
                 _VerificationRow(
                     icon: vehicle?.vehicleType == 'HABAL_HABAL'
@@ -164,7 +166,7 @@ class _PassengerQrResultDialog extends StatelessWidget {
                     value: vehicle == null
                         ? 'Not available'
                         : _vehicleLabel(vehicle.vehicleType),
-                    detail: vehicle?.plateNumber),
+                    detail: '${vehicle?.plateNumber ?? "No plate"} · ${vehicle?.bodyNumber != null ? "Body ${vehicle!.bodyNumber}" : vehicle?.permitNumber != null ? "Permit ${vehicle!.permitNumber}" : "Unit number not recorded"}'),
                 const Divider(height: 1),
                 _VerificationRow(
                     icon: Icons.assignment_turned_in_outlined,

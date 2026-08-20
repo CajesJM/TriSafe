@@ -1,12 +1,12 @@
 class DriverProfile {
   final String id;
   final String fullName;
-  final String email;
+  final String username;
   final String phone;
   final String accountStatus;
   final String verification;
-  final String licenseNumber;
-  final DateTime renewalDate;
+  final DriverOwner? owner;
+  final DriverAddress? address;
   final String? renewalReminder;
   final DriverFranchise? franchise;
   final List<DriverVehicle> vehicles;
@@ -14,12 +14,12 @@ class DriverProfile {
   DriverProfile.fromJson(Map<String, dynamic> json)
       : id = json['id'] as String,
         fullName = json['fullName'] as String,
-        email = json['email'] as String? ?? '',
+        username = json['username'] as String? ?? '',
         phone = json['phone'] as String? ?? '',
         accountStatus = json['accountStatus'] as String? ?? 'ACTIVE',
         verification = json['verification'] as String,
-        licenseNumber = json['licenseNumber'] as String,
-        renewalDate = DateTime.parse(json['renewalDate'].toString()),
+        owner = json['owner'] == null ? null : DriverOwner.fromJson(json['owner']),
+        address = json['address'] == null ? null : DriverAddress.fromJson(json['address']),
         renewalReminder = json['renewalReminder'] as String?,
         franchise = json['franchise'] == null
             ? null
@@ -27,6 +27,18 @@ class DriverProfile {
         vehicles = (json['vehicles'] as List<dynamic>? ?? [])
             .map((item) => DriverVehicle.fromJson(item))
             .toList();
+}
+
+class DriverOwner {
+  final String lastName; final String firstName; final String? middleName;
+  DriverOwner.fromJson(Map<String, dynamic> json) : lastName = json['lastName'] as String, firstName = json['firstName'] as String, middleName = json['middleName'] as String?;
+  String get displayName => '$lastName, $firstName${middleName?.isNotEmpty == true ? ' $middleName' : ''}';
+}
+
+class DriverAddress {
+  final String provinceName; final String municipalityName; final String barangayName; final String purok;
+  DriverAddress.fromJson(Map<String, dynamic> json) : provinceName = json['provinceName'] as String, municipalityName = json['municipalityName'] as String, barangayName = json['barangayName'] as String, purok = json['purok'] as String;
+  String get displayAddress => '$purok, $barangayName, $municipalityName, $provinceName';
 }
 
 class DriverFranchise {
@@ -47,6 +59,10 @@ class DriverVehicle {
   final String plateNumber;
   final String vehicleType;
   final String? makeModel;
+  final String? bodyNumber;
+  final String? permitNumber;
+  final String? engineNumber;
+  final String? chassisNumber;
   final bool isActive;
   final DriverQrCode? qrCode;
 
@@ -55,6 +71,10 @@ class DriverVehicle {
         plateNumber = json['plateNumber'] as String,
         vehicleType = json['vehicleType'] as String,
         makeModel = json['makeModel'] as String?,
+        bodyNumber = json['bodyNumber'] as String?,
+        permitNumber = json['permitNumber'] as String?,
+        engineNumber = json['engineNumber'] as String?,
+        chassisNumber = json['chassisNumber'] as String?,
         isActive = json['isActive'] as bool? ?? true,
         qrCode = json['qrCode'] == null
             ? null

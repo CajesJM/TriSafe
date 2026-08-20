@@ -58,12 +58,10 @@ class DriverProfileTab extends StatelessWidget {
                 const Divider(height: 30),
                 _ProfileRow(
                     label: 'Full name', value: driver.fullName, locked: true),
-                _ProfileRow(
-                    label: 'License number',
-                    value: driver.licenseNumber,
-                    locked: true),
-                _ProfileRow(label: 'Email address', value: driver.email),
+                _ProfileRow(label: 'Login identifier', value: driver.username, locked: true),
+                _ProfileRow(label: 'Owner / leader', value: driver.owner?.displayName ?? 'Not recorded', locked: true),
                 _ProfileRow(label: 'Phone number', value: driver.phone),
+                _ProfileRow(label: 'Present address', value: driver.address?.displayAddress ?? 'Not recorded', locked: true),
                 _ProfileRow(
                     label: 'Driver status',
                     value: statusLabel(driver.verification),
@@ -92,7 +90,7 @@ class DriverProfileTab extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                       child: Text(
-                          'Your verified name, license, vehicle, and franchise records are LGU-managed. Contact the transport office to correct these details.',
+                          'Your verified name, owner, address, vehicle, and franchise records are LGU-managed. Contact the transport office to correct these details.',
                           style: TextStyle(
                               fontSize: 10,
                               height: 1.5,

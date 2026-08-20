@@ -303,7 +303,7 @@ export function DashboardHome({
                   <span className="avatar">{initials(driver.fullName)}</span>
                   <span>
                     <b>{driver.fullName}</b>
-                    <small>{driver.licenseNumber}</small>
+                    <small>{driver.username ?? "Record incomplete"}</small>
                   </span>
                 </div>
                 <span>

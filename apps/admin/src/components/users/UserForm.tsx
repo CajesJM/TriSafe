@@ -9,10 +9,7 @@ import {
   UserRole,
   UserStatus,
 } from "../../api";
-import {
-  BoholAddressFields,
-  type BoholAddressField,
-} from "../drivers/DriverLocationFields";
+import { DriverPresentAddressFields } from "../drivers/DriverPresentAddressFields";
 import {
   cleanPersonNamePart,
   cleanMiddleInitial,
@@ -66,12 +63,24 @@ export function UserForm({
     municipalityName: driver?.address?.municipalityName ?? "",
     barangayCode: driver?.address?.barangayCode ?? "",
     barangayName: driver?.address?.barangayName ?? "",
-    streetPurok: driver?.address?.streetPurok ?? "",
-    postalCode: driver?.address?.postalCode ?? "",
-    streetPlaceId: driver?.address?.externalPlaceId ?? "",
-    addressLatitude: Number(driver?.address?.latitude ?? 0),
-    addressLongitude: Number(driver?.address?.longitude ?? 0),
+    purok: driver?.address?.purok ?? "",
   }));
+  const vehicle = driver?.vehicles[0];
+  const [owner, setOwner] = useState({
+    lastName: driver?.owner?.lastName ?? "",
+    firstName: driver?.owner?.firstName ?? "",
+    middleName: driver?.owner?.middleName ?? "",
+  });
+  const [vehicleRecord, setVehicleRecord] = useState({
+    vehicleType: (vehicle?.vehicleType === "HABAL_HABAL"
+      ? "HABAL_HABAL"
+      : "TRICYCLE") as "TRICYCLE" | "HABAL_HABAL",
+    bodyNumber: vehicle?.bodyNumber ?? "",
+    permitNumber: vehicle?.permitNumber ?? "",
+    engineNumber: vehicle?.engineNumber ?? "",
+    chassisNumber: vehicle?.chassisNumber ?? "",
+    plateNumber: vehicle?.plateNumber ?? "",
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const assignableRoles = roles.filter(
@@ -128,8 +137,25 @@ export function UserForm({
       onError(message);
       return;
     }
-    if (isDriver && (!address.streetPurok || !address.streetPlaceId || !/^\d{4}$/.test(address.postalCode))) {
-      const message = "Select a verified Street/Purok so TriSafe can assign the correct postal code.";
+    if (isDriver && !address.purok.trim()) {
+      const message = "Enter the driver's present Purok.";
+      setError(message);
+      onError(message);
+      return;
+    }
+    if (
+      isDriver &&
+      (!owner.lastName.trim() ||
+        !owner.firstName.trim() ||
+        !vehicleRecord.engineNumber ||
+        !vehicleRecord.chassisNumber ||
+        !vehicleRecord.plateNumber ||
+        !(vehicleRecord.vehicleType === "TRICYCLE"
+          ? vehicleRecord.bodyNumber
+          : vehicleRecord.permitNumber))
+    ) {
+      const message =
+        "Complete the owner, unit number, engine, chassis, and plate details.";
       setError(message);
       onError(message);
       return;
@@ -141,12 +167,33 @@ export function UserForm({
         await onSave({
           fullName: submittedName,
           ...(isPassenger ? { username: normalizedUsername } : {}),
-          email,
+          ...(!isDriver ? { email } : {}),
           phone: `+63${phone}`,
           role,
           status,
           ...(password ? { newPassword: password } : {}),
-          ...(isDriver ? { driverAddress: address } : {}),
+          ...(isDriver
+            ? {
+                driverRecord: {
+                  ownerLastName: owner.lastName.trim(),
+                  ownerFirstName: owner.firstName.trim(),
+                  ownerMiddleName: owner.middleName.trim() || undefined,
+                  vehicleType: vehicleRecord.vehicleType,
+                  bodyNumber:
+                    vehicleRecord.vehicleType === "TRICYCLE"
+                      ? vehicleRecord.bodyNumber
+                      : undefined,
+                  permitNumber:
+                    vehicleRecord.vehicleType === "HABAL_HABAL"
+                      ? vehicleRecord.permitNumber
+                      : undefined,
+                  engineNumber: vehicleRecord.engineNumber,
+                  chassisNumber: vehicleRecord.chassisNumber,
+                  plateNumber: vehicleRecord.plateNumber,
+                  address,
+                },
+              }
+            : {}),
         });
       else
         await onSave({
@@ -328,17 +375,19 @@ export function UserForm({
                   </small>
                 </label>
               )}
-              <label className="field">
-                <span>
-                  Email address <em>*</em>
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                />
-              </label>
+              {!isDriver && (
+                <label className="field">
+                  <span>
+                    Email address <em>*</em>
+                  </span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                  />
+                </label>
+              )}
               <label className="field">
                 <span>
                   Philippine phone number <em>*</em>
@@ -390,14 +439,147 @@ export function UserForm({
           </div>
           {isDriver && user && (
             <div className="form-section driver-account-address-section">
-              <h4>Registered address</h4>
+              <h4>Owner, vehicle, and present address</h4>
               <p className="driver-account-address-description">
-                Search and select the verified Bohol location associated with
-                this driver. The saved address is shown during QR verification.
+                These are the official LGU registration fields shown during QR
+                verification.
               </p>
-              <BoholAddressFields
+              <div className="form-grid">
+                <label className="field">
+                  <span>
+                    Owner last name <em>*</em>
+                  </span>
+                  <input
+                    value={owner.lastName}
+                    onChange={(e) =>
+                      setOwner({ ...owner, lastName: e.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Owner first name <em>*</em>
+                  </span>
+                  <input
+                    value={owner.firstName}
+                    onChange={(e) =>
+                      setOwner({ ...owner, firstName: e.target.value })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Owner middle name</span>
+                  <input
+                    value={owner.middleName}
+                    onChange={(e) =>
+                      setOwner({ ...owner, middleName: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Vehicle type <em>*</em>
+                  </span>
+                  <select
+                    value={vehicleRecord.vehicleType}
+                    onChange={(e) =>
+                      setVehicleRecord({
+                        ...vehicleRecord,
+                        vehicleType: e.target.value as
+                          | "TRICYCLE"
+                          | "HABAL_HABAL",
+                        bodyNumber: "",
+                        permitNumber: "",
+                      })
+                    }
+                  >
+                    <option value="TRICYCLE">Tricycle</option>
+                    <option value="HABAL_HABAL">Habal-habal</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>
+                    {vehicleRecord.vehicleType === "TRICYCLE"
+                      ? "Body number"
+                      : "Permit number"}{" "}
+                    <em>*</em>
+                  </span>
+                  <input
+                    value={
+                      vehicleRecord.vehicleType === "TRICYCLE"
+                        ? vehicleRecord.bodyNumber
+                        : vehicleRecord.permitNumber
+                    }
+                    onChange={(e) =>
+                      setVehicleRecord({
+                        ...vehicleRecord,
+                        [vehicleRecord.vehicleType === "TRICYCLE"
+                          ? "bodyNumber"
+                          : "permitNumber"]: e.target.value
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9-]/g, ""),
+                      })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Engine number <em>*</em>
+                  </span>
+                  <input
+                    value={vehicleRecord.engineNumber}
+                    onChange={(e) =>
+                      setVehicleRecord({
+                        ...vehicleRecord,
+                        engineNumber: e.target.value
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9-]/g, ""),
+                      })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Chassis number <em>*</em>
+                  </span>
+                  <input
+                    value={vehicleRecord.chassisNumber}
+                    onChange={(e) =>
+                      setVehicleRecord({
+                        ...vehicleRecord,
+                        chassisNumber: e.target.value
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9-]/g, ""),
+                      })
+                    }
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Plate number <em>*</em>
+                  </span>
+                  <input
+                    value={vehicleRecord.plateNumber}
+                    onChange={(e) =>
+                      setVehicleRecord({
+                        ...vehicleRecord,
+                        plateNumber: e.target.value
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9-]/g, ""),
+                      })
+                    }
+                    required
+                  />
+                </label>
+              </div>
+              <DriverPresentAddressFields
                 value={address}
-                onChange={(changes: Partial<Pick<typeof address, BoholAddressField>>) => {
+                onChange={(changes) => {
                   setAddress((current) => ({ ...current, ...changes }));
                   setError("");
                 }}

@@ -104,15 +104,26 @@ model RoleDefinition {
 model Driver {
   id              String   @id @default(cuid())
   userId          String   @unique
+  ownerId         String?
   verification    DriverVerificationStatus @default(PENDING)
-  licenseNumber   String
-  renewalDate     DateTime
   user            User     @relation(fields: [userId], references: [id])
+  owner           TransportOwner? @relation(fields: [ownerId], references: [id])
   franchise       Franchise?
   vehicles        Vehicle[]
   announcements   AnnouncementRecipient[]
   address         DriverAddress?
   createdAt       DateTime @default(now())
+}
+
+model TransportOwner {
+  id            String   @id @default(cuid())
+  identityKey   String   @unique
+  lastName      String
+  firstName     String
+  middleName    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  drivers       Driver[]
 }
 
 model DriverAddress {
@@ -124,17 +135,12 @@ model DriverAddress {
   municipalityName String
   barangayCode      String
   barangayName      String
-  streetPurok       String
-  postalCode        String
-  externalPlaceId   String
-  latitude          Decimal  @db.Decimal(10, 7)
-  longitude         Decimal  @db.Decimal(10, 7)
+  purok             String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   driver            Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
 
   @@index([provinceCode, municipalityCode, barangayCode])
-  @@index([postalCode])
 }
 
 model Franchise {
@@ -152,6 +158,10 @@ model Vehicle {
   driverId        String
   plateNumber     String   @unique
   vehicleType     String
+  bodyNumber      String?  @unique
+  permitNumber    String?  @unique
+  engineNumber    String?  @unique
+  chassisNumber   String?  @unique
   makeModel       String?
   isActive        Boolean  @default(true)
   driver          Driver   @relation(fields: [driverId], references: [id])

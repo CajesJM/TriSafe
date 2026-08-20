@@ -9,7 +9,7 @@ export type RequestWithUser = {
 
 export type LoginResponse = {
   accessToken: string;
-  user: AuthenticatedUser & { status: UserStatus; fullName: string; username?: string | null; email: string; phone?: string | null; avatarData?: string | null };
+  user: AuthenticatedUser & { status: UserStatus; fullName: string; username?: string | null; email?: string | null; phone?: string | null; avatarData?: string | null };
 };
 
 export type AdminProfile = {

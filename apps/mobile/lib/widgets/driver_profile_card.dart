@@ -27,7 +27,7 @@ class DriverProfileCard extends StatelessWidget {
                   Text(profile.fullName,
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w800)),
-                  Text(profile.email,
+                  Text(profile.username,
                       style: TextStyle(color: Colors.grey.shade700))
                 ])),
             IconButton(
@@ -37,7 +37,7 @@ class DriverProfileCard extends StatelessWidget {
           ]),
           const Divider(height: 28),
           _InfoRow(label: 'Account status', value: profile.verification),
-          _InfoRow(label: 'License number', value: profile.licenseNumber),
+          _InfoRow(label: 'Owner / leader', value: profile.owner?.displayName ?? 'Not recorded'),
           _InfoRow(label: 'Phone number', value: profile.phone),
           if (profile.franchise != null) ...[
             _InfoRow(label: 'Franchise', value: profile.franchise!.number),
@@ -52,8 +52,6 @@ class DriverProfileCard extends StatelessWidget {
                 label: 'Vehicle',
                 value: '${vehicle.plateNumber} · ${vehicle.vehicleType}'),
           ],
-          _InfoRow(
-              label: 'Renewal date', value: _formatDate(profile.renewalDate)),
           if (profile.renewalReminder != null)
             Container(
               width: double.infinity,

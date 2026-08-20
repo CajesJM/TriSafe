@@ -83,7 +83,7 @@ export function DriverList({
     () =>
       drivers.filter((driver) => {
         const text =
-          `${driver.fullName} ${driver.email ?? ""} ${driver.phone ?? ""} ${driver.licenseNumber} ${driver.franchise?.franchiseNumber ?? ""} ${driver.vehicles.map((vehicle) => vehicle.plateNumber).join(" ")}`.toLowerCase();
+          `${driver.fullName} ${driver.username ?? ""} ${driver.phone ?? ""} ${driver.owner ? `${driver.owner.lastName} ${driver.owner.firstName} ${driver.owner.middleName ?? ""}` : ""} ${driver.franchise?.franchiseNumber ?? ""} ${driver.vehicles.map((vehicle) => `${vehicle.plateNumber} ${vehicle.bodyNumber ?? ""} ${vehicle.permitNumber ?? ""} ${vehicle.engineNumber ?? ""} ${vehicle.chassisNumber ?? ""}`).join(" ")}`.toLowerCase();
         const currentStatus = driver.franchise?.status ?? driver.verification;
         const matchesVehicleType = driver.vehicles.some(
           (vehicle) =>
@@ -151,7 +151,7 @@ export function DriverList({
           setSearch(value);
           setPage(1);
         }}
-        searchLabel="Search driver, plate, license, or franchise"
+        searchLabel="Search driver, owner, unit, plate, engine, or franchise"
         filter={status}
         onFilter={(value) => {
           setStatus(value);
@@ -195,7 +195,7 @@ export function DriverList({
             <span>Driver</span>
             <span>Vehicle</span>
             <span>Franchise</span>
-            <span>Renewal</span>
+            <span>Owner / unit</span>
             <span>Account</span>
             <span>Transport</span>
             <span>Actions</span>
@@ -384,7 +384,7 @@ function DriverRow({
         <span>
           <b>{displayPersonName(driver.fullName)}</b>
           <small>
-            {driver.licenseNumber} · {driver.phone ?? "No phone"}
+            {driver.username ?? "Login not assigned"} · {driver.phone ?? "No phone"}
           </small>
         </span>
       </div>
@@ -401,8 +401,8 @@ function DriverRow({
         </small>
       </span>
       <span>
-        <b>{formatDate(driver.renewalDate)}</b>
-        <small>Driver renewal</small>
+        <b>{driver.owner ? displayPersonName(`${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}`) : "Record incomplete"}</b>
+        <small>{vehicle?.bodyNumber ? `Body ${vehicle.bodyNumber}` : vehicle?.permitNumber ? `Permit ${vehicle.permitNumber}` : "No unit number"}</small>
       </span>
       <span
         className={`status ${(driver.accountStatus ?? "ACTIVE").toLowerCase()}`}

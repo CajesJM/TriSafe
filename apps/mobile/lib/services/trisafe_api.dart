@@ -25,9 +25,9 @@ class TriSafeApi {
   }
 
   Future<AuthSession> login(
-      {required String email, required String password}) async {
+      {required String identifier, required String password}) async {
     final session = AuthSession.fromJson(await _postPublic('/auth/login', {
-      'email': email,
+      'identifier': identifier.trim(),
       'password': password,
     }));
     _accessToken = session.accessToken;
@@ -131,9 +131,8 @@ class TriSafeApi {
     await _patch('/drivers/me/announcements/$announcementId/read', {});
   }
 
-  Future<void> updateDriverContact(
-      {required String phone, required String email}) async {
-    await _patch('/drivers/me/contact', {'phone': phone, 'email': email});
+  Future<void> updateDriverContact({required String phone}) async {
+    await _patch('/drivers/me/contact', {'phone': phone});
   }
 
   Future<List<LocationOption>> locations() async => (await _get('/locations'))
