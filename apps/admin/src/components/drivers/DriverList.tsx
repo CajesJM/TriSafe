@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Driver, DriverStatus, UserStatus } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
@@ -14,9 +14,12 @@ import type { DriverFileFormat } from "../../utils/driverRegistrationFile";
 import { downloadVehicleQrPoster } from "../../utils/vehicleQrPoster";
 import {
   BadgeCheck,
+  CalendarClock,
+  CircleCheckBig,
   Download,
   FilePenLine,
   FileText,
+  KeyRound,
   QrCode,
   ShieldAlert,
   UserCheck,
@@ -135,16 +138,17 @@ export function DriverList({
       <div className="section-heading">
         <div>
           <span className="eyebrow">LGU TRANSPORT REGISTRY</span>
-          <h3>Approved drivers and vehicles</h3>
+          <h3>Registered driver management</h3>
           <p className="section-description">
-            Accounts, franchise validity, vehicles, and LGU-issued QR identities
-            from the live registry.
+            Manage the live driver registry: driver access, owner or operator,
+            vehicle identity, franchise eligibility, and LGU-issued QR codes.
           </p>
         </div>
         <button className="primary" onClick={onRegister} type="button">
           ＋ Register driver
         </button>
       </div>
+      <DriverRegistrySummary drivers={drivers} />
       <DriverStatusGuide />
       {error && (
         <div className="error" role="alert">
@@ -200,10 +204,10 @@ export function DriverList({
             <span className="table-number">No.</span>
             <span>Driver</span>
             <span>Vehicle</span>
-            <span>Franchise</span>
+            <span>Franchise & renewal</span>
             <span>Owner / unit</span>
             <span>Account</span>
-            <span>Transport</span>
+            <span>Transport & QR</span>
             <span>Actions</span>
           </div>
           {visible.map((driver, index) => (
@@ -350,6 +354,8 @@ function DriverRow({
   const vehicle = driver.vehicles[0];
   const status = (driver.franchise?.status ??
     driver.verification) as DriverStatus;
+  const franchiseTimeline = describeFranchiseTimeline(driver.franchise?.expiresAt);
+  const qrIdentity = describeQrIdentity(driver, status);
   const actionGroups: ActionMenuGroup[] = [
     {
       label: "Account",
@@ -464,11 +470,7 @@ function DriverRow({
       </span>
       <span>
         <b>{driver.franchise?.franchiseNumber ?? "Not assigned"}</b>
-        <small>
-          {driver.franchise?.expiresAt
-            ? `Expires ${formatDate(driver.franchise.expiresAt)}`
-            : "No expiry date"}
-        </small>
+        <small>{franchiseTimeline}</small>
       </span>
       <span>
         <b>
@@ -497,10 +499,11 @@ function DriverRow({
         {driver.accountStatus ?? "ACTIVE"}
       </span>
       <span
-        className={`status ${status.toLowerCase()}`}
-        title={driverStatusHelp(status)}
+        className="transport-qr-cell"
+        title={`${driverStatusHelp(status)} ${qrIdentity.help}`}
       >
-        {status}
+        <b className={`status ${status.toLowerCase()}`}>{status}</b>
+        <small className={qrIdentity.className}>{qrIdentity.label}</small>
       </span>
       <span className="row-menu driver-row-actions">
         <button
@@ -515,6 +518,90 @@ function DriverRow({
           groups={actionGroups}
         />
       </span>
+    </div>
+  );
+}
+
+function DriverRegistrySummary({ drivers }: { drivers: Driver[] }) {
+  const summary = useMemo(() => {
+    const total = drivers.length;
+    const activeAccounts = drivers.filter(
+      (driver) => (driver.accountStatus ?? "ACTIVE") === "ACTIVE",
+    ).length;
+    const verified = drivers.filter(
+      (driver) => (driver.franchise?.status ?? driver.verification) === "VERIFIED",
+    ).length;
+    const issuedQr = drivers.filter((driver) =>
+      driver.vehicles.some((vehicle) => Boolean(vehicle.qrCode?.token)),
+    ).length;
+    const renewalDue = drivers.filter((driver) => {
+      const expiresAt = driver.franchise?.expiresAt;
+      if (!expiresAt) return false;
+      const days = daysUntil(expiresAt);
+      return days >= 0 && days <= 30;
+    }).length;
+    return { total, activeAccounts, verified, issuedQr, renewalDue };
+  }, [drivers]);
+
+  return (
+    <section className="driver-registry-summary" aria-label="Driver registry overview">
+      <div className="driver-registry-summary-lead">
+        <span>Live registry overview</span>
+        <strong>{summary.total}</strong>
+        <small>registered driver{summary.total === 1 ? "" : "s"}</small>
+      </div>
+      <RegistryMetric
+        icon={<KeyRound />}
+        label="Active accounts"
+        value={summary.activeAccounts}
+        detail="Can sign in to TriSafe"
+      />
+      <RegistryMetric
+        icon={<CircleCheckBig />}
+        label="Verified transport"
+        value={summary.verified}
+        detail="Eligible for passenger rides"
+      />
+      <RegistryMetric
+        icon={<QrCode />}
+        label="LGU QR issued"
+        value={summary.issuedQr}
+        detail="Vehicle QR identities generated"
+      />
+      <RegistryMetric
+        icon={<CalendarClock />}
+        label="Renewal due"
+        value={summary.renewalDue}
+        detail="Franchises expiring within 30 days"
+        emphasis={summary.renewalDue > 0}
+      />
+    </section>
+  );
+}
+
+function RegistryMetric({
+  icon,
+  label,
+  value,
+  detail,
+  emphasis = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  detail: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className={`driver-registry-metric${emphasis ? " needs-attention" : ""}`}>
+      <span className="driver-registry-metric-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{detail}</small>
+      </div>
     </div>
   );
 }
@@ -739,6 +826,54 @@ function formatDate(value: string) {
     month: "short",
     day: "numeric",
   });
+}
+
+function daysUntil(value: string) {
+  const target = new Date(value);
+  const today = new Date();
+  target.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+function describeFranchiseTimeline(expiresAt?: string) {
+  if (!expiresAt) return "Expiry date not recorded";
+  const days = daysUntil(expiresAt);
+  if (days < 0) return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
+  if (days === 0) return "Expires today — renew now";
+  if (days === 1) return "Expires tomorrow — renewal due";
+  if (days <= 30) return `Expires in ${days} days — renewal due`;
+  return `Expires ${formatDate(expiresAt)}`;
+}
+
+function describeQrIdentity(driver: Driver, status: DriverStatus) {
+  const issued = driver.vehicles.some((vehicle) => Boolean(vehicle.qrCode?.token));
+  if (!issued) {
+    return {
+      label: "QR not issued",
+      className: "qr-identity-missing",
+      help: "No LGU-issued vehicle QR is available for passenger verification.",
+    };
+  }
+  if ((driver.accountStatus ?? "ACTIVE") !== "ACTIVE") {
+    return {
+      label: "QR issued · account inactive",
+      className: "qr-identity-warning",
+      help: "An LGU-issued QR exists, but the driver's account cannot sign in.",
+    };
+  }
+  if (status !== "VERIFIED") {
+    return {
+      label: "QR issued · ride blocked",
+      className: "qr-identity-warning",
+      help: "An LGU-issued QR exists, but the current transport status blocks passenger rides.",
+    };
+  }
+  return {
+    label: "LGU-issued QR active",
+    className: "qr-identity-active",
+    help: "This official QR can verify the vehicle against the live TriSafe registry.",
+  };
 }
 function driverStatusHelp(status: DriverStatus) {
   return status === "VERIFIED"

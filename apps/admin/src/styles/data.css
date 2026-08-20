@@ -35,6 +35,19 @@
 .account-user-row .avatar { overflow: hidden; border-radius: 50%; }
 .account-user-row .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .driver-table-row, .driver-table-head { grid-template-columns: 48px minmax(220px, 1.15fr) minmax(110px, .6fr) minmax(145px, .72fr) minmax(120px, .58fr) minmax(82px, .4fr) minmax(88px, .43fr) minmax(175px, .72fr); min-width: 1210px; }
+.driver-registry-summary { display: grid; grid-template-columns: minmax(170px,1.12fr) repeat(4,minmax(145px,1fr)); gap: 1px; margin: 0 0 14px; overflow: hidden; border: 1px solid var(--line-light); border-radius: 14px; background: var(--line-light); }
+.driver-registry-summary > div { min-width: 0; min-height: 94px; padding: 14px; background: var(--surface-soft); }
+.driver-registry-summary-lead { display: grid; align-content: center; gap: 2px; background: linear-gradient(135deg, color-mix(in srgb,var(--forest) 13%,var(--surface-soft)), var(--surface-soft)) !important; }
+.driver-registry-summary-lead > span, .driver-registry-metric > div > span { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.driver-registry-summary-lead strong { color: var(--black); font-size: 26px; line-height: 1; letter-spacing: -.055em; }
+.driver-registry-summary-lead small, .driver-registry-metric small { color: var(--muted); font-size: 9px; line-height: 1.35; }
+.driver-registry-metric { display: flex; align-items: center; gap: 10px; }
+.driver-registry-metric-icon { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: var(--forest); background: var(--green-100); }
+.driver-registry-metric-icon svg { width: 16px; height: 16px; }
+.driver-registry-metric > div { display: grid; min-width: 0; gap: 2px; }
+.driver-registry-metric strong { color: var(--black); font-size: 18px; line-height: 1.05; letter-spacing: -.04em; }
+.driver-registry-metric.needs-attention { background: color-mix(in srgb,#f4b740 13%,var(--surface-soft)); }
+.driver-registry-metric.needs-attention .driver-registry-metric-icon { color: #8c5a00; background: #ffefc9; }
 .table-number { align-self: center; justify-self: center; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 800; text-align: center; }
 .data-head .table-number { color: inherit; }
 .driver-summary-row, .driver-summary-head { grid-template-columns: minmax(220px, 1.25fr) minmax(130px, .7fr) minmax(170px, .8fr) minmax(90px, .45fr); }
@@ -52,6 +65,12 @@
 .driver-row-actions { align-items: center; flex-wrap: nowrap; }
 .driver-row-actions > .row-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
 .driver-row-actions > .row-action svg { width: 14px; height: 14px; }
+.transport-qr-cell { display: grid; justify-items: start; gap: 5px; min-width: 0; }
+.transport-qr-cell > .status { margin: 0; }
+.transport-qr-cell small { margin: 0; font-weight: 750; white-space: nowrap; }
+.qr-identity-active { color: var(--forest) !important; }
+.qr-identity-warning { color: #8c5a00 !important; }
+.qr-identity-missing { color: var(--red-700) !important; }
 .row-action { min-height: 31px; padding: 6px 9px; font-size: 10px; }
 .row-action:disabled { cursor: not-allowed; }
 .danger-action { border-color: var(--gray); color: var(--red-700); }
@@ -69,7 +88,9 @@
 .workspace-tabs button.active { border-bottom-color: var(--primary-700); color: var(--primary-700); }
 .workspace-tabs button span { border-radius: 999px; padding: 2px 6px; color: var(--muted); background: var(--gray); font-size: 9px; }
 @media (max-width: 850px) { .management-summary { grid-template-columns: repeat(3,minmax(0,1fr)); } .management-summary > p { grid-column: 1 / -1; } }
+@media (max-width: 1050px) { .driver-registry-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 560px) { .management-summary { grid-template-columns: 1fr; } .management-summary > p { grid-column: auto; } }
+@media (max-width: 560px) { .driver-registry-summary { grid-template-columns: 1fr; } .driver-registry-summary > div { min-height: 76px; } }
 .status-guide, .driver-status-guide { display: flex; align-items: center; gap: 13px; margin-bottom: 14px; border: 1px solid var(--gray); border-radius: 10px; padding: 10px 12px; color: var(--muted); background: var(--gray); font-size: 10px; }
 .status-guide strong, .driver-status-guide strong { display: flex; align-items: center; gap: 6px; color: var(--gray); white-space: nowrap; }
 .status-guide strong span, .driver-status-guide strong span { display: grid; width: 19px; height: 19px; place-items: center; border-radius: 50%; color: var(--gray); background: var(--primary-700); font-size: 9px; }

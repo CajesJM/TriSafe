@@ -29,6 +29,13 @@ export function DriverProfileModal({
   const titleId = useId();
   const vehicle = driver.vehicles[0];
   const operationalStatus = driver.franchise?.status ?? driver.verification;
+  const franchiseRenewal = franchiseRenewalLabel(driver.franchise?.expiresAt);
+  const qrState = vehicle?.qrCode?.token
+    ? operationalStatus === "VERIFIED" &&
+      (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
+      ? "LGU-issued QR active"
+      : "LGU-issued QR · ride blocked"
+    : "QR not issued";
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -50,7 +57,7 @@ export function DriverProfileModal({
         aria-labelledby={titleId}
       >
         <div className="driver-profile-cover" aria-hidden="true">
-          <span>TRISAFE · LGU TRANSPORT REGISTRY</span>
+          <span>TRISAFE · REGISTERED DRIVER MANAGEMENT</span>
         </div>
         <header className="driver-profile-header">
           <div className="driver-profile-identity">
@@ -62,7 +69,7 @@ export function DriverProfileModal({
               )}
             </span>
             <div className="driver-profile-intro">
-              <p className="eyebrow">REGISTERED DRIVER</p>
+              <p className="eyebrow">REGISTERED DRIVER RECORD</p>
               <h3 id={titleId}>{displayPersonName(driver.fullName)}</h3>
               <small>@{driver.username ?? "account-pending"} · {vehicle?.vehicleType === "HABAL_HABAL" ? "Habal-habal" : "Tricycle"} driver</small>
               <span className="driver-profile-record-id">LGU registry record · {vehicle?.bodyNumber ?? vehicle?.permitNumber ?? "Unit pending"}</span>
@@ -105,9 +112,9 @@ export function DriverProfileModal({
             />
           </ProfileSection>
 
-          <ProfileSection icon={<ClipboardList />} title="Owner and eligibility">
+          <ProfileSection icon={<ClipboardList />} title="Owner and transport eligibility">
             <ProfileField
-              label="Owner / organization leader"
+              label="Owner / operator"
               value={
                 driver.owner
                   ? `${driver.owner.lastName}, ${driver.owner.firstName}${driver.owner.middleName ? ` ${driver.owner.middleName}` : ""}`
@@ -153,6 +160,7 @@ export function DriverProfileModal({
               label="Expires"
               value={formatDate(driver.franchise?.expiresAt)}
             />
+            <ProfileField label="Renewal" value={franchiseRenewal} />
             <ProfileField
               label="Franchise status"
               value={driver.franchise?.status ?? "Not assigned"}
@@ -191,11 +199,7 @@ export function DriverProfileModal({
             />
             <ProfileField
               label="LGU QR code"
-              value={
-                vehicle?.qrCode?.token
-                  ? "Generated and active"
-                  : "Not generated"
-              }
+              value={qrState}
             />
           </ProfileSection>
         </div>
@@ -291,4 +295,18 @@ function formatDate(value?: string) {
         day: "numeric",
       })
     : "Not recorded";
+}
+
+function franchiseRenewalLabel(value?: string) {
+  if (!value) return "Expiry date not recorded";
+  const target = new Date(value);
+  const today = new Date();
+  target.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  if (days < 0) return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
+  if (days === 0) return "Expires today — renew now";
+  if (days === 1) return "Expires tomorrow — renewal due";
+  if (days <= 30) return `Expires in ${days} days — renewal due`;
+  return "Current renewal period";
 }
