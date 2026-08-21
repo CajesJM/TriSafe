@@ -24,7 +24,10 @@ class DriverAvatar extends StatelessWidget {
       radius: radius,
       backgroundColor: TriSafeColors.black,
       foregroundImage: photoBytes == null ? null : MemoryImage(photoBytes),
-      onForegroundImageError: (_, __) {},
+      // CircleAvatar asserts that an image-error callback is only provided
+      // when there is an actual foreground image. Passengers without a saved
+      // photo use initials, so the callback must also be null in that case.
+      onForegroundImageError: photoBytes == null ? null : (_, __) {},
       child: photoBytes == null
           ? Text(_initials(fullName),
               style: TextStyle(

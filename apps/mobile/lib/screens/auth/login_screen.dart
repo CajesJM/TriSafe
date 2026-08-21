@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../services/trisafe_api.dart';
-import '../theme/trisafe_theme.dart';
-import '../widgets/login_account_type_selector.dart';
-import 'driver_home_screen.dart';
-import 'home_screen.dart';
+import '../../services/trisafe_api.dart';
+import '../../theme/trisafe_theme.dart';
+import '../../widgets/login_account_type_selector.dart';
+import '../driver/driver_home_screen.dart';
+import '../passenger/passenger_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final TriSafeApi api;

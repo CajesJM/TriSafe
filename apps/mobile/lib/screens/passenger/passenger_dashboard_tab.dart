@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/auth_models.dart';
 import '../../models/ride_models.dart';
+import '../../styles/passenger/passenger_dashboard_styles.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/active_ride_card.dart';
 import '../../widgets/passenger_page_header.dart';
@@ -46,7 +47,7 @@ class PassengerDashboardTab extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 24, 18, 112),
+        padding: PassengerDashboardStyles.screenPadding,
         children: [
           PassengerPageHeader(
             eyebrow: 'PASSENGER DASHBOARD',
@@ -54,11 +55,9 @@ class PassengerDashboardTab extends StatelessWidget {
             description:
                 'Verify your ride, check the official fare, and stay connected throughout your journey.',
             action: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                    color: TriSafeColors.black,
-                    borderRadius: BorderRadius.circular(13)),
+                width: PassengerDashboardStyles.headerIconSize,
+                height: PassengerDashboardStyles.headerIconSize,
+                decoration: PassengerDashboardStyles.headerActionDecoration,
                 child: const Icon(Icons.shield_outlined,
                     color: TriSafeColors.lime)),
           ),
@@ -67,32 +66,37 @@ class PassengerDashboardTab extends StatelessWidget {
           const SizedBox(height: 14),
           LayoutBuilder(builder: (context, constraints) {
             final columns = constraints.maxWidth >= 640 ? 3 : 2;
-            final width = (constraints.maxWidth - (columns - 1) * 10) / columns;
-            return Wrap(spacing: 10, runSpacing: 10, children: [
-              SizedBox(
-                  width: width,
-                  child: _MetricCard(
-                      icon: Icons.route_rounded,
-                      label: 'Completed rides',
-                      value: '${completed.length}',
-                      color: TriSafeColors.forest)),
-              SizedBox(
-                  width: width,
-                  child: _MetricCard(
-                      icon: Icons.payments_outlined,
-                      label: 'Recorded fares',
-                      value: '₱${fareTotal.toStringAsFixed(2)}',
-                      color: TriSafeColors.deepGreen)),
-              SizedBox(
-                  width: width,
-                  child: _MetricCard(
-                      icon: Icons.radio_button_checked,
-                      label: 'Active ride',
-                      value: activeRide == null ? 'None' : 'In progress',
-                      color: activeRide == null
-                          ? TriSafeColors.muted
-                          : TriSafeColors.lime)),
-            ]);
+            final width = (constraints.maxWidth -
+                    (columns - 1) * PassengerDashboardStyles.metricGap) /
+                columns;
+            return Wrap(
+                spacing: PassengerDashboardStyles.metricGap,
+                runSpacing: PassengerDashboardStyles.metricGap,
+                children: [
+                  SizedBox(
+                      width: width,
+                      child: _MetricCard(
+                          icon: Icons.route_rounded,
+                          label: 'Completed rides',
+                          value: '${completed.length}',
+                          color: TriSafeColors.forest)),
+                  SizedBox(
+                      width: width,
+                      child: _MetricCard(
+                          icon: Icons.payments_outlined,
+                          label: 'Recorded fares',
+                          value: '₱${fareTotal.toStringAsFixed(2)}',
+                          color: TriSafeColors.deepGreen)),
+                  SizedBox(
+                      width: width,
+                      child: _MetricCard(
+                          icon: Icons.radio_button_checked,
+                          label: 'Active ride',
+                          value: activeRide == null ? 'None' : 'In progress',
+                          color: activeRide == null
+                              ? TriSafeColors.muted
+                              : TriSafeColors.lime)),
+                ]);
           }),
           if (activeRide != null) ...[
             const SizedBox(height: 18),

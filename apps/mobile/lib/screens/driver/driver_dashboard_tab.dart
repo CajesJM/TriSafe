@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/driver_models.dart';
 import '../../models/driver_rating_models.dart';
 import '../../models/driver_violation_models.dart';
+import '../../styles/driver/driver_dashboard_styles.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/driver_page_header.dart';
 import '../../widgets/driver_status_badge.dart';
@@ -45,7 +46,7 @@ class DriverDashboardTab extends StatelessWidget {
       onRefresh: () async => onRefresh(),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 24, 18, 112),
+        padding: DriverDashboardStyles.screenPadding,
         children: [
           DriverPageHeader(
             eyebrow: 'DRIVER PORTAL',

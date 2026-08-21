@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/ride_models.dart';
-import '../services/trisafe_api.dart';
-import '../widgets/ride_history_card.dart';
+import '../../models/ride_models.dart';
+import '../../services/trisafe_api.dart';
+import '../../widgets/ride_history_card.dart';
 
 class RideHistoryScreen extends StatefulWidget {
   final TriSafeApi api;

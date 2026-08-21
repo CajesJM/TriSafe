@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/vehicle_models.dart';
-import '../models/fare_models.dart';
+import '../../models/vehicle_models.dart';
+import '../../models/fare_models.dart';
 
 class FareConfirmationScreen extends StatelessWidget {
   final VerifiedVehicle vehicle;

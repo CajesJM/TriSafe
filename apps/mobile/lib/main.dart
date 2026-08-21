@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'services/trisafe_api.dart';
-import 'screens/login_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'theme/trisafe_theme.dart';
 
 void main() => runApp(const TriSafeApp());

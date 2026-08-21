@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/fare_models.dart';
-import '../models/vehicle_models.dart';
-import '../services/trisafe_api.dart';
+import '../../models/fare_models.dart';
+import '../../models/vehicle_models.dart';
+import '../../services/trisafe_api.dart';
 import 'fare_confirmation_screen.dart';
 
 class RouteSelectionScreen extends StatefulWidget {
