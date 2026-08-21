@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/auth_models.dart';
 import '../models/driver_models.dart';
 import '../models/driver_profile_update_models.dart';
+import '../models/driver_violation_models.dart';
 import '../models/fare_models.dart';
 import '../models/ride_models.dart';
 import '../models/vehicle_models.dart';
@@ -131,6 +132,11 @@ class TriSafeApi {
   Future<List<DriverNotification>> driverNotifications() async =>
       (await _get('/drivers/me/notifications'))
           .map<DriverNotification>((item) => DriverNotification.fromJson(item))
+          .toList();
+  Future<List<DriverViolationRecord>> driverViolations() async =>
+      (await _get('/drivers/me/violations'))
+          .map<DriverViolationRecord>(
+              (item) => DriverViolationRecord.fromJson(item))
           .toList();
   Future<void> markDriverAnnouncementRead(String announcementId) async {
     await _patch('/drivers/me/announcements/$announcementId/read', {});

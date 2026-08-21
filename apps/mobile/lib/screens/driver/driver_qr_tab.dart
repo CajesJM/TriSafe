@@ -4,6 +4,7 @@ import '../../models/driver_models.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/driver_page_header.dart';
 import '../../widgets/driver_status_badge.dart';
+import 'driver_qr_full_screen.dart';
 
 class DriverQrTab extends StatefulWidget {
   final DriverProfile? profile;
@@ -28,10 +29,14 @@ class _DriverQrTabState extends State<DriverQrTab> {
     final vehicles = widget.profile?.vehicles ?? const <DriverVehicle>[];
     final vehicle = vehicles.isEmpty ? null : vehicles[selectedVehicle];
     final qr = vehicle?.qrCode;
+    final franchise = widget.profile?.franchise;
     final active = vehicle?.isActive == true &&
         qr != null &&
         qr.revokedAt == null &&
-        widget.profile?.verification == 'VERIFIED';
+        widget.profile?.verification == 'VERIFIED' &&
+        widget.profile?.accountStatus == 'ACTIVE' &&
+        franchise?.status == 'VERIFIED' &&
+        franchise!.expiresAt.isAfter(DateTime.now());
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 24, 18, 112),
       children: [
@@ -73,7 +78,7 @@ class _DriverQrTabState extends State<DriverQrTab> {
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                      const Text('LGU-ISSUED VEHICLE QR',
+                      const Text('OFFICIAL LGU-ISSUED QR',
                           style: TextStyle(
                               color: TriSafeColors.lime,
                               fontSize: 9,
@@ -112,13 +117,31 @@ class _DriverQrTabState extends State<DriverQrTab> {
                 ),
               ),
               const SizedBox(height: 15),
-              const Text('Ask the passenger to scan before starting the ride.',
+              Text(
+                  active
+                      ? 'Ask the passenger to scan before starting the ride.'
+                      : _inactiveReason(widget.profile, vehicle, qr),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Color(0xffcbd1cb), fontSize: 10)),
               const SizedBox(height: 5),
               Text('Generated ${_dateTime(qr.generatedAt)}',
                   style:
                       const TextStyle(color: Color(0xff8f988f), fontSize: 9)),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => DriverQrFullScreen(
+                        vehicle: vehicle, qrCode: qr, isEligible: active),
+                  )),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xff596159))),
+                  icon: const Icon(Icons.fullscreen_rounded),
+                  label: const Text('Present QR full screen'),
+                ),
+              ),
             ]),
           ),
         const SizedBox(height: 12),
@@ -136,7 +159,7 @@ class _DriverQrTabState extends State<DriverQrTab> {
                 SizedBox(width: 10),
                 Expanded(
                     child: Text(
-                        'This QR code is view-only. Only an authorized LGU administrator can generate, replace, revoke, or download the official vehicle QR.',
+                        'This is your backup display of the official vehicle QR. It is view-only: only an authorized LGU administrator can generate, replace, revoke, or download the official QR.',
                         style: TextStyle(
                             fontSize: 10,
                             height: 1.5,
@@ -168,3 +191,28 @@ class _NoQrCard extends StatelessWidget {
 
 String _dateTime(DateTime date) =>
     '${date.month}/${date.day}/${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+String _inactiveReason(
+    DriverProfile? profile, DriverVehicle vehicle, DriverQrCode qr) {
+  if (qr.revokedAt != null) return 'This QR code was revoked by the LGU.';
+  if (!vehicle.isActive) {
+    return 'This registered vehicle is currently inactive.';
+  }
+  if (profile?.accountStatus != 'ACTIVE') {
+    return 'Your driver account is inactive.';
+  }
+  if (profile?.verification != 'VERIFIED') {
+    return 'Your driver verification is ${profile?.verification.toLowerCase() ?? 'not complete'}.';
+  }
+  final franchise = profile?.franchise;
+  if (franchise == null) {
+    return 'No franchise record is linked to this vehicle.';
+  }
+  if (franchise.expiresAt.isBefore(DateTime.now())) {
+    return 'Your franchise has expired. Contact the LGU before accepting rides.';
+  }
+  if (franchise.status != 'VERIFIED') {
+    return 'Your franchise status is ${franchise.status.toLowerCase()}.';
+  }
+  return 'This QR is not currently eligible for verified rides.';
+}

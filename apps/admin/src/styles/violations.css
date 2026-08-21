@@ -12,6 +12,7 @@
 .violation-row { display: grid; grid-template-columns: 102px minmax(250px,1fr) minmax(140px,.55fr) auto; align-items: center; gap: 16px; border-top: 1px solid var(--line-light); padding: 15px 3px; }
 .violation-row > .status { justify-self: start; }
 .violation-row strong { display: block; color: var(--black); font-size: 12px; }
+.violation-offense-level { display: inline-flex; margin-top: 5px; border-radius: 999px; background: var(--soft-green); color: var(--forest); padding: 3px 7px; font-size: 8px; font-weight: 800; letter-spacing: .45px; }
 .violation-row p { display: -webkit-box; margin: 4px 0; overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .violation-row small { color: var(--muted); font-size: 8px; }
 .violation-penalty { display: grid; gap: 4px; }

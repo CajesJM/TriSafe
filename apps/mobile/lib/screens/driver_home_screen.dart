@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/driver_models.dart';
+import '../models/driver_violation_models.dart';
 import '../services/location_tracking_service.dart';
 import '../services/trisafe_api.dart';
 import '../theme/trisafe_theme.dart';
@@ -15,6 +16,7 @@ import 'driver/driver_qr_tab.dart';
 import 'driver/driver_announcements_tab.dart';
 import 'driver/driver_updates_tab.dart' show showDriverAnnouncementDetails;
 import 'driver/driver_vehicle_tab.dart';
+import 'driver/driver_violations_screen.dart';
 import 'login_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
@@ -30,6 +32,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   DriverProfile? profile;
   List<DriverAnnouncement> announcements = [];
   List<DriverNotification> notifications = [];
+  List<DriverViolationRecord> violations = [];
   bool loading = true;
   int selectedTab = 0;
   int toastId = 0;
@@ -55,12 +58,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         widget.api.driverProfile(),
         widget.api.driverAnnouncements(),
         widget.api.driverNotifications(),
+        widget.api.driverViolations(),
       ]);
       if (!mounted) return;
       setState(() {
         profile = results[0] as DriverProfile;
         announcements = results[1] as List<DriverAnnouncement>;
         notifications = results[2] as List<DriverNotification>;
+        violations = results[3] as List<DriverViolationRecord>;
         loading = false;
       });
     } catch (_) {
@@ -107,6 +112,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             DriverNotificationsScreen(notifications: notifications)));
   }
 
+  void _openViolations() {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DriverViolationsScreen(violations: violations)));
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
           context: context,
@@ -151,10 +161,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           profile: profile,
           announcements: announcements,
           notifications: notifications,
+          violations: violations,
           loading: loading,
           onRefresh: _load,
           onOpenFranchise: _openFranchise,
           onOpenNotifications: _openNotifications,
+          onOpenViolations: _openViolations,
           onOpenTab: (index) => setState(() => selectedTab = index)),
       DriverVehicleTab(
           profile: profile, onOpenQr: () => setState(() => selectedTab = 2)),

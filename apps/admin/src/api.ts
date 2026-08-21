@@ -427,10 +427,12 @@ export type Announcement = {
 };
 export type ViolationStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "DISMISSED";
 export type PenaltyStatus = "NOT_APPLICABLE" | "PENDING" | "PAID" | "WAIVED";
+export type OffenseLevel = "FIRST_OFFENSE" | "SECOND_OFFENSE" | "THIRD_OFFENSE" | "GRAVE_OFFENSE";
 export type DriverViolation = {
   id: string;
   driverId: string;
   category: string;
+  offenseLevel: OffenseLevel;
   description: string;
   occurredAt: string;
   status: ViolationStatus;
@@ -442,8 +444,8 @@ export type DriverViolation = {
   updatedAt: string;
   driver: { user: { fullName: string; username?: string | null; phone?: string | null }; vehicles: { plateNumber: string; vehicleType: string }[] };
 };
-export type CreateViolationInput = { driverId: string; category: string; description: string; occurredAt: string; penaltyAmount?: number; dueAt?: string; notes?: string; };
-export type UpdateViolationInput = { status?: ViolationStatus; penaltyStatus?: PenaltyStatus; penaltyAmount?: number | null; dueAt?: string | null; notes?: string | null; };
+export type CreateViolationInput = { driverId: string; category: string; offenseLevel: OffenseLevel; description: string; occurredAt: string; penaltyAmount?: number; dueAt?: string; notes?: string; };
+export type UpdateViolationInput = { offenseLevel?: OffenseLevel; status?: ViolationStatus; penaltyStatus?: PenaltyStatus; penaltyAmount?: number | null; dueAt?: string | null; notes?: string | null; };
 export type DriverRatingSummary = { driverId: string; fullName: string; username?: string | null; vehicle: { plateNumber: string; vehicleType: string } | null; average: number | null; ratingCount: number; };
 export type DriverRating = { id: string; score: number; comment?: string | null; visible: boolean; moderationNotes?: string | null; createdAt: string; driver: { user: { fullName: string }; vehicles: { plateNumber: string; vehicleType: string }[] }; passenger: { fullName: string }; ride: { startedAt: string; fromLocationName?: string | null; toLocationName?: string | null }; };
 export type TermsDocument = { id: string; version: string; title: string; content: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; effectiveFrom?: string | null; publishedAt?: string | null; createdAt: string; updatedAt: string; };

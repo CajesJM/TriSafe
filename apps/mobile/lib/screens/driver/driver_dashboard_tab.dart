@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/driver_models.dart';
+import '../../models/driver_violation_models.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/driver_page_header.dart';
 import '../../widgets/driver_status_badge.dart';
@@ -8,10 +9,12 @@ class DriverDashboardTab extends StatelessWidget {
   final DriverProfile? profile;
   final List<DriverAnnouncement> announcements;
   final List<DriverNotification> notifications;
+  final List<DriverViolationRecord> violations;
   final bool loading;
   final VoidCallback onRefresh;
   final VoidCallback onOpenFranchise;
   final VoidCallback onOpenNotifications;
+  final VoidCallback onOpenViolations;
   final ValueChanged<int> onOpenTab;
 
   const DriverDashboardTab({
@@ -19,10 +22,12 @@ class DriverDashboardTab extends StatelessWidget {
     required this.profile,
     required this.announcements,
     required this.notifications,
+    required this.violations,
     required this.loading,
     required this.onRefresh,
     required this.onOpenFranchise,
     required this.onOpenNotifications,
+    required this.onOpenViolations,
     required this.onOpenTab,
   });
 
@@ -104,6 +109,11 @@ class DriverDashboardTab extends StatelessWidget {
                 onFranchise: onOpenFranchise,
                 onProfile: () => onOpenTab(4)),
             const SizedBox(height: 18),
+            _ComplianceShortcut(
+              violations: violations,
+              onOpen: onOpenViolations,
+            ),
+            const SizedBox(height: 18),
             _SectionTitle(
                 title: 'Important reminders',
                 action: 'View all',
@@ -131,6 +141,64 @@ class DriverDashboardTab extends StatelessWidget {
               ...announcements.take(2).map(_AnnouncementPreview.new),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _ComplianceShortcut extends StatelessWidget {
+  final List<DriverViolationRecord> violations;
+  final VoidCallback onOpen;
+
+  const _ComplianceShortcut({required this.violations, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final openCases = violations
+        .where((item) => item.status == 'OPEN' || item.status == 'ACKNOWLEDGED')
+        .length;
+    final pendingPenalties =
+        violations.where((item) => item.penaltyStatus == 'PENDING').length;
+    return Card(
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                  color: openCases > 0
+                      ? const Color(0xffffece9)
+                      : TriSafeColors.softGreen,
+                  borderRadius: BorderRadius.circular(13)),
+              child: Icon(Icons.gavel_outlined,
+                  color: openCases > 0
+                      ? TriSafeColors.danger
+                      : TriSafeColors.forest),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Violations & penalties',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 3),
+                    Text(
+                        openCases == 0
+                            ? 'No open LGU compliance records'
+                            : '$openCases open case${openCases == 1 ? '' : 's'} · $pendingPenalties pending penalty',
+                        style: const TextStyle(
+                            fontSize: 10, color: TriSafeColors.muted)),
+                  ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: TriSafeColors.muted),
+          ]),
+        ),
       ),
     );
   }

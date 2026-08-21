@@ -54,6 +54,13 @@ enum ViolationStatus {
   DISMISSED
 }
 
+enum OffenseLevel {
+  FIRST_OFFENSE
+  SECOND_OFFENSE
+  THIRD_OFFENSE
+  GRAVE_OFFENSE
+}
+
 enum PenaltyStatus {
   NOT_APPLICABLE
   PENDING
@@ -324,6 +331,7 @@ model DriverViolation {
   driverId      String
   incidentId    String?
   category      String
+  offenseLevel  OffenseLevel @default(FIRST_OFFENSE)
   description   String
   occurredAt    DateTime
   status        ViolationStatus @default(OPEN)

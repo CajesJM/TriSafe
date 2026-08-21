@@ -151,6 +151,12 @@ export class DriversController {
   }
 
   @Roles(UserRole.DRIVER)
+  @Get("drivers/me/violations")
+  violations(@Req() req: RequestWithUser) {
+    return this.service.violations(req.user.id);
+  }
+
+  @Roles(UserRole.DRIVER)
   @Patch("drivers/me/contact")
   updateContact(
     @Req() req: RequestWithUser,

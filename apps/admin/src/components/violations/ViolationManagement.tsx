@@ -12,6 +12,7 @@ import {
   CreateViolationInput,
   Driver,
   DriverViolation,
+  OffenseLevel,
   PenaltyStatus,
   ViolationStatus,
 } from "../../api";
@@ -211,6 +212,9 @@ function ViolationRow({
       </span>
       <div>
         <strong>{record.category}</strong>
+        <span className="violation-offense-level">
+          {record.offenseLevel.replaceAll("_", " ")}
+        </span>
         <p>{record.description}</p>
         <small>
           {record.driver.user.fullName} · {plate} ·{" "}
@@ -250,6 +254,7 @@ function ViolationModal({
   const [values, setValues] = useState<CreateViolationInput>({
     driverId: "",
     category: "",
+    offenseLevel: "FIRST_OFFENSE",
     description: "",
     occurredAt: new Date().toISOString().slice(0, 10),
     penaltyAmount: undefined,
@@ -269,6 +274,7 @@ function ViolationModal({
       setValues({
         driverId: record.driverId,
         category: record.category,
+        offenseLevel: record.offenseLevel,
         description: record.description,
         occurredAt: record.occurredAt.slice(0, 10),
         penaltyAmount: record.penaltyAmount
@@ -304,6 +310,7 @@ function ViolationModal({
     try {
       if (record)
         await api.updateViolation(record.id, {
+          offenseLevel: values.offenseLevel,
           status: caseStatus,
           penaltyStatus,
           penaltyAmount: values.penaltyAmount ?? null,
@@ -412,6 +419,30 @@ function ViolationModal({
               placeholder="e.g., Unsafe operation"
               required
             />
+          </label>
+          <label className="field">
+            <span>
+              Offense level <em>*</em>
+            </span>
+            <select
+              value={values.offenseLevel}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  offenseLevel: event.target.value as OffenseLevel,
+                }))
+              }
+              required
+            >
+              {[
+                "FIRST_OFFENSE",
+                "SECOND_OFFENSE",
+                "THIRD_OFFENSE",
+                "GRAVE_OFFENSE",
+              ].map((value) => (
+                <option key={value}>{value.replaceAll("_", " ")}</option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>

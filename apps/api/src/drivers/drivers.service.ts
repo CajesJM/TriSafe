@@ -534,6 +534,33 @@ export class DriversService {
     );
   }
 
+  /** Official compliance records are visible only to their authenticated driver. */
+  async violations(userId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!driver) throw new NotFoundException("Driver profile not found");
+    return this.prisma.driverViolation.findMany({
+      where: { driverId: driver.id },
+      select: {
+        id: true,
+        category: true,
+        offenseLevel: true,
+        description: true,
+        occurredAt: true,
+        status: true,
+        penaltyAmount: true,
+        penaltyStatus: true,
+        dueAt: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+    });
+  }
+
   async updateContact(userId: string, dto: UpdateDriverContactDto) {
     try {
       const user = await this.prisma.user.update({

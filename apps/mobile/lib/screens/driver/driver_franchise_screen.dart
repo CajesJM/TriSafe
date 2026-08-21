@@ -41,7 +41,7 @@ class DriverFranchiseScreen extends StatelessWidget {
                           status: franchise.status, compact: true),
                     ]),
                     const SizedBox(height: 18),
-                    const Text('FRANCHISE NUMBER',
+                    const Text('OFFICIAL FRANCHISE RECORD',
                         style: TextStyle(
                             color: TriSafeColors.lime,
                             fontSize: 9,
@@ -62,7 +62,7 @@ class DriverFranchiseScreen extends StatelessWidget {
                 child: Column(children: [
                   _FranchiseRow(
                       icon: Icons.event_available_outlined,
-                      label: 'Issued date',
+                      label: 'Registration date',
                       value: _date(franchise.issuedAt)),
                   const Divider(height: 24),
                   _FranchiseRow(
@@ -76,9 +76,14 @@ class DriverFranchiseScreen extends StatelessWidget {
                       value: _remaining(franchise.expiresAt)),
                   const Divider(height: 24),
                   _FranchiseRow(
-                      icon: Icons.badge_outlined,
-                      label: 'Driver verification',
-                      value: statusLabel(profile.verification)),
+                      icon: Icons.verified_user_outlined,
+                      label: 'Franchise status',
+                      value: statusLabel(franchise.status)),
+                  const Divider(height: 24),
+                  _FranchiseRow(
+                      icon: Icons.person_outline_rounded,
+                      label: 'Account status',
+                      value: statusLabel(profile.accountStatus)),
                 ]),
               ),
             ),

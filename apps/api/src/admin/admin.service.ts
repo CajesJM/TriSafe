@@ -576,6 +576,7 @@ export class AdminService {
       data: {
         driverId: dto.driverId,
         category: dto.category.trim(),
+        offenseLevel: dto.offenseLevel,
         description: dto.description.trim(),
         occurredAt: new Date(dto.occurredAt),
         penaltyAmount: hasPenalty ? dto.penaltyAmount : null,
@@ -584,7 +585,7 @@ export class AdminService {
         notes: dto.notes?.trim() || null,
       },
     });
-    await this.audit.record({ actorId, action: 'VIOLATION_RECORDED', entityType: 'DriverViolation', entityId: violation.id, details: { driverId: driver.id, driverName: driver.user.fullName, category: violation.category, penaltyAmount: violation.penaltyAmount?.toString() ?? null } });
+    await this.audit.record({ actorId, action: 'VIOLATION_RECORDED', entityType: 'DriverViolation', entityId: violation.id, details: { driverId: driver.id, driverName: driver.user.fullName, category: violation.category, offenseLevel: violation.offenseLevel, penaltyAmount: violation.penaltyAmount?.toString() ?? null } });
     return violation;
   }
 
@@ -599,13 +600,14 @@ export class AdminService {
       where: { id },
       data: {
         ...(dto.status ? { status: dto.status } : {}),
+        ...(dto.offenseLevel ? { offenseLevel: dto.offenseLevel } : {}),
         ...(dto.penaltyStatus ? { penaltyStatus: dto.penaltyStatus } : {}),
         ...(dto.penaltyAmount !== undefined ? { penaltyAmount: dto.penaltyAmount } : {}),
         ...(dto.dueAt !== undefined ? { dueAt: dto.dueAt ? new Date(dto.dueAt) : null } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes?.trim() || null } : {}),
       },
     });
-    await this.audit.record({ actorId, action: 'VIOLATION_UPDATED', entityType: 'DriverViolation', entityId: id, details: { previousStatus: current.status, status: updated.status, previousPenaltyStatus: current.penaltyStatus, penaltyStatus: updated.penaltyStatus, penaltyAmount: updated.penaltyAmount?.toString() ?? null } });
+    await this.audit.record({ actorId, action: 'VIOLATION_UPDATED', entityType: 'DriverViolation', entityId: id, details: { previousStatus: current.status, status: updated.status, previousOffenseLevel: current.offenseLevel, offenseLevel: updated.offenseLevel, previousPenaltyStatus: current.penaltyStatus, penaltyStatus: updated.penaltyStatus, penaltyAmount: updated.penaltyAmount?.toString() ?? null } });
     return updated;
   }
 

@@ -26,8 +26,8 @@ class DriverVehicleTab extends StatelessWidget {
         if (vehicles.isEmpty)
           const _NoVehicle()
         else
-          ...vehicles.asMap().entries.map((entry) => _VehicleCard(
-              vehicle: entry.value, number: entry.key + 1, onOpenQr: onOpenQr)),
+          ...vehicles.map(
+              (vehicle) => _VehicleCard(vehicle: vehicle, onOpenQr: onOpenQr)),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(15),
@@ -57,10 +57,8 @@ class DriverVehicleTab extends StatelessWidget {
 
 class _VehicleCard extends StatelessWidget {
   final DriverVehicle vehicle;
-  final int number;
   final VoidCallback onOpenQr;
-  const _VehicleCard(
-      {required this.vehicle, required this.number, required this.onOpenQr});
+  const _VehicleCard({required this.vehicle, required this.onOpenQr});
 
   @override
   Widget build(BuildContext context) => Card(
@@ -102,17 +100,23 @@ class _VehicleCard extends StatelessWidget {
                   compact: true),
             ]),
             const Divider(height: 30),
-            _VehicleRow(label: 'Registry number', value: 'Vehicle $number'),
-            _VehicleRow(label: 'Plate number', value: vehicle.plateNumber),
             _VehicleRow(
                 label: 'Vehicle type',
                 value: _vehicleLabel(vehicle.vehicleType)),
-            _VehicleRow(label: vehicle.vehicleType == 'HABAL_HABAL' ? 'Permit number' : 'Body number', value: vehicle.permitNumber ?? vehicle.bodyNumber ?? 'Not recorded'),
-            _VehicleRow(label: 'Engine number', value: vehicle.engineNumber ?? 'Not recorded'),
-            _VehicleRow(label: 'Chassis number', value: vehicle.chassisNumber ?? 'Not recorded'),
             _VehicleRow(
-                label: 'Make / model',
-                value: vehicle.makeModel ?? 'Not recorded'),
+                label: vehicle.vehicleType == 'HABAL_HABAL'
+                    ? 'Permit number'
+                    : 'Body number',
+                value: vehicle.permitNumber ??
+                    vehicle.bodyNumber ??
+                    'Not recorded'),
+            _VehicleRow(
+                label: 'Engine number',
+                value: vehicle.engineNumber ?? 'Not recorded'),
+            _VehicleRow(
+                label: 'Chassis number',
+                value: vehicle.chassisNumber ?? 'Not recorded'),
+            _VehicleRow(label: 'Plate number', value: vehicle.plateNumber),
             _VehicleRow(
                 label: 'LGU QR status',
                 value: vehicle.qrCode == null
@@ -126,7 +130,7 @@ class _VehicleCard extends StatelessWidget {
               child: FilledButton.icon(
                   onPressed: vehicle.qrCode == null ? null : onOpenQr,
                   icon: const Icon(Icons.qr_code_2_rounded),
-                  label: const Text('View assigned QR code')),
+                  label: const Text('View official QR code')),
             ),
           ]),
         ),
