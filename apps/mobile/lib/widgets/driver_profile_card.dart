@@ -37,7 +37,9 @@ class DriverProfileCard extends StatelessWidget {
           ]),
           const Divider(height: 28),
           _InfoRow(label: 'Account status', value: profile.verification),
-          _InfoRow(label: 'Owner / leader', value: profile.owner?.displayName ?? 'Not recorded'),
+          _InfoRow(
+              label: 'Owner / leader',
+              value: profile.owner?.displayName ?? 'Not recorded'),
           _InfoRow(label: 'Phone number', value: profile.phone),
           if (profile.franchise != null) ...[
             _InfoRow(label: 'Franchise', value: profile.franchise!.number),

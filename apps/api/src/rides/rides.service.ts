@@ -67,7 +67,7 @@ export class RidesService {
               }
             : undefined,
       },
-      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+      include: { vehicle: { include: { driver: { include: { user: true } } } }, rating: { select: { id: true, score: true } } },
     });
     if (dto.startLatitude != null && dto.startLongitude != null) {
       await this.updatePresence(passengerId, {
@@ -129,7 +129,7 @@ export class RidesService {
           },
         },
       },
-      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+      include: { vehicle: { include: { driver: { include: { user: true } } } }, rating: { select: { id: true, score: true } } },
     });
     await this.updatePresence(passengerId, {
       latitude: dto.originLatitude,
@@ -251,7 +251,7 @@ export class RidesService {
       // The passenger ID always comes from the verified access token. It is
       // never accepted from the query string, preventing cross-account reads.
       where: { passengerId, ...(startedAt ? { startedAt } : {}) },
-      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+      include: { vehicle: { include: { driver: { include: { user: true } } } }, rating: { select: { id: true, score: true } } },
       orderBy: { startedAt: 'desc' },
     });
     return Promise.all(rides.map((ride) => this.addLocationNames(ride)));

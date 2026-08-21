@@ -166,7 +166,18 @@ class _PassengerQrResultDialog extends StatelessWidget {
                     value: vehicle == null
                         ? 'Not available'
                         : _vehicleLabel(vehicle.vehicleType),
-                    detail: '${vehicle?.plateNumber ?? "No plate"} · ${vehicle?.bodyNumber != null ? "Body ${vehicle!.bodyNumber}" : vehicle?.permitNumber != null ? "Permit ${vehicle!.permitNumber}" : "Unit number not recorded"}'),
+                    detail:
+                        '${vehicle?.plateNumber ?? "No plate"} · ${vehicle?.bodyNumber != null ? "Body ${vehicle!.bodyNumber}" : vehicle?.permitNumber != null ? "Permit ${vehicle!.permitNumber}" : "Unit number not recorded"}'),
+                const Divider(height: 1),
+                _VerificationRow(
+                    icon: Icons.star_outline_rounded,
+                    label: 'Passenger rating',
+                    value: vehicle == null || vehicle.ratingCount == 0
+                        ? 'No ratings yet'
+                        : '${vehicle.averageRating?.toStringAsFixed(1) ?? '—'} / 5',
+                    detail: vehicle == null || vehicle.ratingCount == 0
+                        ? null
+                        : '${vehicle.ratingCount} passenger review${vehicle.ratingCount == 1 ? '' : 's'}'),
                 const Divider(height: 1),
                 _VerificationRow(
                     icon: Icons.assignment_turned_in_outlined,

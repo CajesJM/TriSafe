@@ -36,6 +36,8 @@ class VerifiedVehicle {
   final String plateNumber;
   final String vehicleType;
   final String qrCodeId;
+  final double? averageRating;
+  final int ratingCount;
 
   VerifiedVehicle.fromJson(Map<String, dynamic> json)
       : driverId = json['driverId'] as String,
@@ -51,5 +53,7 @@ class VerifiedVehicle {
         vehicleId = json['vehicleId'] as String,
         plateNumber = json['plateNumber'] as String,
         vehicleType = json['vehicleType'] as String,
-        qrCodeId = json['qrCodeId'] as String;
+        qrCodeId = json['qrCodeId'] as String,
+        averageRating = (json['averageRating'] as num?)?.toDouble(),
+        ratingCount = (json['ratingCount'] as num? ?? 0).toInt();
 }

@@ -25,7 +25,7 @@ export class AuthController {
   }
 
   @Patch('me/profile')
-  @Roles(UserRole.LGU_ADMIN)
+  @Roles(UserRole.LGU_ADMIN, UserRole.PASSENGER)
   updateProfile(@Req() request: RequestWithUser, @Body() dto: UpdateProfileDto) {
     return this.auth.updateProfile(request.user.id, dto);
   }

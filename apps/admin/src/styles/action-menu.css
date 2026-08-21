@@ -1,15 +1,108 @@
-.action-menu-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-.action-menu-trigger svg { width: 15px; height: 15px; }
-.action-menu-popover { position: fixed; z-index: 11000; width: min(238px, calc(100vw - 20px)); max-height: min(420px, calc(100dvh - 20px)); overflow-x: hidden; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 6px; color: var(--charcoal); background: var(--off-white); box-shadow: 0 20px 55px rgba(15,15,15,.2); animation: action-menu-in .18s cubic-bezier(.16,1,.3,1) both; }
-.action-menu-group + .action-menu-group { margin-top: 5px; border-top: 1px solid var(--line-light); padding-top: 5px; }
-.action-menu-group > span { display: block; padding: 6px 8px 4px; color: var(--muted); font-size: 7px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
-.action-menu-group > button { display: grid; grid-template-columns: 27px minmax(0,1fr); align-items: center; width: 100%; border: 0; border-radius: 8px; padding: 7px 8px; color: var(--charcoal); background: transparent; font-size: 9px; font-weight: 750; text-align: left; cursor: pointer; transition: color .16s ease, background .16s ease; }
-.action-menu-group > button:hover:not(:disabled), .action-menu-group > button:focus-visible { outline: 0; color: var(--forest); background: var(--primary-50); }
-.action-menu-group > button:disabled { opacity: .45; cursor: not-allowed; }
-.action-menu-group > button i { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 7px; color: var(--forest); background: var(--green-100); font-style: normal; }
-.action-menu-group > button svg { width: 13px; height: 13px; }
-.action-menu-group > button.danger { color: #a52323; }
-.action-menu-group > button.danger i { color: #a52323; background: #fde8e8; }
-.action-menu-group > button.danger:hover:not(:disabled), .action-menu-group > button.danger:focus-visible { color: #8f2020; background: #fff0f0; }
-@keyframes action-menu-in { from { opacity: 0; transform: translateY(-5px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@media (prefers-reduced-motion: reduce) { .action-menu-popover { animation-duration: .01ms; } }
+.action-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.action-menu-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+.action-menu-popover {
+  position: fixed;
+  z-index: 11000;
+  width: min(238px, calc(100vw - 20px));
+  max-height: min(420px, calc(100dvh - 20px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  color: var(--charcoal);
+  background: var(--off-white);
+  box-shadow: 0 20px 55px rgba(15, 15, 15, 0.2);
+  animation: action-menu-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.action-menu-group + .action-menu-group {
+  margin-top: 5px;
+  border-top: 1px solid var(--line-light);
+  padding-top: 5px;
+}
+.action-menu-group > span {
+  display: block;
+  padding: 6px 8px 4px;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.action-menu-group > button {
+  display: grid;
+  grid-template-columns: 27px minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: var(--charcoal);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background 0.16s ease;
+}
+.action-menu-group > button:hover:not(:disabled),
+.action-menu-group > button:focus-visible {
+  outline: 0;
+  color: var(--forest);
+  background: var(--primary-50);
+}
+.action-menu-group > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.action-menu-group > button i {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--forest);
+  background: var(--green-100);
+  font-style: normal;
+}
+.action-menu-group > button svg {
+  width: 13px;
+  height: 13px;
+}
+.action-menu-group > button.danger {
+  color: #a52323;
+}
+.action-menu-group > button.danger i {
+  color: #a52323;
+  background: #fde8e8;
+}
+.action-menu-group > button.danger:hover:not(:disabled),
+.action-menu-group > button.danger:focus-visible {
+  color: #8f2020;
+  background: #fff0f0;
+}
+@keyframes action-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .action-menu-popover {
+    animation-duration: 0.01ms;
+  }
+}

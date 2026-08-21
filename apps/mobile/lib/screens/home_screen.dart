@@ -11,6 +11,8 @@ import '../widgets/emergency_contacts_sheet.dart';
 import '../widgets/incident_report_dialog.dart';
 import '../widgets/passenger_bottom_navigation.dart';
 import '../widgets/passenger_qr_result_modal.dart';
+import '../widgets/passenger_rating_dialog.dart';
+import '../widgets/passenger_profile_editor.dart';
 import '../widgets/passenger_toast.dart';
 import 'login_screen.dart';
 import 'passenger/passenger_dashboard_tab.dart';
@@ -18,6 +20,8 @@ import 'passenger/passenger_fare_tab.dart';
 import 'passenger/passenger_profile_tab.dart';
 import 'passenger/passenger_rides_tab.dart';
 import 'passenger/passenger_scanner_tab.dart';
+import 'passenger/passenger_safety_screens.dart';
+import 'driver/driver_account_settings_screen.dart';
 import 'qr_scanner_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -208,6 +212,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _toast(
           'Ride completed. Final fare: ₱${(completed.finalFare ?? completed.estimatedFare).toStringAsFixed(2)}',
           PassengerToastType.success);
+      final rated =
+          await showPassengerRatingDialog(context, widget.api, completed);
+      if (rated && mounted) {
+        _toast('Thank you for rating your verified ride.',
+            PassengerToastType.success);
+        await _loadData();
+      }
     } catch (_) {
       _toast('The ride could not be completed. Please try again.',
           PassengerToastType.error);
@@ -228,6 +239,16 @@ class _HomeScreenState extends State<HomeScreen> {
     await showIncidentReport(context, widget.api, rideId: activeRide?.id);
     if (mounted) {
       _toast('Incident report assistant closed.', PassengerToastType.info);
+    }
+  }
+
+  Future<void> _editPassengerProfile() async {
+    final updated =
+        await showPassengerProfileEditor(context, widget.api, profile);
+    if (updated != null && mounted) {
+      setState(() => profile = updated);
+      _toast('Passenger profile updated successfully.',
+          PassengerToastType.success);
     }
   }
 
@@ -319,7 +340,21 @@ class _HomeScreenState extends State<HomeScreen> {
           refreshVersion: rideHistoryVersion,
           onError: (message) => _toast(message, PassengerToastType.error)),
       PassengerProfileTab(
-          profile: profile, rideCount: rides.length, onLogout: _logout),
+        profile: profile,
+        rideCount: rides.length,
+        onLogout: _logout,
+        onEditProfile: _editPassengerProfile,
+        onOpenRides: () => _selectTab(3),
+        onOpenReports: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => PassengerReportHistoryScreen(api: widget.api))),
+        onOpenTrustedContacts: () => Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) =>
+                    PassengerTrustedContactsScreen(api: widget.api))),
+        onOpenSettings: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => DriverAccountSettingsScreen(
+                api: widget.api, onLogout: _logout))),
+      ),
     ];
     return Scaffold(
       backgroundColor: TriSafeColors.offWhite,

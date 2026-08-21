@@ -12,6 +12,8 @@ class Ride {
   final String vehicleType;
   final DateTime? startedAt;
   final DateTime? endedAt;
+  final bool isRated;
+  final int? ratingScore;
 
   Ride.fromJson(Map<String, dynamic> json)
       : id = json['id'] as String,
@@ -35,7 +37,9 @@ class Ride {
             json['vehicle']?['vehicleType'] ??
             'TRICYCLE') as String,
         startedAt = _parseDate(json['startedAt']),
-        endedAt = _parseDate(json['endedAt']);
+        endedAt = _parseDate(json['endedAt']),
+        isRated = json['rating'] != null,
+        ratingScore = (json['rating']?['score'] as num?)?.toInt();
 
   static DateTime? _parseDate(dynamic value) =>
       value == null ? null : DateTime.tryParse(value.toString());
@@ -54,6 +58,8 @@ class Ride {
         vehicleType: vehicleType,
         startedAt: startedAt,
         endedAt: endedAt,
+        isRated: isRated,
+        ratingScore: ratingScore,
       );
 
   Ride._({
@@ -70,6 +76,8 @@ class Ride {
     required this.vehicleType,
     required this.startedAt,
     required this.endedAt,
+    required this.isRated,
+    required this.ratingScore,
   });
 }
 

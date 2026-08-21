@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
 import '../../models/auth_models.dart';
 import '../../theme/trisafe_theme.dart';
+import '../../widgets/driver_avatar.dart';
 import '../../widgets/passenger_page_header.dart';
 
 class PassengerProfileTab extends StatelessWidget {
   final PassengerProfile profile;
   final int rideCount;
   final VoidCallback onLogout;
+  final VoidCallback onOpenRides;
+  final VoidCallback onOpenReports;
+  final VoidCallback onOpenTrustedContacts;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onEditProfile;
 
   const PassengerProfileTab(
       {super.key,
       required this.profile,
       required this.rideCount,
-      required this.onLogout});
+      required this.onLogout,
+      required this.onOpenRides,
+      required this.onOpenReports,
+      required this.onOpenTrustedContacts,
+      required this.onOpenSettings,
+      required this.onEditProfile});
 
   @override
   Widget build(BuildContext context) {
@@ -32,18 +43,10 @@ class PassengerProfileTab extends StatelessWidget {
                   color: TriSafeColors.black,
                   borderRadius: BorderRadius.circular(22)),
               child: Row(children: [
-                Container(
-                    width: 68,
-                    height: 68,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                        color: TriSafeColors.lime,
-                        borderRadius: BorderRadius.circular(21)),
-                    child: Text(_initials(profile.fullName),
-                        style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w900,
-                            color: TriSafeColors.black))),
+                DriverAvatar(
+                    fullName: profile.fullName,
+                    avatarData: profile.avatarData,
+                    radius: 34),
                 const SizedBox(width: 15),
                 Expanded(
                     child: Column(
@@ -112,6 +115,13 @@ class PassengerProfileTab extends StatelessWidget {
                         divider: false),
                   ]))),
           const SizedBox(height: 14),
+          SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                  onPressed: onEditProfile,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Edit contact information'))),
+          const SizedBox(height: 14),
           Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -130,6 +140,49 @@ class PassengerProfileTab extends StatelessWidget {
                             color: TriSafeColors.muted)))
               ])),
           const SizedBox(height: 22),
+          const Text('Your records & settings',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          Card(
+              child: Column(children: [
+            ListTile(
+                onTap: onOpenRides,
+                leading: const Icon(Icons.route_outlined,
+                    color: TriSafeColors.forest),
+                title: const Text('Ride history'),
+                subtitle: const Text('Review completed rides and ratings',
+                    style: TextStyle(fontSize: 9)),
+                trailing: const Icon(Icons.chevron_right_rounded)),
+            const Divider(height: 1),
+            ListTile(
+                onTap: onOpenReports,
+                leading: const Icon(Icons.assignment_outlined,
+                    color: TriSafeColors.forest),
+                title: const Text('Report history'),
+                subtitle: const Text('Track your incident report statuses',
+                    style: TextStyle(fontSize: 9)),
+                trailing: const Icon(Icons.chevron_right_rounded)),
+            const Divider(height: 1),
+            ListTile(
+                onTap: onOpenTrustedContacts,
+                leading: const Icon(Icons.groups_outlined,
+                    color: TriSafeColors.forest),
+                title: const Text('Trusted contacts'),
+                subtitle: const Text('Manage your safety sharing contacts',
+                    style: TextStyle(fontSize: 9)),
+                trailing: const Icon(Icons.chevron_right_rounded)),
+            const Divider(height: 1),
+            ListTile(
+                onTap: onOpenSettings,
+                leading: const Icon(Icons.settings_outlined,
+                    color: TriSafeColors.forest),
+                title: const Text('Account settings'),
+                subtitle: const Text(
+                    'Password, policies, app information, and sign out',
+                    style: TextStyle(fontSize: 9)),
+                trailing: const Icon(Icons.chevron_right_rounded)),
+          ])),
+          const SizedBox(height: 14),
           OutlinedButton.icon(
               onPressed: onLogout,
               icon: const Icon(Icons.logout_rounded),
@@ -243,14 +296,4 @@ class _ProfileRow extends StatelessWidget {
             .toUpperCase()
         : ''
   );
-}
-
-String _initials(String value) {
-  final words = value
-      .replaceAll(',', ' ')
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (words.isEmpty) return 'P';
-  return words.take(2).map((word) => word[0].toUpperCase()).join();
 }

@@ -27,6 +27,7 @@ class PassengerProfile {
   final String? phone;
   final String role;
   final String status;
+  final String? avatarData;
 
   PassengerProfile.fromJson(Map<String, dynamic> json)
       : id = json['id'] as String,
@@ -35,7 +36,8 @@ class PassengerProfile {
         email = json['email'] as String?,
         phone = json['phone'] as String?,
         role = json['role'] as String,
-        status = json['status'] as String;
+        status = json['status'] as String,
+        avatarData = json['avatarData'] as String?;
 
   PassengerProfile.fromSession(AuthSession session)
       : id = session.userId,
@@ -44,5 +46,6 @@ class PassengerProfile {
         email = session.email,
         phone = session.phone,
         role = session.role,
-        status = session.status;
+        status = session.status,
+        avatarData = null;
 }

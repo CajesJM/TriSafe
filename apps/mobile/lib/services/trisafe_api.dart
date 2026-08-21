@@ -9,6 +9,7 @@ import '../models/driver_violation_models.dart';
 import '../models/fare_models.dart';
 import '../models/ride_models.dart';
 import '../models/terms_models.dart';
+import '../models/passenger_safety_models.dart';
 import '../models/vehicle_models.dart';
 
 class TriSafeApi {
@@ -120,6 +121,17 @@ class TriSafeApi {
     }
   }
 
+  Future<dynamic> _delete(String path) async {
+    final response = await http
+        .delete(Uri.parse('$baseUrl$path'), headers: _headers)
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode >= 400) {
+      throw Exception(
+          'TriSafe API returned ${response.statusCode}: ${response.body}');
+    }
+    return response.body.trim().isEmpty ? null : jsonDecode(response.body);
+  }
+
   String _connectionMessage() =>
       'TriSafe API is unavailable at $baseUrl. Start npm run dev:api. Use adb reverse tcp:3000 tcp:3000 only when testing on a wired Android phone.';
 
@@ -127,6 +139,16 @@ class TriSafeApi {
       QrVerificationResult.fromJson(await _get('/vehicles/verify/$token'));
   Future<PassengerProfile> accountProfile() async =>
       PassengerProfile.fromJson(await _get('/auth/me'));
+  Future<PassengerProfile> updatePassengerProfile(
+          {String? phone,
+          String? email,
+          String? avatarData,
+          bool updateAvatar = false}) async =>
+      PassengerProfile.fromJson(await _patch('/auth/me/profile', {
+        if (phone != null) 'phone': phone,
+        if (email != null) 'email': email,
+        if (updateAvatar) 'avatarData': avatarData
+      }));
   Future<DriverProfile> driverProfile() async =>
       DriverProfile.fromJson(await _get('/drivers/me'));
   Future<List<DriverAnnouncement>> driverAnnouncements() async =>
@@ -321,14 +343,63 @@ class TriSafeApi {
   }
 
   Future<Map<String, dynamic>> draftIncident(String description,
-          {String? rideId}) async =>
+          {String? rideId,
+          String? category,
+          String? evidenceData,
+          String? evidenceName}) async =>
       Map<String, dynamic>.from(await _post('/incidents/draft', {
         'rawDescription': description,
-        if (rideId != null) 'rideId': rideId
+        if (rideId != null) 'rideId': rideId,
+        if (category != null) 'category': category,
+        if (evidenceData != null) 'evidenceData': evidenceData,
+        if (evidenceName != null) 'evidenceName': evidenceName,
       }));
-  Future<Map<String, dynamic>> submitIncident(String incidentId) async =>
-      Map<String, dynamic>.from(
-          await _post('/incidents/$incidentId/submit', {}));
+  Future<Map<String, dynamic>> submitIncident(String incidentId,
+          {String? finalDescription, String? category}) async =>
+      Map<String, dynamic>.from(await _post('/incidents/$incidentId/submit', {
+        if (finalDescription != null) 'finalDescription': finalDescription,
+        if (category != null) 'category': category
+      }));
+  Future<List<PassengerIncident>> incidentHistory() async =>
+      (await _get('/incidents'))
+          .map<PassengerIncident>((item) =>
+              PassengerIncident.fromJson(item as Map<String, dynamic>))
+          .toList();
+  Future<void> createRating(
+          {required String rideId,
+          required int score,
+          String? comment}) async =>
+      _post('/ratings', {
+        'rideId': rideId,
+        'score': score,
+        if (comment?.trim().isNotEmpty == true) 'comment': comment!.trim()
+      });
+  Future<List<TrustedContact>> trustedContacts() async =>
+      (await _get('/safety/trusted-contacts'))
+          .map<TrustedContact>(
+              (item) => TrustedContact.fromJson(item as Map<String, dynamic>))
+          .toList();
+  Future<TrustedContact> saveTrustedContact(
+          {String? id,
+          required String fullName,
+          required String relationship,
+          required String phone,
+          bool active = true}) async =>
+      TrustedContact.fromJson(id == null
+          ? await _post('/safety/trusted-contacts', {
+              'fullName': fullName,
+              'relationship': relationship,
+              'phone': phone,
+              'active': active
+            })
+          : await _patch('/safety/trusted-contacts/$id', {
+              'fullName': fullName,
+              'relationship': relationship,
+              'phone': phone,
+              'active': active
+            }));
+  Future<void> deleteTrustedContact(String id) async =>
+      _delete('/safety/trusted-contacts/$id');
   Future<List<dynamic>> emergencyContacts() async =>
       List<dynamic>.from(await _get('/safety/emergency-contacts'));
 }

@@ -309,11 +309,11 @@ class DriverPrivacyPolicyScreen extends StatelessWidget {
               title: 'TriSafe Privacy Policy',
               version: 'Version 1.0',
               content:
-                  '''TriSafe uses your driver account information to verify registered transport operations in Trinidad, Bohol. This includes your official driver record, vehicle information, franchise status, QR verification data, and contact information.
+                  '''TriSafe uses account information to provide verified transport, fare, ride, and safety features in Trinidad, Bohol. This may include official account and contact information, ride records, QR verification information, and—in the case of registered drivers—vehicle and franchise records.
 
 Location data is used only for the safety and ride features that require it, such as ride verification, SafeShare, and emergency assistance. Location access depends on the permissions you allow on your device.
 
-The LGU/BPLO may access official driver, vehicle, franchise, violation, notification, and operational records to administer the transport program. Passenger feedback is shown to drivers without revealing passenger identity.
+The LGU/BPLO may access the official records needed to administer the transport program, including driver, vehicle, franchise, incident, notification, and operational records. Passenger feedback is shown to drivers without revealing passenger identity.
 
 TriSafe does not sell personal information. Information is retained and handled according to applicable LGU procedures and Philippine data-protection requirements. Contact the LGU/BPLO transport office for questions about your records or this policy.''',
             ),
@@ -350,7 +350,7 @@ class DriverAboutScreen extends StatelessWidget {
                       style:
                           TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                   SizedBox(height: 5),
-                  Text('Driver application · Version 1.0',
+                  Text('Mobile application · Version 1.0',
                       style:
                           TextStyle(fontSize: 10, color: TriSafeColors.muted)),
                   Divider(height: 30),

@@ -108,6 +108,7 @@ model User {
   passengerRides  Ride[]    @relation("PassengerRides")
   submittedRatings DriverRating[] @relation("PassengerRatings")
   incidents       Incident[]
+  trustedContacts TrustedContact[]
   livePresence    LivePresence?
 }
 
@@ -338,9 +339,38 @@ model Incident {
   reviewerNotes   String?
   createdAt       DateTime @default(now())
   submittedAt     DateTime?
+  finalDescription String?
+  evidence        IncidentEvidence[]
   passenger       User     @relation(fields: [passengerId], references: [id])
   ride            Ride?    @relation(fields: [rideId], references: [id])
   @@index([status, createdAt])
+}
+
+model IncidentEvidence {
+  id          String   @id @default(cuid())
+  incidentId  String
+  fileName    String
+  mimeType    String
+  data        String   @db.Text
+  createdAt   DateTime @default(now())
+  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+}
+
+model TrustedContact {
+  id           String   @id @default(cuid())
+  passengerId  String
+  fullName     String
+  relationship String
+  phone        String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  passenger    User     @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+
+  @@unique([passengerId, phone])
+  @@index([passengerId, active])
 }
 
 model DriverViolation {

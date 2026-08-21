@@ -276,6 +276,7 @@ export class DriversService {
                 owner: true,
                 address: true,
                 franchise: true,
+                ratings: { where: { visible: true }, select: { score: true } },
               },
             },
           },
@@ -298,6 +299,10 @@ export class DriversService {
     const driver = qr.vehicle.driver;
     const franchise = driver.franchise;
     const transportStatus = franchise?.status ?? driver.verification;
+    const ratingCount = driver.ratings.length;
+    const averageRating = ratingCount
+      ? Number((driver.ratings.reduce((sum, rating) => sum + rating.score, 0) / ratingCount).toFixed(2))
+      : null;
     const qrStatus = qr.revokedAt ? "REVOKED" : "ACTIVE";
     const recordComplete = Boolean(
       driver.owner &&
@@ -363,6 +368,8 @@ export class DriversService {
         plateNumber: qr.vehicle.plateNumber,
         vehicleType: qr.vehicle.vehicleType,
         qrCodeId: qr.id,
+        averageRating,
+        ratingCount,
       },
     };
   }
