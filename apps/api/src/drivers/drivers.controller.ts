@@ -151,6 +151,21 @@ export class DriversController {
   }
 
   @Roles(UserRole.DRIVER)
+  @Patch("drivers/me/notifications/read-all")
+  markAllNotificationsRead(@Req() req: RequestWithUser) {
+    return this.service.markAllNotificationsRead(req.user.id);
+  }
+
+  @Roles(UserRole.DRIVER)
+  @Patch("drivers/me/notifications/:notificationId/read")
+  markNotificationRead(
+    @Req() req: RequestWithUser,
+    @Param("notificationId") notificationId: string,
+  ) {
+    return this.service.markNotificationRead(req.user.id, notificationId);
+  }
+
+  @Roles(UserRole.DRIVER)
   @Get("drivers/me/violations")
   violations(@Req() req: RequestWithUser) {
     return this.service.violations(req.user.id);

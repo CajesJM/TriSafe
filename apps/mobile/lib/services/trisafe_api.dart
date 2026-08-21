@@ -4,9 +4,11 @@ import 'package:http/http.dart' as http;
 import '../models/auth_models.dart';
 import '../models/driver_models.dart';
 import '../models/driver_profile_update_models.dart';
+import '../models/driver_rating_models.dart';
 import '../models/driver_violation_models.dart';
 import '../models/fare_models.dart';
 import '../models/ride_models.dart';
+import '../models/terms_models.dart';
 import '../models/vehicle_models.dart';
 
 class TriSafeApi {
@@ -51,6 +53,7 @@ class TriSafeApi {
         throw Exception(
             'TriSafe API returned ${response.statusCode}: ${response.body}');
       }
+      if (response.body.trim().isEmpty) return null;
       return jsonDecode(response.body);
     } on TimeoutException {
       throw Exception(_connectionMessage());
@@ -72,6 +75,7 @@ class TriSafeApi {
         throw Exception(
             'TriSafe API returned ${response.statusCode}: ${response.body}');
       }
+      if (response.body.trim().isEmpty) return null;
       return jsonDecode(response.body);
     } on TimeoutException {
       throw Exception(_connectionMessage());
@@ -138,8 +142,34 @@ class TriSafeApi {
           .map<DriverViolationRecord>(
               (item) => DriverViolationRecord.fromJson(item))
           .toList();
+  Future<DriverRatingStatistics> driverRatingStatistics() async =>
+      DriverRatingStatistics.fromJson(await _get('/ratings/driver/me'));
   Future<void> markDriverAnnouncementRead(String announcementId) async {
     await _patch('/drivers/me/announcements/$announcementId/read', {});
+  }
+
+  Future<void> markDriverNotificationRead(String notificationId) async {
+    await _patch('/drivers/me/notifications/$notificationId/read', {});
+  }
+
+  Future<void> markAllDriverNotificationsRead() async {
+    await _patch('/drivers/me/notifications/read-all', {});
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _patch('/auth/me/password', {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+    });
+  }
+
+  Future<PublishedTermsDocument?> currentTerms() async {
+    final response = await _get('/terms/current');
+    if (response == null) return null;
+    return PublishedTermsDocument.fromJson(response as Map<String, dynamic>);
   }
 
   Future<void> updateDriverContact({required String phone}) async {

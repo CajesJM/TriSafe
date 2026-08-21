@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../models/driver_models.dart';
 import '../../theme/trisafe_theme.dart';
@@ -300,6 +302,18 @@ Future<void> showDriverAnnouncementDetails(
                         style: const TextStyle(
                             fontSize: 10, color: TriSafeColors.muted)),
                     const Divider(height: 28),
+                    if (announcement.imageData != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(
+                          base64Decode(announcement.imageData!.split(',').last),
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                     Text(announcement.body,
                         style: const TextStyle(fontSize: 13, height: 1.6)),
                     if (announcement.expiresAt != null) ...[

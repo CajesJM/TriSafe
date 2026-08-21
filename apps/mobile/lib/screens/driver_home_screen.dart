@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/driver_models.dart';
+import '../models/driver_rating_models.dart';
 import '../models/driver_violation_models.dart';
 import '../services/location_tracking_service.dart';
 import '../services/trisafe_api.dart';
@@ -12,8 +13,10 @@ import 'driver/driver_dashboard_tab.dart';
 import 'driver/driver_franchise_screen.dart';
 import 'driver/driver_notifications_screen.dart';
 import 'driver/driver_profile_tab.dart';
+import 'driver/driver_rating_statistics_screen.dart';
 import 'driver/driver_qr_tab.dart';
 import 'driver/driver_announcements_tab.dart';
+import 'driver/driver_account_settings_screen.dart';
 import 'driver/driver_updates_tab.dart' show showDriverAnnouncementDetails;
 import 'driver/driver_vehicle_tab.dart';
 import 'driver/driver_violations_screen.dart';
@@ -33,6 +36,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   List<DriverAnnouncement> announcements = [];
   List<DriverNotification> notifications = [];
   List<DriverViolationRecord> violations = [];
+  DriverRatingStatistics? ratingStatistics;
   bool loading = true;
   int selectedTab = 0;
   int toastId = 0;
@@ -59,6 +63,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         widget.api.driverAnnouncements(),
         widget.api.driverNotifications(),
         widget.api.driverViolations(),
+        widget.api.driverRatingStatistics(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -66,6 +71,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         announcements = results[1] as List<DriverAnnouncement>;
         notifications = results[2] as List<DriverNotification>;
         violations = results[3] as List<DriverViolationRecord>;
+        ratingStatistics = results[4] as DriverRatingStatistics;
         loading = false;
       });
     } catch (_) {
@@ -108,13 +114,57 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   void _openNotifications() {
     Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) =>
-            DriverNotificationsScreen(notifications: notifications)));
+        builder: (_) => DriverNotificationsScreen(
+              notifications: notifications,
+              onMarkRead: _markNotificationRead,
+              onMarkAllRead: _markAllNotificationsRead,
+            )));
+  }
+
+  Future<void> _markNotificationRead(String notificationId) async {
+    try {
+      await widget.api.markDriverNotificationRead(notificationId);
+      await _load(silent: true);
+    } catch (_) {
+      _toast('Notification could not be marked as read.',
+          PassengerToastType.error);
+      rethrow;
+    }
+  }
+
+  Future<void> _markAllNotificationsRead() async {
+    try {
+      await widget.api.markAllDriverNotificationsRead();
+      await _load(silent: true);
+    } catch (_) {
+      _toast('Notifications could not be marked as read.',
+          PassengerToastType.error);
+      rethrow;
+    }
   }
 
   void _openViolations() {
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => DriverViolationsScreen(violations: violations)));
+  }
+
+  void _openRatingStatistics() {
+    final statistics = ratingStatistics;
+    if (statistics == null) {
+      _toast('Rating statistics are still loading. Please try again.',
+          PassengerToastType.info);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DriverRatingStatisticsScreen(statistics: statistics)));
+  }
+
+  void _openAccountSettings() {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DriverAccountSettingsScreen(
+              api: widget.api,
+              onLogout: _logout,
+            )));
   }
 
   Future<void> _logout() async {
@@ -162,11 +212,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           announcements: announcements,
           notifications: notifications,
           violations: violations,
+          ratingStatistics: ratingStatistics,
           loading: loading,
           onRefresh: _load,
           onOpenFranchise: _openFranchise,
           onOpenNotifications: _openNotifications,
           onOpenViolations: _openViolations,
+          onOpenRatingStatistics: _openRatingStatistics,
           onOpenTab: (index) => setState(() => selectedTab = index)),
       DriverVehicleTab(
           profile: profile, onOpenQr: () => setState(() => selectedTab = 2)),
@@ -174,7 +226,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       DriverAnnouncementsTab(
           announcements: announcements, onOpenAnnouncement: _openAnnouncement),
       DriverProfileTab(
-          profile: profile, onEditContact: _editProfile, onLogout: _logout),
+          profile: profile,
+          onEditContact: _editProfile,
+          onOpenSettings: _openAccountSettings),
     ];
 
     return Scaffold(

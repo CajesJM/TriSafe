@@ -4,7 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AdminProfile, LoginResponse } from './auth.types';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { verifyPassword } from './password';
+import { hashPassword, verifyPassword } from './password';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { TokenService } from './token.service';
 import { AuditService } from '../audit/audit.service';
 import { BoholLocationService } from '../drivers/bohol-location.service';
@@ -93,6 +94,35 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true },
+    });
+    if (!user?.passwordHash) {
+      throw new UnauthorizedException('Account credentials are unavailable.');
+    }
+    if (!verifyPassword(dto.currentPassword, user.passwordHash)) {
+      throw new ForbiddenException('Your current password is incorrect.');
+    }
+    if (verifyPassword(dto.newPassword, user.passwordHash)) {
+      throw new ConflictException('Choose a new password that is different from your current password.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashPassword(dto.newPassword) },
+    });
+    await this.audit.record({
+      actorId: userId,
+      action: 'ACCOUNT_PASSWORD_CHANGED',
+      entityType: 'User',
+      entityId: userId,
+      details: { initiatedByAccountOwner: true },
+    });
+    return { changed: true };
   }
 
   private toAdminProfile(user: Prisma.UserGetPayload<{ select: { id: true; fullName: true; username: true; email: true; phone: true; avatarData: true; role: true; status: true; address: true } }>): AdminProfile {

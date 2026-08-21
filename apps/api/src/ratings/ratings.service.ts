@@ -21,6 +21,41 @@ export class RatingsService {
 
   mine(passengerId: string) { return this.prisma.driverRating.findMany({ where: { passengerId }, include: { ride: { include: { vehicle: { select: { plateNumber: true, vehicleType: true, driver: { include: { user: { select: { fullName: true } } } } } } } } }, orderBy: { createdAt: 'desc' } }); }
 
+  async driverStatistics(userId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+
+    const ratings = await this.prisma.driverRating.findMany({
+      where: { driverId: driver.id, visible: true },
+      select: { id: true, score: true, comment: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    const totalReviews = ratings.length;
+    const average = totalReviews
+      ? Number((ratings.reduce((sum, rating) => sum + rating.score, 0) / totalReviews).toFixed(2))
+      : null;
+    const distribution = [5, 4, 3, 2, 1].map((score) => ({
+      score,
+      count: ratings.filter((rating) => rating.score === score).length,
+    }));
+
+    return {
+      average,
+      totalReviews,
+      distribution,
+      reviews: ratings.map(({ id, score, comment, createdAt }) => ({
+        id,
+        score,
+        comment,
+        createdAt,
+      })),
+    };
+  }
+
   async summaries() {
     const [drivers, ratings] = await Promise.all([
       this.prisma.driver.findMany({ include: { user: { select: { fullName: true, username: true } }, vehicles: { take: 1, select: { plateNumber: true, vehicleType: true } } }, orderBy: { createdAt: 'desc' } }),

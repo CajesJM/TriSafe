@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/driver_models.dart';
+import '../../models/driver_rating_models.dart';
 import '../../models/driver_violation_models.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/driver_page_header.dart';
@@ -10,11 +11,13 @@ class DriverDashboardTab extends StatelessWidget {
   final List<DriverAnnouncement> announcements;
   final List<DriverNotification> notifications;
   final List<DriverViolationRecord> violations;
+  final DriverRatingStatistics? ratingStatistics;
   final bool loading;
   final VoidCallback onRefresh;
   final VoidCallback onOpenFranchise;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenViolations;
+  final VoidCallback onOpenRatingStatistics;
   final ValueChanged<int> onOpenTab;
 
   const DriverDashboardTab({
@@ -23,17 +26,21 @@ class DriverDashboardTab extends StatelessWidget {
     required this.announcements,
     required this.notifications,
     required this.violations,
+    required this.ratingStatistics,
     required this.loading,
     required this.onRefresh,
     required this.onOpenFranchise,
     required this.onOpenNotifications,
     required this.onOpenViolations,
+    required this.onOpenRatingStatistics,
     required this.onOpenTab,
   });
 
   @override
   Widget build(BuildContext context) {
     final driver = profile;
+    final unreadNotifications =
+        notifications.where((notification) => !notification.isRead).toList();
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView(
@@ -49,17 +56,17 @@ class DriverDashboardTab extends StatelessWidget {
                 'Your LGU-verified transport records, reminders, and service updates.',
             action: Semantics(
               button: true,
-              label: notifications.isEmpty
+              label: unreadNotifications.isEmpty
                   ? 'Open notifications'
-                  : 'Open notifications, ${notifications.length} unread',
+                  : 'Open notifications, ${unreadNotifications.length} unread',
               child: IconButton(
                 tooltip: 'Notifications',
                 onPressed: onOpenNotifications,
                 icon: Badge(
-                  isLabelVisible: notifications.isNotEmpty,
-                  label: Text(notifications.length > 9
+                  isLabelVisible: unreadNotifications.isNotEmpty,
+                  label: Text(unreadNotifications.length > 9
                       ? '9+'
-                      : '${notifications.length}'),
+                      : '${unreadNotifications.length}'),
                   child: const Icon(Icons.notifications_none_rounded,
                       color: TriSafeColors.forest),
                 ),
@@ -71,6 +78,11 @@ class DriverDashboardTab extends StatelessWidget {
             const _DashboardSkeleton()
           else if (driver != null) ...[
             _StatusHero(profile: driver, onOpenFranchise: onOpenFranchise),
+            const SizedBox(height: 14),
+            _RatingOverview(
+              statistics: ratingStatistics,
+              onOpen: onOpenRatingStatistics,
+            ),
             const SizedBox(height: 14),
             LayoutBuilder(builder: (context, constraints) {
               final width = constraints.maxWidth >= 680
@@ -88,9 +100,9 @@ class DriverDashboardTab extends StatelessWidget {
                 _MetricCard(
                     width: width,
                     icon: Icons.notifications_active_outlined,
-                    value: '${notifications.length}',
+                    value: '${unreadNotifications.length}',
                     label: 'Important updates',
-                    detail: notifications.isEmpty
+                    detail: unreadNotifications.isEmpty
                         ? 'You are up to date'
                         : 'Needs your attention'),
                 _MetricCard(
@@ -119,13 +131,13 @@ class DriverDashboardTab extends StatelessWidget {
                 action: 'View all',
                 onTap: onOpenNotifications),
             const SizedBox(height: 10),
-            if (notifications.isEmpty)
+            if (unreadNotifications.isEmpty)
               const _EmptyCard(
                   icon: Icons.task_alt_rounded,
                   title: 'No urgent reminders',
                   message: 'Your account has no pending system alerts.')
             else
-              ...notifications.take(2).map(_NotificationPreview.new),
+              ...unreadNotifications.take(2).map(_NotificationPreview.new),
             const SizedBox(height: 18),
             _SectionTitle(
                 title: 'Latest LGU announcements',
@@ -194,6 +206,57 @@ class _ComplianceShortcut extends StatelessWidget {
                             : '$openCases open case${openCases == 1 ? '' : 's'} · $pendingPenalties pending penalty',
                         style: const TextStyle(
                             fontSize: 10, color: TriSafeColors.muted)),
+                  ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: TriSafeColors.muted),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _RatingOverview extends StatelessWidget {
+  final DriverRatingStatistics? statistics;
+  final VoidCallback onOpen;
+
+  const _RatingOverview({required this.statistics, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final value = statistics?.average;
+    final reviews = statistics?.totalReviews ?? 0;
+    return Card(
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                  color: const Color(0xfffff1ca),
+                  borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.star_rounded, color: Color(0xff966300)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Rating statistics',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 3),
+                    Text(
+                      reviews == 0
+                          ? 'No passenger reviews received yet'
+                          : '${value?.toStringAsFixed(1) ?? '—'} average from $reviews passenger review${reviews == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                          fontSize: 10, color: TriSafeColors.muted),
+                    ),
                   ]),
             ),
             const Icon(Icons.chevron_right_rounded, color: TriSafeColors.muted),

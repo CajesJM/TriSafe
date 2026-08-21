@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { DriverVerificationStatus, Prisma } from "@prisma/client";
+import { DriverNotificationPriority, DriverNotificationType, DriverVerificationStatus, Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDriverDto } from "./dto/register-driver.dto";
@@ -16,6 +16,7 @@ import { UpdateFranchiseDto } from "./dto/update-franchise.dto";
 import { UpdateDriverStatusDto } from "./dto/update-driver-status.dto";
 import { DriverStatusService } from "./driver-status.service";
 import { BoholLocationService } from "./bohol-location.service";
+import { DriverNotificationsService } from './driver-notifications.service';
 
 @Injectable()
 export class DriversService {
@@ -24,6 +25,7 @@ export class DriversService {
     private readonly audit: AuditService,
     private readonly statuses: DriverStatusService,
     private readonly locations: BoholLocationService,
+    private readonly driverNotifications: DriverNotificationsService,
   ) {}
 
   async registerApprovedDriver(actorId: string, dto: RegisterDriverDto) {
@@ -428,13 +430,19 @@ export class DriversService {
     });
     if (!driver) throw new NotFoundException("Driver profile not found");
     try {
-      return await this.prisma.announcementRecipient.update({
+      const recipient = await this.prisma.announcementRecipient.update({
         where: {
           announcementId_driverId: { announcementId, driverId: driver.id },
         },
         data: { readAt: new Date() },
         include: { announcement: true },
       });
+      await this.driverNotifications.markEntityRead(
+        driver.id,
+        'Announcement',
+        announcementId,
+      );
+      return recipient;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -447,91 +455,15 @@ export class DriversService {
   }
 
   async notifications(userId: string) {
-    await this.statuses.syncExpiredDrivers();
-    const driver = await this.prisma.driver.findUnique({
-      where: { userId },
-      include: {
-        franchise: true,
-        vehicles: true,
-        announcements: {
-          where: {
-            readAt: null,
-            announcement: {
-              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-            },
-          },
-          include: { announcement: true },
-        },
-      },
-    });
-    if (!driver) throw new NotFoundException("Driver profile not found");
+    return this.driverNotifications.listForUser(userId);
+  }
 
-    const now = new Date();
-    const daysUntil = (date: Date) =>
-      Math.ceil((date.getTime() - now.getTime()) / 86400000);
-    const notifications: Array<{
-      id: string;
-      type: string;
-      priority: string;
-      title: string;
-      message: string;
-      createdAt: Date;
-      read: boolean;
-      announcementId?: string;
-    }> = [];
-    const franchise = driver.franchise;
+  markNotificationRead(userId: string, notificationId: string) {
+    return this.driverNotifications.markRead(userId, notificationId);
+  }
 
-    if (franchise && franchise.status !== "VERIFIED") {
-      notifications.push({
-        id: `franchise-status-${franchise.id}`,
-        type: "FRANCHISE_STATUS",
-        priority: franchise.status === "PENDING" ? "WARNING" : "CRITICAL",
-        title: `Franchise ${franchise.status.toLowerCase()}`,
-        message:
-          "Review your franchise status and coordinate with the LGU before accepting rides.",
-        createdAt: now,
-        read: false,
-      });
-    } else if (franchise && daysUntil(franchise.expiresAt) <= 30) {
-      notifications.push({
-        id: `franchise-renewal-${franchise.id}`,
-        type: "RENEWAL",
-        priority: daysUntil(franchise.expiresAt) <= 7 ? "CRITICAL" : "WARNING",
-        title: "Franchise renewal reminder",
-        message: `Your franchise expires in ${Math.max(0, daysUntil(franchise.expiresAt))} day(s). Contact the LGU to renew it.`,
-        createdAt: franchise.expiresAt,
-        read: false,
-      });
-    }
-
-    for (const vehicle of driver.vehicles.filter((item) => !item.isActive)) {
-      notifications.push({
-        id: `vehicle-inactive-${vehicle.id}`,
-        type: "VEHICLE_STATUS",
-        priority: "CRITICAL",
-        title: "Vehicle inactive",
-        message: `${vehicle.plateNumber} is inactive and cannot be used for verified rides.`,
-        createdAt: now,
-        read: false,
-      });
-    }
-
-    for (const recipient of driver.announcements) {
-      notifications.push({
-        id: `announcement-${recipient.announcementId}`,
-        type: "ANNOUNCEMENT",
-        priority: "INFO",
-        title: recipient.announcement.title,
-        message: "A new LGU announcement is waiting for you.",
-        createdAt: recipient.announcement.publishedAt,
-        read: false,
-        announcementId: recipient.announcementId,
-      });
-    }
-
-    return notifications.sort(
-      (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-    );
+  markAllNotificationsRead(userId: string) {
+    return this.driverNotifications.markAllRead(userId);
   }
 
   /** Official compliance records are visible only to their authenticated driver. */
@@ -730,6 +662,17 @@ export class DriversService {
         expiresAt: dto.expiresAt,
       },
     });
+    await this.driverNotifications.create({
+      driverId,
+      type: DriverNotificationType.FRANCHISE_STATUS,
+      priority: effectiveStatus === DriverVerificationStatus.VERIFIED
+          ? DriverNotificationPriority.INFO
+          : DriverNotificationPriority.WARNING,
+      title: 'Franchise record updated',
+      message: `Your franchise is now ${effectiveStatus.toLowerCase()} and expires on ${dto.expiresAt}.`,
+      entityType: 'Franchise',
+      entityId: franchise.id,
+    });
     return this.getDriver(driverId);
   }
 
@@ -789,6 +732,17 @@ export class DriversService {
         status: dto.status,
         ...(dto.reason ? { reason: dto.reason } : {}),
       },
+    });
+    await this.driverNotifications.create({
+      driverId,
+      type: DriverNotificationType.ACCOUNT_STATUS,
+      priority: dto.status === DriverVerificationStatus.VERIFIED
+          ? DriverNotificationPriority.INFO
+          : DriverNotificationPriority.CRITICAL,
+      title: 'Driver status updated',
+      message: dto.reason?.trim() || `Your LGU driver status is now ${dto.status.toLowerCase()}.`,
+      entityType: 'Driver',
+      entityId: driverId,
     });
     return this.getDriver(driverId);
   }

@@ -415,11 +415,13 @@ export type AnnouncementInput = {
   title: string;
   body: string;
   expiresAt?: string;
+  imageData?: string;
 };
 export type Announcement = {
   id: string;
   title: string;
   body: string;
+  imageData?: string | null;
   publishedAt: string;
   expiresAt?: string | null;
   recipientCount: number;

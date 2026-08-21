@@ -8,13 +8,13 @@ import '../../widgets/driver_status_badge.dart';
 class DriverProfileTab extends StatelessWidget {
   final DriverProfile? profile;
   final VoidCallback onEditContact;
-  final VoidCallback onLogout;
+  final VoidCallback onOpenSettings;
 
   const DriverProfileTab({
     super.key,
     required this.profile,
     required this.onEditContact,
-    required this.onLogout,
+    required this.onOpenSettings,
   });
 
   @override
@@ -104,12 +104,26 @@ class DriverProfileTab extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 18),
-        OutlinedButton.icon(
-            onPressed: onLogout,
-            style:
-                OutlinedButton.styleFrom(foregroundColor: TriSafeColors.danger),
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Sign out of TriSafe')),
+        Card(
+          child: ListTile(
+            onTap: onOpenSettings,
+            leading: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                    color: TriSafeColors.softGreen,
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.settings_outlined,
+                    color: TriSafeColors.forest)),
+            title: const Text('Account settings',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+            subtitle: const Text(
+                'Password, official policies, application information, and sign out.',
+                style: TextStyle(fontSize: 9, color: TriSafeColors.muted)),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                color: TriSafeColors.muted),
+          ),
+        ),
       ],
     );
   }

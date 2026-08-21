@@ -61,6 +61,22 @@ enum OffenseLevel {
   GRAVE_OFFENSE
 }
 
+enum DriverNotificationType {
+  ANNOUNCEMENT
+  ACCOUNT_STATUS
+  FRANCHISE_STATUS
+  VEHICLE_STATUS
+  VIOLATION_RECORDED
+  VIOLATION_UPDATED
+  GENERAL
+}
+
+enum DriverNotificationPriority {
+  INFO
+  WARNING
+  CRITICAL
+}
+
 enum PenaltyStatus {
   NOT_APPLICABLE
   PENDING
@@ -142,6 +158,7 @@ model Driver {
   address         DriverAddress?
   violations      DriverViolation[]
   ratings         DriverRating[]
+  notifications   DriverNotification[]
   createdAt       DateTime @default(now())
 }
 
@@ -394,9 +411,27 @@ model Announcement {
   id          String   @id @default(cuid())
   title       String
   body        String
+  imageData   String?  @db.Text
   publishedAt DateTime @default(now())
   expiresAt   DateTime?
   recipients  AnnouncementRecipient[]
+}
+
+model DriverNotification {
+  id         String                     @id @default(cuid())
+  driverId   String
+  type       DriverNotificationType
+  priority   DriverNotificationPriority @default(INFO)
+  title      String
+  message    String
+  entityType String?
+  entityId   String?
+  readAt     DateTime?
+  createdAt  DateTime                   @default(now())
+  driver     Driver                     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId, readAt, createdAt])
+  @@index([driverId, type, createdAt])
 }
 
 model AnnouncementRecipient {

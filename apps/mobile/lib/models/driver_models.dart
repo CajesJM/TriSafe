@@ -129,6 +129,7 @@ class DriverAnnouncement {
   final DateTime publishedAt;
   final DateTime? expiresAt;
   final DateTime? readAt;
+  final String? imageData;
 
   DriverAnnouncement.fromJson(Map<String, dynamic> json)
       : id = json['announcement']['id'] as String,
@@ -141,7 +142,8 @@ class DriverAnnouncement {
             : DateTime.parse(json['announcement']['expiresAt'].toString()),
         readAt = json['readAt'] == null
             ? null
-            : DateTime.parse(json['readAt'].toString());
+            : DateTime.parse(json['readAt'].toString()),
+        imageData = json['announcement']['imageData'] as String?;
 
   bool get isRead => readAt != null;
 }
@@ -153,8 +155,19 @@ class DriverNotification {
   final String title;
   final String message;
   final DateTime createdAt;
-  final bool read;
+  final DateTime? readAt;
   final String? announcementId;
+
+  DriverNotification({
+    required this.id,
+    required this.type,
+    required this.priority,
+    required this.title,
+    required this.message,
+    required this.createdAt,
+    required this.readAt,
+    required this.announcementId,
+  });
 
   DriverNotification.fromJson(Map<String, dynamic> json)
       : id = json['id'] as String,
@@ -163,6 +176,21 @@ class DriverNotification {
         title = json['title'] as String,
         message = json['message'] as String,
         createdAt = DateTime.parse(json['createdAt'].toString()),
-        read = json['read'] as bool? ?? false,
+        readAt = json['readAt'] == null
+            ? null
+            : DateTime.parse(json['readAt'].toString()),
         announcementId = json['announcementId'] as String?;
+
+  bool get isRead => readAt != null;
+
+  DriverNotification markAsRead() => DriverNotification(
+        id: id,
+        type: type,
+        priority: priority,
+        title: title,
+        message: message,
+        createdAt: createdAt,
+        readAt: DateTime.now(),
+        announcementId: announcementId,
+      );
 }

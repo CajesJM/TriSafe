@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { Roles } from './roles.decorator';
 import type { RequestWithUser } from './auth.types';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,5 +28,14 @@ export class AuthController {
   @Roles(UserRole.LGU_ADMIN)
   updateProfile(@Req() request: RequestWithUser, @Body() dto: UpdateProfileDto) {
     return this.auth.updateProfile(request.user.id, dto);
+  }
+
+  @Patch('me/password')
+  @Roles(UserRole.LGU_ADMIN, UserRole.DRIVER, UserRole.PASSENGER)
+  changePassword(
+    @Req() request: RequestWithUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(request.user.id, dto);
   }
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PenaltyStatus, Prisma, UserRole, UserStatus } from '@prisma/client';
+import { DriverNotificationPriority, DriverNotificationType, PenaltyStatus, Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnouncementDto } from './dto/announcement.dto';
 import { AuditService } from '../audit/audit.service';
@@ -10,6 +10,7 @@ import { hashPassword } from '../auth/password';
 import { RideAnalyticsQueryDto } from './dto/ride-analytics-query.dto';
 import { BoholLocationService } from '../drivers/bohol-location.service';
 import { CreateViolationDto, UpdateViolationDto } from './dto/violation.dto';
+import { DriverNotificationsService } from '../drivers/driver-notifications.service';
 
 const canonicalPersonNamePattern = /^[\p{L}][\p{L} '-]{1,44}, [\p{L}][\p{L}'-]+(?: [\p{L}][\p{L}'-]+)*(?: \p{L}\.)?$/u;
 const dataImageByteLength = (value: string) => {
@@ -19,7 +20,7 @@ const dataImageByteLength = (value: string) => {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly locations: BoholLocationService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly locations: BoholLocationService, private readonly driverNotifications: DriverNotificationsService) {}
 
   async dashboard() {
     const today = new Date();
@@ -534,9 +535,11 @@ export class AdminService {
   }
 
   async createAnnouncement(actorId: string, dto: CreateAnnouncementDto) {
+    if (dto.imageData && dataImageByteLength(dto.imageData) > 2 * 1024 * 1024) throw new BadRequestException('Announcement image must be 2 MB or smaller.');
     const drivers = await this.prisma.driver.findMany({ where: { verification: 'VERIFIED' }, select: { id: true } });
-    const announcement = await this.prisma.announcement.create({ data: { title: dto.title, body: dto.body, expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined, recipients: { create: drivers.map(({ id }) => ({ driverId: id })) } }, include: { recipients: true } });
-    await this.audit.record({ actorId, action: 'ANNOUNCEMENT_PUBLISHED', entityType: 'Announcement', entityId: announcement.id, details: { title: dto.title, recipientCount: drivers.length } });
+    const announcement = await this.prisma.announcement.create({ data: { title: dto.title.trim(), body: dto.body.trim(), imageData: dto.imageData || null, expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined, recipients: { create: drivers.map(({ id }) => ({ driverId: id })) } }, include: { recipients: true } });
+    await this.driverNotifications.createMany(drivers.map(({ id }) => ({ driverId: id, type: DriverNotificationType.ANNOUNCEMENT, priority: DriverNotificationPriority.INFO, title: 'New LGU announcement', message: announcement.title, entityType: 'Announcement', entityId: announcement.id })));
+    await this.audit.record({ actorId, action: 'ANNOUNCEMENT_PUBLISHED', entityType: 'Announcement', entityId: announcement.id, details: { title: announcement.title, recipientCount: drivers.length, imageAttached: Boolean(dto.imageData) } });
     return announcement;
   }
 
@@ -586,6 +589,7 @@ export class AdminService {
       },
     });
     await this.audit.record({ actorId, action: 'VIOLATION_RECORDED', entityType: 'DriverViolation', entityId: violation.id, details: { driverId: driver.id, driverName: driver.user.fullName, category: violation.category, offenseLevel: violation.offenseLevel, penaltyAmount: violation.penaltyAmount?.toString() ?? null } });
+    await this.driverNotifications.create({ driverId: driver.id, type: DriverNotificationType.VIOLATION_RECORDED, priority: DriverNotificationPriority.WARNING, title: 'New violation record', message: `An LGU compliance record for ${violation.category} was added to your account.`, entityType: 'DriverViolation', entityId: violation.id });
     return violation;
   }
 
@@ -608,6 +612,7 @@ export class AdminService {
       },
     });
     await this.audit.record({ actorId, action: 'VIOLATION_UPDATED', entityType: 'DriverViolation', entityId: id, details: { previousStatus: current.status, status: updated.status, previousOffenseLevel: current.offenseLevel, offenseLevel: updated.offenseLevel, previousPenaltyStatus: current.penaltyStatus, penaltyStatus: updated.penaltyStatus, penaltyAmount: updated.penaltyAmount?.toString() ?? null } });
+    await this.driverNotifications.create({ driverId: current.driverId, type: DriverNotificationType.VIOLATION_UPDATED, priority: updated.status === 'RESOLVED' ? DriverNotificationPriority.INFO : DriverNotificationPriority.WARNING, title: 'Violation record updated', message: `Your ${updated.category} compliance record was updated by the LGU.`, entityType: 'DriverViolation', entityId: updated.id });
     return updated;
   }
 

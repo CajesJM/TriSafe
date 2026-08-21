@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../models/driver_models.dart';
 import '../../theme/trisafe_theme.dart';
@@ -96,6 +98,21 @@ class _AnnouncementCard extends StatelessWidget {
                           ),
                       ]),
                       const SizedBox(height: 5),
+                      if (announcement.imageData != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            base64Decode(
+                                announcement.imageData!.split(',').last),
+                            height: 124,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const SizedBox.shrink(),
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                      ],
                       Text(announcement.body,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
