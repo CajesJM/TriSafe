@@ -11,6 +11,7 @@ class DriverDashboardTab extends StatelessWidget {
   final bool loading;
   final VoidCallback onRefresh;
   final VoidCallback onOpenFranchise;
+  final VoidCallback onOpenNotifications;
   final ValueChanged<int> onOpenTab;
 
   const DriverDashboardTab({
@@ -21,6 +22,7 @@ class DriverDashboardTab extends StatelessWidget {
     required this.loading,
     required this.onRefresh,
     required this.onOpenFranchise,
+    required this.onOpenNotifications,
     required this.onOpenTab,
   });
 
@@ -40,6 +42,24 @@ class DriverDashboardTab extends StatelessWidget {
                 : '${_timeGreeting(DateTime.now().hour)}, ${_firstName(driver.fullName)}',
             description:
                 'Your LGU-verified transport records, reminders, and service updates.',
+            action: Semantics(
+              button: true,
+              label: notifications.isEmpty
+                  ? 'Open notifications'
+                  : 'Open notifications, ${notifications.length} unread',
+              child: IconButton(
+                tooltip: 'Notifications',
+                onPressed: onOpenNotifications,
+                icon: Badge(
+                  isLabelVisible: notifications.isNotEmpty,
+                  label: Text(notifications.length > 9
+                      ? '9+'
+                      : '${notifications.length}'),
+                  child: const Icon(Icons.notifications_none_rounded,
+                      color: TriSafeColors.forest),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           if (loading && driver == null)
@@ -81,13 +101,13 @@ class DriverDashboardTab extends StatelessWidget {
             _QuickActions(
                 onVehicle: () => onOpenTab(1),
                 onQr: () => onOpenTab(2),
-                onUpdates: () => onOpenTab(3),
+                onFranchise: onOpenFranchise,
                 onProfile: () => onOpenTab(4)),
             const SizedBox(height: 18),
             _SectionTitle(
                 title: 'Important reminders',
-                action: 'View updates',
-                onTap: () => onOpenTab(3)),
+                action: 'View all',
+                onTap: onOpenNotifications),
             const SizedBox(height: 10),
             if (notifications.isEmpty)
               const _EmptyCard(
@@ -226,12 +246,12 @@ class _MetricCard extends StatelessWidget {
 class _QuickActions extends StatelessWidget {
   final VoidCallback onVehicle;
   final VoidCallback onQr;
-  final VoidCallback onUpdates;
+  final VoidCallback onFranchise;
   final VoidCallback onProfile;
   const _QuickActions(
       {required this.onVehicle,
       required this.onQr,
-      required this.onUpdates,
+      required this.onFranchise,
       required this.onProfile});
   @override
   Widget build(BuildContext context) => Card(
@@ -244,9 +264,9 @@ class _QuickActions extends StatelessWidget {
                 onTap: onVehicle),
             _Action(icon: Icons.qr_code_2_rounded, label: 'My QR', onTap: onQr),
             _Action(
-                icon: Icons.notifications_outlined,
-                label: 'Updates',
-                onTap: onUpdates),
+                icon: Icons.assignment_outlined,
+                label: 'Franchise',
+                onTap: onFranchise),
             _Action(
                 icon: Icons.person_outline_rounded,
                 label: 'Profile',

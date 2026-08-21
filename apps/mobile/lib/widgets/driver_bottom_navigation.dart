@@ -3,13 +3,11 @@ import '../theme/trisafe_theme.dart';
 
 class DriverBottomNavigation extends StatelessWidget {
   final int selectedIndex;
-  final int unreadCount;
   final ValueChanged<int> onSelected;
 
   const DriverBottomNavigation({
     super.key,
     required this.selectedIndex,
-    required this.unreadCount,
     required this.onSelected,
   });
 
@@ -83,17 +81,16 @@ class DriverBottomNavigation extends StatelessWidget {
               ),
               _DriverNavItem(
                   index: 3,
-                  icon: Icons.notifications_none_rounded,
-                  activeIcon: Icons.notifications_rounded,
-                  label: 'Updates',
-                  badge: unreadCount,
+                  icon: Icons.campaign_outlined,
+                  activeIcon: Icons.campaign_rounded,
+                  label: 'Announcements',
                   selectedIndex: selectedIndex,
                   onSelected: onSelected),
               _DriverNavItem(
                   index: 4,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
-                  label: 'Profile',
+                  label: 'Driver profile',
                   selectedIndex: selectedIndex,
                   onSelected: onSelected),
             ]),
@@ -107,7 +104,6 @@ class _DriverNavItem extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  final int badge;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
@@ -116,7 +112,6 @@ class _DriverNavItem extends StatelessWidget {
     required this.icon,
     required this.activeIcon,
     required this.label,
-    this.badge = 0,
     required this.selectedIndex,
     required this.onSelected,
   });
@@ -129,13 +124,9 @@ class _DriverNavItem extends StatelessWidget {
         onTap: () => onSelected(index),
         borderRadius: BorderRadius.circular(16),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Badge(
-            isLabelVisible: badge > 0,
-            label: Text(badge > 9 ? '9+' : '$badge'),
-            child: Icon(selected ? activeIcon : icon,
-                color: selected ? TriSafeColors.lime : const Color(0xffaeb5ae),
-                size: 21),
-          ),
+          Icon(selected ? activeIcon : icon,
+              color: selected ? TriSafeColors.lime : const Color(0xffaeb5ae),
+              size: 21),
           const SizedBox(height: 5),
           Text(label,
               maxLines: 1,

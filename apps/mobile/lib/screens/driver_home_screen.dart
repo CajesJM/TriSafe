@@ -9,9 +9,11 @@ import '../widgets/driver_contact_editor.dart';
 import '../widgets/passenger_toast.dart';
 import 'driver/driver_dashboard_tab.dart';
 import 'driver/driver_franchise_screen.dart';
+import 'driver/driver_notifications_screen.dart';
 import 'driver/driver_profile_tab.dart';
 import 'driver/driver_qr_tab.dart';
-import 'driver/driver_updates_tab.dart';
+import 'driver/driver_announcements_tab.dart';
+import 'driver/driver_updates_tab.dart' show showDriverAnnouncementDetails;
 import 'driver/driver_vehicle_tab.dart';
 import 'login_screen.dart';
 
@@ -100,6 +102,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         builder: (_) => DriverFranchiseScreen(profile: current)));
   }
 
+  void _openNotifications() {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) =>
+            DriverNotificationsScreen(notifications: notifications)));
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
           context: context,
@@ -147,14 +155,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           loading: loading,
           onRefresh: _load,
           onOpenFranchise: _openFranchise,
+          onOpenNotifications: _openNotifications,
           onOpenTab: (index) => setState(() => selectedTab = index)),
       DriverVehicleTab(
           profile: profile, onOpenQr: () => setState(() => selectedTab = 2)),
       DriverQrTab(profile: profile),
-      DriverUpdatesTab(
-          announcements: announcements,
-          notifications: notifications,
-          onOpenAnnouncement: _openAnnouncement),
+      DriverAnnouncementsTab(
+          announcements: announcements, onOpenAnnouncement: _openAnnouncement),
       DriverProfileTab(
           profile: profile, onEditContact: _editContact, onLogout: _logout),
     ];
@@ -183,7 +190,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       ]),
       bottomNavigationBar: DriverBottomNavigation(
           selectedIndex: selectedTab,
-          unreadCount: notifications.length,
           onSelected: (index) => setState(() => selectedTab = index)),
     );
   }
