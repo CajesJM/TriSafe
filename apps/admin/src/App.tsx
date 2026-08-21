@@ -43,9 +43,9 @@ import {
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
 import { DriverEditForm } from "./components/drivers/DriverEditForm";
-import { FeatureRoadmapPanel } from "./components/shared/FeatureRoadmapPanel";
 import { ViolationManagement } from "./components/violations/ViolationManagement";
 import { RatingManagement } from "./components/ratings/RatingManagement";
+import { TermsManagement } from "./components/terms/TermsManagement";
 import {
   ToastNotification,
   type ToastMessage,
@@ -373,7 +373,7 @@ export function App() {
             )}
             {tab === "violations" && <ViolationManagement drivers={drivers} onNotify={showToast} />}
             {tab === "ratings" && <RatingManagement onNotify={showToast} />}
-            {tab === "terms" && <FeatureRoadmapPanel tab="terms" />}
+            {tab === "terms" && <TermsManagement onNotify={showToast} />}
             {tab === "settings" && (
               <AdminProfilePanel
                 open

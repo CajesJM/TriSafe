@@ -61,6 +61,12 @@ enum PenaltyStatus {
   WAIVED
 }
 
+enum TermsStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id              String    @id @default(cuid())
   role            UserRole
@@ -351,6 +357,20 @@ model DriverRating {
 
   @@index([driverId, visible, createdAt])
   @@index([passengerId, createdAt])
+}
+
+model TermsDocument {
+  id            String      @id @default(cuid())
+  version       String      @unique
+  title         String
+  content       String      @db.Text
+  status        TermsStatus @default(DRAFT)
+  effectiveFrom DateTime?
+  publishedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([status, effectiveFrom])
 }
 
 model EmergencyContact {

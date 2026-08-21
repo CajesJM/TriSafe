@@ -1,0 +1,14 @@
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { SaveTermsDto } from './dto/terms.dto';
+
+@Injectable()
+export class TermsService {
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  list() { return this.prisma.termsDocument.findMany({ orderBy: { updatedAt: 'desc' }, take: 100 }); }
+  current() { return this.prisma.termsDocument.findFirst({ where: { status: 'PUBLISHED', OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: new Date() } }] }, orderBy: [{ effectiveFrom: 'desc' }, { publishedAt: 'desc' }] }); }
+  async create(actorId: string, dto: SaveTermsDto) { const version = dto.version.trim(); const existing = await this.prisma.termsDocument.findUnique({ where: { version } }); if (existing) throw new ConflictException('A Terms & Conditions document already uses this version.'); const document = await this.prisma.termsDocument.create({ data: { version, title: dto.title.trim(), content: dto.content.trim(), effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : null } }); await this.audit.record({ actorId, action: 'TERMS_DRAFT_CREATED', entityType: 'TermsDocument', entityId: document.id, details: { version: document.version } }); return document; }
+  async update(actorId: string, id: string, dto: SaveTermsDto) { const current = await this.prisma.termsDocument.findUnique({ where: { id } }); if (!current) throw new NotFoundException('Terms document not found'); if (current.status !== 'DRAFT') throw new ConflictException('Create a new draft to revise a published or archived Terms document.'); const document = await this.prisma.termsDocument.update({ where: { id }, data: { version: dto.version.trim(), title: dto.title.trim(), content: dto.content.trim(), effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : null } }); await this.audit.record({ actorId, action: 'TERMS_DRAFT_UPDATED', entityType: 'TermsDocument', entityId: id, details: { version: document.version } }); return document; }
+  async publish(actorId: string, id: string) { const current = await this.prisma.termsDocument.findUnique({ where: { id } }); if (!current) throw new NotFoundException('Terms document not found'); if (current.status !== 'DRAFT') throw new ConflictException('Only a draft Terms document can be published.'); const document = await this.prisma.$transaction(async (tx) => { await tx.termsDocument.updateMany({ where: { status: 'PUBLISHED' }, data: { status: 'ARCHIVED' } }); return tx.termsDocument.update({ where: { id }, data: { status: 'PUBLISHED', publishedAt: new Date() } }); }); await this.audit.record({ actorId, action: 'TERMS_PUBLISHED', entityType: 'TermsDocument', entityId: id, details: { version: document.version, effectiveFrom: document.effectiveFrom?.toISOString() ?? null } }); return document; }
+}

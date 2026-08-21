@@ -446,6 +446,8 @@ export type CreateViolationInput = { driverId: string; category: string; descrip
 export type UpdateViolationInput = { status?: ViolationStatus; penaltyStatus?: PenaltyStatus; penaltyAmount?: number | null; dueAt?: string | null; notes?: string | null; };
 export type DriverRatingSummary = { driverId: string; fullName: string; username?: string | null; vehicle: { plateNumber: string; vehicleType: string } | null; average: number | null; ratingCount: number; };
 export type DriverRating = { id: string; score: number; comment?: string | null; visible: boolean; moderationNotes?: string | null; createdAt: string; driver: { user: { fullName: string }; vehicles: { plateNumber: string; vehicleType: string }[] }; passenger: { fullName: string }; ride: { startedAt: string; fromLocationName?: string | null; toLocationName?: string | null }; };
+export type TermsDocument = { id: string; version: string; title: string; content: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; effectiveFrom?: string | null; publishedAt?: string | null; createdAt: string; updatedAt: string; };
+export type SaveTermsInput = { version: string; title: string; content: string; effectiveFrom?: string; };
 export type LocationOption = { id: string; name: string };
 export type FareRule = {
   id: string;
@@ -717,4 +719,8 @@ export const api = {
   ratingSummaries: () => request<DriverRatingSummary[]>("/ratings/admin/summary"),
   ratings: () => request<DriverRating[]>("/ratings/admin/all"),
   moderateRating: (id: string, body: { visible: boolean; moderationNotes?: string }) => request<DriverRating>(`/ratings/admin/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  terms: () => request<TermsDocument[]>("/terms/admin"),
+  createTerms: (body: SaveTermsInput) => request<TermsDocument>("/terms/admin", { method: "POST", body: JSON.stringify(body) }),
+  updateTerms: (id: string, body: SaveTermsInput) => request<TermsDocument>(`/terms/admin/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  publishTerms: (id: string) => request<TermsDocument>(`/terms/admin/${id}/publish`, { method: "POST" }),
 };
