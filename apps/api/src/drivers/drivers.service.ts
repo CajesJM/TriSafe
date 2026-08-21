@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDriverDto } from "./dto/register-driver.dto";
 import { UpdateDriverContactDto } from "./dto/update-driver-contact.dto";
+import { UpdateDriverProfileDto } from "./dto/update-driver-profile.dto";
 import { hashPassword } from "../auth/password";
 import { AuditService } from "../audit/audit.service";
 import { UpdateFranchiseDto } from "./dto/update-franchise.dto";
@@ -559,6 +560,88 @@ export class DriversService {
       }
       throw error;
     }
+  }
+
+  /**
+   * The Driver app may update only its private photo, phone number, and
+   * present Bohol address. LGU-controlled identity, vehicle, franchise,
+   * eligibility, and QR data do not appear in this update contract.
+   */
+  async updateProfile(userId: string, dto: UpdateDriverProfileDto) {
+    if (
+      dto.avatarData &&
+      dataImageByteLength(dto.avatarData) > 2 * 1024 * 1024
+    ) {
+      throw new BadRequestException(
+        "The driver profile photo must be 2 MB or smaller.",
+      );
+    }
+
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId },
+      select: { id: true, user: { select: { phone: true, avatarData: true } } },
+    });
+    if (!driver) throw new NotFoundException("Driver profile not found");
+
+    const verifiedAddress = dto.address
+      ? await this.locations.validateDriverPresentAddress(dto.address)
+      : null;
+    const userUpdate: Prisma.UserUpdateInput = {};
+    if (dto.phone !== undefined) userUpdate.phone = dto.phone;
+    if (dto.avatarData !== undefined) userUpdate.avatarData = dto.avatarData;
+
+    if (!verifiedAddress && Object.keys(userUpdate).length === 0) {
+      throw new BadRequestException("Choose at least one profile detail to update.");
+    }
+
+    try {
+      await this.prisma.driver.update({
+        where: { id: driver.id },
+        data: {
+          ...(Object.keys(userUpdate).length > 0
+            ? { user: { update: userUpdate } }
+            : {}),
+          ...(verifiedAddress
+            ? {
+                address: {
+                  upsert: {
+                    create: verifiedAddress,
+                    update: verifiedAddress,
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException(
+          "That contact number is already used by another account.",
+        );
+      }
+      throw error;
+    }
+
+    const changedFields = [
+      ...(dto.phone !== undefined ? ["phone"] : []),
+      ...(dto.avatarData !== undefined ? ["profilePhoto"] : []),
+      ...(verifiedAddress ? ["presentAddress"] : []),
+    ];
+    await this.audit.record({
+      actorId: userId,
+      action: "DRIVER_PROFILE_UPDATED",
+      entityType: "Driver",
+      entityId: driver.id,
+      details: {
+        changedFields,
+        profilePhotoRemoved: dto.avatarData === null,
+        barangayCode: verifiedAddress?.barangayCode,
+      },
+    });
+    return this.getByUserId(userId);
   }
 
   async rotateQr(actorId: string, vehicleId: string) {

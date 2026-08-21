@@ -20,8 +20,11 @@ class DriverProfile {
         phone = json['phone'] as String? ?? '',
         accountStatus = json['accountStatus'] as String? ?? 'ACTIVE',
         verification = json['verification'] as String,
-        owner = json['owner'] == null ? null : DriverOwner.fromJson(json['owner']),
-        address = json['address'] == null ? null : DriverAddress.fromJson(json['address']),
+        owner =
+            json['owner'] == null ? null : DriverOwner.fromJson(json['owner']),
+        address = json['address'] == null
+            ? null
+            : DriverAddress.fromJson(json['address']),
         renewalReminder = json['renewalReminder'] as String?,
         franchise = json['franchise'] == null
             ? null
@@ -32,15 +35,36 @@ class DriverProfile {
 }
 
 class DriverOwner {
-  final String lastName; final String firstName; final String? middleName;
-  DriverOwner.fromJson(Map<String, dynamic> json) : lastName = json['lastName'] as String, firstName = json['firstName'] as String, middleName = json['middleName'] as String?;
-  String get displayName => '$lastName, $firstName${middleName?.isNotEmpty == true ? ' $middleName' : ''}';
+  final String lastName;
+  final String firstName;
+  final String? middleName;
+  DriverOwner.fromJson(Map<String, dynamic> json)
+      : lastName = json['lastName'] as String,
+        firstName = json['firstName'] as String,
+        middleName = json['middleName'] as String?;
+  String get displayName =>
+      '$lastName, $firstName${middleName?.isNotEmpty == true ? ' $middleName' : ''}';
 }
 
 class DriverAddress {
-  final String provinceName; final String municipalityName; final String barangayName; final String purok;
-  DriverAddress.fromJson(Map<String, dynamic> json) : provinceName = json['provinceName'] as String, municipalityName = json['municipalityName'] as String, barangayName = json['barangayName'] as String, purok = json['purok'] as String;
-  String get displayAddress => '$purok, $barangayName, $municipalityName, $provinceName';
+  final String provinceCode;
+  final String provinceName;
+  final String municipalityCode;
+  final String municipalityName;
+  final String barangayCode;
+  final String barangayName;
+  final String purok;
+
+  DriverAddress.fromJson(Map<String, dynamic> json)
+      : provinceCode = json['provinceCode'] as String? ?? '0701200000',
+        provinceName = json['provinceName'] as String,
+        municipalityCode = json['municipalityCode'] as String,
+        municipalityName = json['municipalityName'] as String,
+        barangayCode = json['barangayCode'] as String,
+        barangayName = json['barangayName'] as String,
+        purok = json['purok'] as String;
+  String get displayAddress =>
+      '$purok, $barangayName, $municipalityName, $provinceName';
 }
 
 class DriverFranchise {

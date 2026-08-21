@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/driver_models.dart';
 import '../../theme/trisafe_theme.dart';
+import '../../widgets/driver_avatar.dart';
 import '../../widgets/driver_page_header.dart';
 import '../../widgets/driver_status_badge.dart';
 
@@ -34,14 +35,10 @@ class DriverProfileTab extends StatelessWidget {
               padding: const EdgeInsets.all(18),
               child: Column(children: [
                 Row(children: [
-                  CircleAvatar(
-                    radius: 29,
-                    backgroundColor: TriSafeColors.black,
-                    child: Text(_initials(driver.fullName),
-                        style: const TextStyle(
-                            color: TriSafeColors.lime,
-                            fontWeight: FontWeight.w900)),
-                  ),
+                  DriverAvatar(
+                      fullName: driver.fullName,
+                      avatarData: driver.avatarData,
+                      radius: 29),
                   const SizedBox(width: 13),
                   Expanded(
                       child: Column(
@@ -58,10 +55,18 @@ class DriverProfileTab extends StatelessWidget {
                 const Divider(height: 30),
                 _ProfileRow(
                     label: 'Full name', value: driver.fullName, locked: true),
-                _ProfileRow(label: 'Login identifier', value: driver.username, locked: true),
-                _ProfileRow(label: 'Owner / leader', value: driver.owner?.displayName ?? 'Not recorded', locked: true),
+                _ProfileRow(
+                    label: 'Login identifier',
+                    value: driver.username,
+                    locked: true),
+                _ProfileRow(
+                    label: 'Operator',
+                    value: driver.owner?.displayName ?? 'Not recorded',
+                    locked: true),
                 _ProfileRow(label: 'Phone number', value: driver.phone),
-                _ProfileRow(label: 'Present address', value: driver.address?.displayAddress ?? 'Not recorded', locked: true),
+                _ProfileRow(
+                    label: 'Present address',
+                    value: driver.address?.displayAddress ?? 'Not recorded'),
                 _ProfileRow(
                     label: 'Driver status',
                     value: statusLabel(driver.verification),
@@ -72,7 +77,7 @@ class DriverProfileTab extends StatelessWidget {
                     child: FilledButton.icon(
                         onPressed: onEditContact,
                         icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit contact information'))),
+                        label: const Text('Edit profile information'))),
               ]),
             ),
           ),
@@ -90,7 +95,7 @@ class DriverProfileTab extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                       child: Text(
-                          'Your verified name, owner, address, vehicle, and franchise records are LGU-managed. Contact the transport office to correct these details.',
+                          'You may update your photo, mobile number, and present address. Your verified identity, operator, vehicle, franchise, and account status remain LGU-managed.',
                           style: TextStyle(
                               fontSize: 10,
                               height: 1.5,
@@ -133,14 +138,4 @@ class _ProfileRow extends StatelessWidget {
           const Icon(Icons.lock_outline_rounded,
               size: 14, color: TriSafeColors.muted),
       ]));
-}
-
-String _initials(String name) {
-  final parts = name
-      .replaceAll(',', ' ')
-      .split(RegExp(r'\s+'))
-      .where((item) => item.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return 'D';
-  return parts.take(2).map((item) => item[0].toUpperCase()).join();
 }

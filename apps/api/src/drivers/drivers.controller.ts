@@ -17,6 +17,7 @@ import { Public } from "../auth/public.decorator";
 import type { RequestWithUser } from "../auth/auth.types";
 import { UpdateFranchiseDto } from "./dto/update-franchise.dto";
 import { UpdateDriverStatusDto } from "./dto/update-driver-status.dto";
+import { UpdateDriverProfileDto } from "./dto/update-driver-profile.dto";
 import { BoholLocationService } from "./bohol-location.service";
 
 @Controller()
@@ -111,6 +112,24 @@ export class DriversController {
   }
 
   @Roles(UserRole.DRIVER)
+  @Get("drivers/me/locations/bohol")
+  driverProvince() {
+    return this.locations.province();
+  }
+
+  @Roles(UserRole.DRIVER)
+  @Get("drivers/me/locations/bohol/municipalities")
+  driverMunicipalities() {
+    return this.locations.municipalities();
+  }
+
+  @Roles(UserRole.DRIVER)
+  @Get("drivers/me/locations/bohol/municipalities/:municipalityCode/barangays")
+  driverBarangays(@Param("municipalityCode") municipalityCode: string) {
+    return this.locations.barangays(municipalityCode);
+  }
+
+  @Roles(UserRole.DRIVER)
   @Get("drivers/me/announcements")
   announcements(@Req() req: RequestWithUser) {
     return this.service.announcements(req.user.id);
@@ -138,6 +157,15 @@ export class DriversController {
     @Body() dto: UpdateDriverContactDto,
   ) {
     return this.service.updateContact(req.user.id, dto);
+  }
+
+  @Roles(UserRole.DRIVER)
+  @Patch("drivers/me/profile")
+  updateProfile(
+    @Req() req: RequestWithUser,
+    @Body() dto: UpdateDriverProfileDto,
+  ) {
+    return this.service.updateProfile(req.user.id, dto);
   }
 
   @Roles(UserRole.LGU_ADMIN)

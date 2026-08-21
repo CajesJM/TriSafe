@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/auth_models.dart';
 import '../models/driver_models.dart';
+import '../models/driver_profile_update_models.dart';
 import '../models/fare_models.dart';
 import '../models/ride_models.dart';
 import '../models/vehicle_models.dart';
@@ -24,11 +25,15 @@ class TriSafeApi {
     _accessToken = null;
   }
 
-  Future<AuthSession> login(
-      {required String identifier, required String password}) async {
+  Future<AuthSession> login({
+    required String identifier,
+    required String password,
+    String? expectedRole,
+  }) async {
     final session = AuthSession.fromJson(await _postPublic('/auth/login', {
       'identifier': identifier.trim(),
       'password': password,
+      if (expectedRole != null) 'expectedRole': expectedRole,
     }));
     _accessToken = session.accessToken;
     return session;
@@ -133,6 +138,34 @@ class TriSafeApi {
 
   Future<void> updateDriverContact({required String phone}) async {
     await _patch('/drivers/me/contact', {'phone': phone});
+  }
+
+  Future<List<DriverLocationOption>> driverMunicipalities() async =>
+      (await _get('/drivers/me/locations/bohol/municipalities'))
+          .map<DriverLocationOption>(
+              (item) => DriverLocationOption.fromJson(item))
+          .toList();
+
+  Future<List<DriverLocationOption>> driverBarangays(
+          String municipalityCode) async =>
+      (await _get(
+              '/drivers/me/locations/bohol/municipalities/${Uri.encodeComponent(municipalityCode)}/barangays'))
+          .map<DriverLocationOption>(
+              (item) => DriverLocationOption.fromJson(item))
+          .toList();
+
+  Future<DriverProfile> updateDriverProfile({
+    String? phone,
+    String? avatarData,
+    bool updateAvatar = false,
+    DriverAddressUpdate? address,
+  }) async {
+    final body = <String, dynamic>{
+      if (phone != null) 'phone': phone,
+      if (updateAvatar) 'avatarData': avatarData,
+      if (address != null) 'address': address.toJson(),
+    };
+    return DriverProfile.fromJson(await _patch('/drivers/me/profile', body));
   }
 
   Future<List<LocationOption>> locations() async => (await _get('/locations'))

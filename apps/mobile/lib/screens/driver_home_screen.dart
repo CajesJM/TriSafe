@@ -5,7 +5,7 @@ import '../services/location_tracking_service.dart';
 import '../services/trisafe_api.dart';
 import '../theme/trisafe_theme.dart';
 import '../widgets/driver_bottom_navigation.dart';
-import '../widgets/driver_contact_editor.dart';
+import '../widgets/driver_profile_editor.dart';
 import '../widgets/passenger_toast.dart';
 import 'driver/driver_dashboard_tab.dart';
 import 'driver/driver_franchise_screen.dart';
@@ -72,14 +72,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     }
   }
 
-  Future<void> _editContact() async {
+  Future<void> _editProfile() async {
     final current = profile;
     if (current == null) return;
-    final saved = await showDriverContactEditor(context, widget.api, current);
+    final saved = await showDriverProfileEditor(context, widget.api, current);
     if (!saved || !mounted) return;
     await _load(silent: true);
-    _toast('Contact information updated successfully.',
-        PassengerToastType.success);
+    _toast('Driver profile updated successfully.', PassengerToastType.success);
   }
 
   Future<void> _openAnnouncement(DriverAnnouncement announcement) async {
@@ -163,7 +162,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       DriverAnnouncementsTab(
           announcements: announcements, onOpenAnnouncement: _openAnnouncement),
       DriverProfileTab(
-          profile: profile, onEditContact: _editContact, onLogout: _logout),
+          profile: profile, onEditContact: _editProfile, onLogout: _logout),
     ];
 
     return Scaffold(

@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import { Prisma, UserStatus } from '@prisma/client';
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminProfile, LoginResponse } from './auth.types';
 import { LoginDto } from './dto/login.dto';
@@ -39,6 +39,12 @@ export class AuthService {
     }
     if (!user.roleDefinition.active) {
       throw new ForbiddenException('Your assigned role is inactive. Please contact support.');
+    }
+    if (dto.expectedRole && user.role !== dto.expectedRole) {
+      const actual = user.role === UserRole.DRIVER ? 'Driver' : 'Passenger';
+      throw new ForbiddenException(
+        `This is a ${actual} account. Select ${actual} before signing in.`,
+      );
     }
 
     this.failedAttempts.delete(key);
