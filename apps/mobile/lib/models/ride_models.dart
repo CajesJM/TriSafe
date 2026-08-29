@@ -9,6 +9,11 @@ class Ride {
   final String? toLocationName;
   final String? driverName;
   final String? plateNumber;
+  final String? operatorName;
+  final String? bodyNumber;
+  final String? permitNumber;
+  final double? averageDriverRating;
+  final int driverRatingCount;
   final String vehicleType;
   final DateTime? startedAt;
   final DateTime? endedAt;
@@ -33,6 +38,11 @@ class Ride {
         driverName =
             (json['vehicle']?['driver']?['user']?['fullName']) as String?,
         plateNumber = json['vehicle']?['plateNumber'] as String?,
+        operatorName = json['operatorName'] as String?,
+        bodyNumber = json['bodyNumber'] as String?,
+        permitNumber = json['permitNumber'] as String?,
+        averageDriverRating = (json['averageDriverRating'] as num?)?.toDouble(),
+        driverRatingCount = (json['driverRatingCount'] as num? ?? 0).toInt(),
         vehicleType = (json['vehicleType'] ??
             json['vehicle']?['vehicleType'] ??
             'TRICYCLE') as String,
@@ -55,6 +65,11 @@ class Ride {
         toLocationName: toLocationName,
         driverName: driverName,
         plateNumber: plateNumber,
+        operatorName: operatorName,
+        bodyNumber: bodyNumber,
+        permitNumber: permitNumber,
+        averageDriverRating: averageDriverRating,
+        driverRatingCount: driverRatingCount,
         vehicleType: vehicleType,
         startedAt: startedAt,
         endedAt: endedAt,
@@ -73,6 +88,11 @@ class Ride {
     required this.toLocationName,
     required this.driverName,
     required this.plateNumber,
+    required this.operatorName,
+    required this.bodyNumber,
+    required this.permitNumber,
+    required this.averageDriverRating,
+    required this.driverRatingCount,
     required this.vehicleType,
     required this.startedAt,
     required this.endedAt,

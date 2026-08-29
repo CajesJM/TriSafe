@@ -10,6 +10,7 @@ import {
   DistanceFareEstimateDto,
   SaveVehicleFarePolicyDto,
 } from './dto/vehicle-fare-policy.dto';
+import { ReverseGeocodeDto } from './dto/reverse-geocode.dto';
 
 @Controller()
 export class FaresController {
@@ -21,6 +22,12 @@ export class FaresController {
   @Post('distance-fare-estimates')
   estimateDistance(@Body() dto: DistanceFareEstimateDto) {
     return this.service.estimateDistance(dto);
+  }
+
+  @Roles(UserRole.PASSENGER)
+  @Post('fare-location-names')
+  locationName(@Body() dto: ReverseGeocodeDto) {
+    return this.service.reverseGeocode(dto);
   }
 
   @Roles(UserRole.LGU_ADMIN)

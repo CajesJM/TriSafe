@@ -256,6 +256,14 @@ class TriSafeApi {
         'destinationLongitude': destinationLongitude,
         'passengerCount': passengerCount,
       }));
+  Future<FareLocationName> fareLocationName({
+    required double latitude,
+    required double longitude,
+  }) async =>
+      FareLocationName.fromJson(await _post('/fare-location-names', {
+        'latitude': latitude,
+        'longitude': longitude,
+      }));
   Future<Ride> startRide(
           {required String vehicleId,
           required String fromLocationId,
@@ -278,6 +286,8 @@ class TriSafeApi {
     required double originLongitude,
     required double destinationLatitude,
     required double destinationLongitude,
+    String? originLocationName,
+    String? destinationLocationName,
     int passengerCount = 1,
   }) async =>
       Ride.fromJson(await _post('/rides/map', {
@@ -287,6 +297,10 @@ class TriSafeApi {
         'originLongitude': originLongitude,
         'destinationLatitude': destinationLatitude,
         'destinationLongitude': destinationLongitude,
+        if (originLocationName != null)
+          'originLocationName': originLocationName,
+        if (destinationLocationName != null)
+          'destinationLocationName': destinationLocationName,
         'passengerCount': passengerCount,
       }));
   Future<Ride> endRide(String rideId,

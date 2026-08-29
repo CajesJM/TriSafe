@@ -41,6 +41,17 @@ class FareRoutePoint {
         longitude = (json['longitude'] as num).toDouble();
 }
 
+class FareLocationName {
+  final String name;
+  final String context;
+
+  const FareLocationName({required this.name, required this.context});
+
+  FareLocationName.fromJson(Map<String, dynamic> json)
+      : name = json['name'] as String? ?? 'Selected location',
+        context = json['context'] as String? ?? 'Bohol, Philippines';
+}
+
 class LocationOption {
   final String id;
   final String name;

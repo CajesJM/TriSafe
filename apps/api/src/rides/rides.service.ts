@@ -67,7 +67,7 @@ export class RidesService {
               }
             : undefined,
       },
-      include: { vehicle: { include: { driver: { include: { user: true } } } }, rating: { select: { id: true, score: true } } },
+      include: this.rideInclude(),
     });
     if (dto.startLatitude != null && dto.startLongitude != null) {
       await this.updatePresence(passengerId, {
@@ -98,13 +98,17 @@ export class RidesService {
       destinationLongitude: dto.destinationLongitude,
       passengerCount: dto.passengerCount,
     });
-    const fromLocationName = this.coordinateLabel(
-      'Current location',
+    const fallbackFromLocationName = 'Current location';
+    const fallbackToLocationName = 'Selected destination';
+    const fromLocationName = await this.resolveMapLocationName(
+      dto.originLocationName,
+      fallbackFromLocationName,
       dto.originLatitude,
       dto.originLongitude,
     );
-    const toLocationName = this.coordinateLabel(
-      'Map destination',
+    const toLocationName = await this.resolveMapLocationName(
+      dto.destinationLocationName,
+      fallbackToLocationName,
       dto.destinationLatitude,
       dto.destinationLongitude,
     );
@@ -129,7 +133,7 @@ export class RidesService {
           },
         },
       },
-      include: { vehicle: { include: { driver: { include: { user: true } } } }, rating: { select: { id: true, score: true } } },
+      include: this.rideInclude(),
     });
     await this.updatePresence(passengerId, {
       latitude: dto.originLatitude,
@@ -174,7 +178,7 @@ export class RidesService {
         endLongitude: dto.endLongitude,
         finalFare: finalEstimate.amount,
       },
-      include: { vehicle: { include: { driver: { include: { user: true } } } } },
+      include: this.rideInclude(),
     });
     await this.audit.record({ actorId: passengerId, action: 'RIDE_COMPLETED', entityType: 'Ride', entityId: id });
     return this.addLocationNames(updatedRide);
@@ -251,7 +255,7 @@ export class RidesService {
       // The passenger ID always comes from the verified access token. It is
       // never accepted from the query string, preventing cross-account reads.
       where: { passengerId, ...(startedAt ? { startedAt } : {}) },
-      include: { vehicle: { include: { driver: { include: { user: true } } } }, rating: { select: { id: true, score: true } } },
+      include: this.rideInclude(),
       orderBy: { startedAt: 'desc' },
     });
     return Promise.all(rides.map((ride) => this.addLocationNames(ride)));
@@ -281,7 +285,7 @@ export class RidesService {
   }
 
   private async ownedRide(passengerId: string, id: string) {
-    const ride = await this.prisma.ride.findUnique({ where: { id }, include: { vehicle: { include: { driver: { include: { user: true } } } } } });
+    const ride = await this.prisma.ride.findUnique({ where: { id }, include: this.rideInclude() });
     if (!ride) throw new NotFoundException('Ride not found');
     if (ride.passengerId !== passengerId) throw new ForbiddenException('Ride does not belong to this passenger');
     return ride;
@@ -332,11 +336,60 @@ export class RidesService {
     return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  private coordinateLabel(prefix: string, latitude: number, longitude: number) {
-    return `${prefix} (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+  private async resolveMapLocationName(
+    name: string | undefined,
+    fallback: string,
+    latitude: number,
+    longitude: number,
+  ) {
+    const cleaned = name?.trim().replace(/\s+/g, ' ');
+    if (cleaned && !this.isGenericLocationLabel(cleaned)) return cleaned;
+
+    // The pre-start review resolves these names for fast feedback. Retry on
+    // the server before persisting the ride, so a transient mobile/API race
+    // cannot leave a newly created ride with only generic labels.
+    const resolved = await this.fares.reverseGeocode({ latitude, longitude });
+    return this.isGenericLocationLabel(resolved.name) ? fallback : resolved.name;
   }
 
-  private async addLocationNames<T extends { fromLocationId: string | null; toLocationId: string | null; fromLocationName?: string | null; toLocationName?: string | null }>(ride: T) {
+  private isGenericLocationLabel(name: string) {
+    return ['Current location', 'Selected location', 'Selected destination']
+        .includes(name.trim());
+  }
+
+  private rideInclude() {
+    return {
+      vehicle: {
+        include: {
+          driver: {
+            include: {
+              user: true,
+              owner: true,
+              ratings: { where: { visible: true }, select: { score: true } },
+            },
+          },
+        },
+      },
+      rating: { select: { id: true, score: true } },
+    };
+  }
+
+  private async addLocationNames<T extends {
+    fromLocationId: string | null;
+    toLocationId: string | null;
+    fromLocationName?: string | null;
+    toLocationName?: string | null;
+    vehicle: {
+      plateNumber: string;
+      bodyNumber: string | null;
+      permitNumber: string | null;
+      driver: {
+        user: { fullName: string };
+        owner: { lastName: string; firstName: string; middleName: string | null } | null;
+        ratings: { score: number }[];
+      };
+    };
+  }>(ride: T) {
     const [from, to] = await Promise.all([
       ride.fromLocationId
         ? this.prisma.location.findUnique({ where: { id: ride.fromLocationId } })
@@ -346,10 +399,25 @@ export class RidesService {
         : null,
     ]);
 
+    const ratings = ride.vehicle.driver.ratings;
+    const ratingCount = ratings.length;
+    const averageDriverRating = ratingCount
+      ? Number((ratings.reduce((sum, rating) => sum + rating.score, 0) / ratingCount).toFixed(2))
+      : null;
+    const owner = ride.vehicle.driver.owner;
+    const operatorName = owner
+      ? [owner.lastName, owner.firstName, owner.middleName].filter(Boolean).join(', ')
+      : null;
+
     return {
       ...ride,
       fromLocationName: ride.fromLocationName ?? from?.name ?? 'Unknown origin',
       toLocationName: ride.toLocationName ?? to?.name ?? 'Unknown destination',
+      operatorName,
+      bodyNumber: ride.vehicle.bodyNumber,
+      permitNumber: ride.vehicle.permitNumber,
+      averageDriverRating,
+      driverRatingCount: ratingCount,
     };
   }
 }
