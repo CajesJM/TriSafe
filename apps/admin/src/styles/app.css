@@ -1,24 +1,27 @@
-/* Global stylesheet entry point. Feature rules live in their own folders. */
+/*
+ * Global stylesheet entry point. The sequence intentionally matches the
+ * previous flat stylesheet order: later files contain visual refinements for
+ * shared selectors used by older feature styles.
+ */
 @import './shared/Base.css';
-@import './shared/DesignTokens.css';
+@import './layout/AdminLayout.css';
+@import './dashboard/DashboardHome.css';
 @import './shared/DataControls.css';
 @import './shared/Forms.css';
-@import './shared/Modals.css';
-@import './shared/Toasts.css';
-@import './shared/ActionMenu.css';
-@import './shared/FeatureRoadmap.css';
-
-@import './layout/AdminLayout.css';
-@import './layout/Responsive.css';
-@import './auth/LoginScreen.css';
-@import './dashboard/DashboardHome.css';
-@import './dashboard/RideAnalytics.css';
-@import './drivers/DriverDirectory.css';
-@import './drivers/DriverModals.css';
 @import './drivers/DriverQr.css';
 @import './fares/FareMatrix.css';
 @import './audit/AuditTrail.css';
+@import './auth/LoginScreen.css';
+@import './layout/Responsive.css';
 @import './profile/AdminProfile.css';
+@import './shared/DesignTokens.css';
 @import './incidents/IncidentReview.css';
-@import './ratings/RatingManagement.css';
+@import './dashboard/RideAnalytics.css';
+@import './shared/Toasts.css';
+@import './shared/Modals.css';
+@import './drivers/DriverModals.css';
+@import './shared/ActionMenu.css';
+@import './drivers/DriverDirectory.css';
+@import './shared/FeatureRoadmap.css';
 @import './violations/ViolationManagement.css';
+@import './ratings/RatingManagement.css';

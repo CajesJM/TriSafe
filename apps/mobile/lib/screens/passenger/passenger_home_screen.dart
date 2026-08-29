@@ -8,11 +8,11 @@ import '../../services/ride_sharing_service.dart';
 import '../../services/trisafe_api.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/emergency_contacts_sheet.dart';
-import '../../widgets/incident_report_dialog.dart';
 import '../../widgets/passenger_bottom_navigation.dart';
 import '../../widgets/passenger_qr_result_modal.dart';
 import '../../widgets/passenger_rating_dialog.dart';
 import '../../widgets/passenger_profile_editor.dart';
+import '../../widgets/passenger/passenger_notifications_sheet.dart';
 import '../../widgets/passenger_toast.dart';
 import '../auth/login_screen.dart';
 import 'passenger_dashboard_tab.dart';
@@ -47,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int selectedTab = 0;
   int toastId = 0;
   int rideHistoryVersion = 0;
+  int reportCount = 0;
+  int trustedContactCount = 0;
   String? toastMessage;
   PassengerToastType toastType = PassengerToastType.info;
 
@@ -68,12 +70,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final results = await Future.wait<Object>([
         widget.api.accountProfile(),
         widget.api.rideHistory(),
+        widget.api.incidentHistory(),
+        widget.api.trustedContacts(),
       ]);
       if (!mounted) return;
       final loadedRides = results[1] as List<Ride>;
       setState(() {
         profile = results[0] as PassengerProfile;
         rides = loadedRides;
+        reportCount = (results[2] as List).length;
+        trustedContactCount = (results[3] as List).length;
         activeRide = loadedRides
             .cast<Ride?>()
             .firstWhere((ride) => ride?.status == 'ACTIVE', orElse: () => null);
@@ -179,7 +185,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _shareRide() async {
     final ride = activeRide;
-    if (ride == null) return;
+    if (ride == null) {
+      _toast('Start a verified ride before using SafeShare.',
+          PassengerToastType.info);
+      return;
+    }
     try {
       await rideSharing.shareRide(api: widget.api, ride: ride);
       _toast(
@@ -235,13 +245,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _openIncidentReport() async {
-    await showIncidentReport(context, widget.api, rideId: activeRide?.id);
-    if (mounted) {
-      _toast('Incident report assistant closed.', PassengerToastType.info);
-    }
-  }
-
   Future<void> _editPassengerProfile() async {
     final updated =
         await showPassengerProfileEditor(context, widget.api, profile);
@@ -250,6 +253,18 @@ class _HomeScreenState extends State<HomeScreen> {
       _toast('Passenger profile updated successfully.',
           PassengerToastType.success);
     }
+  }
+
+  Future<void> _changePassengerPhoto() async {
+    final updated = await pickAndSavePassengerProfilePhoto(context, widget.api);
+    if (updated != null && mounted) {
+      setState(() => profile = updated);
+      _toast('Profile photo updated successfully.', PassengerToastType.success);
+    }
+  }
+
+  Future<void> _openPassengerNotifications() async {
+    await showPassengerNotificationsSheet(context);
   }
 
   void _selectTab(int index) {
@@ -315,14 +330,19 @@ class _HomeScreenState extends State<HomeScreen> {
           profile: profile,
           rides: rides,
           activeRide: activeRide,
+          verifiedVehicle: vehicle,
+          reportCount: reportCount,
+          trustedContactCount: trustedContactCount,
           loading: loading,
           onScan: _scanVehicle,
           onOpenFare: () => _selectTab(1),
+          onContinueVerifiedRide: _continueVerifiedRideToFare,
           onOpenRides: () => _selectTab(3),
           onSos: _openEmergencyContacts,
-          onReport: _openIncidentReport,
           onShareRide: _shareRide,
           onEndRide: _endRide,
+          onChangePhoto: _changePassengerPhoto,
+          onNotifications: _openPassengerNotifications,
           onRefresh: _loadData),
       PassengerFareTab(
           api: widget.api,

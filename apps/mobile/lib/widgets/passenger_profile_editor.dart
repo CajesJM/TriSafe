@@ -6,6 +6,44 @@ import 'package:image_picker/image_picker.dart';
 import '../models/auth_models.dart';
 import '../services/trisafe_api.dart';
 
+/// Opens the platform photo library immediately, then persists the selected
+/// image. The dashboard avatar uses this path so a passenger does not have to
+/// enter the full contact-information dialog just to change their photo.
+Future<PassengerProfile?> pickAndSavePassengerProfilePhoto(
+  BuildContext context,
+  TriSafeApi api,
+) async {
+  final file = await ImagePicker().pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 82,
+    maxWidth: 1200,
+  );
+  if (file == null) return null;
+
+  if (await file.length() > 2 * 1024 * 1024) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo must be 2 MB or smaller.')),
+      );
+    }
+    return null;
+  }
+
+  try {
+    return await api.updatePassengerProfile(
+      avatarData: _toDataImage(file.name, await file.readAsBytes()),
+      updateAvatar: true,
+    );
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update profile photo: $error')),
+      );
+    }
+    return null;
+  }
+}
+
 Future<PassengerProfile?> showPassengerProfileEditor(
   BuildContext context,
   TriSafeApi api,

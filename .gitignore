@@ -5,3 +5,4 @@ dist/
 apps/mobile/.dart_tool/
 apps/mobile/build/
 apps/mobile/.packages
+AGENTS.md
