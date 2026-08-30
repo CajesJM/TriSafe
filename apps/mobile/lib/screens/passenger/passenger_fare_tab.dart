@@ -156,8 +156,6 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     timer.cancel();
     await subscription.cancel();
 
-    // At this precision a point can easily cross a barangay boundary. Do not
-    // present an administrative name as accurate when the device is not.
     if (best.accuracy > 50) throw const _PoorLocationAccuracyException();
     return best;
   }
@@ -165,54 +163,70 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
   Future<void> _showLocationProblem(_LocationProblem problem) async {
     final details = switch (problem) {
       _LocationProblem.servicesDisabled => (
-          'Location services are off',
-          'Turn on your device location, then return to TriSafe and try again.',
-          'Open location settings'
+          status: 'LOCATION SERVICES OFF',
+          title: 'Turn on location to plan your trip',
+          message:
+              'TriSafe uses your current position to calculate the official road-distance fare to your destination.',
+          action: 'Open settings',
+          icon: Icons.location_disabled_rounded,
+          accent: TriSafeColors.danger,
         ),
       _LocationProblem.deniedForever => (
-          'Location permission is blocked',
-          'Allow location access from your browser or application settings before estimating a fare.',
-          'Open app settings'
+          status: 'LOCATION ACCESS BLOCKED',
+          title: 'Allow TriSafe to use your location',
+          message:
+              'Location permission is blocked. Allow access in your app settings before estimating a fare.',
+          action: 'Open app settings',
+          icon: Icons.location_off_rounded,
+          accent: TriSafeColors.danger,
         ),
       _LocationProblem.denied => (
-          'Location permission is required',
-          'TriSafe needs your current position to measure the distance to your selected destination.',
-          'Try again'
+          status: 'LOCATION PERMISSION NEEDED',
+          title: 'Let TriSafe find your pickup point',
+          message:
+              'Your current position is needed to measure the road distance to your selected destination.',
+          action: 'Try again',
+          icon: Icons.my_location_rounded,
+          accent: TriSafeColors.forest,
         ),
       _LocationProblem.timeout => (
-          'Location detection timed out',
-          'Move to an area with a clearer GPS or network signal, then try again.',
-          'Try again'
+          status: 'LOCATION NOT FOUND',
+          title: 'We could not get a GPS signal',
+          message:
+              'Move to an area with a clearer GPS or network signal, then try again.',
+          action: 'Try again',
+          icon: Icons.gps_not_fixed_rounded,
+          accent: TriSafeColors.forest,
         ),
       _LocationProblem.lowAccuracy => (
-          'Precise location is needed',
-          'Your phone is providing an approximate position, which can select the wrong barangay. Allow precise location for TriSafe, move where the GPS signal is clearer, then try again.',
-          'Open app settings'
+          status: 'PRECISE LOCATION NEEDED',
+          title: 'Improve your location accuracy',
+          message:
+              'Your phone is providing an approximate position, which can select the wrong barangay. Allow precise location and try again.',
+          action: 'Open app settings',
+          icon: Icons.gps_fixed_rounded,
+          accent: TriSafeColors.forest,
         ),
       _LocationProblem.unavailable => (
-          'Location is unavailable',
-          'TriSafe could not read your current location. Check your device settings and connection.',
-          'Try again'
+          status: 'LOCATION UNAVAILABLE',
+          title: 'Your current location is unavailable',
+          message:
+              'Check that location services and your connection are on, then try again.',
+          action: 'Try again',
+          icon: Icons.location_searching_rounded,
+          accent: TriSafeColors.forest,
         ),
     };
     final action = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.location_off_outlined,
-            color: TriSafeColors.danger, size: 34),
-        title: Text(details.$1),
-        content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 390),
-            child: Text(details.$2)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Not now')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(details.$3)),
-        ],
+      builder: (context) => _LocationProblemDialog(
+        status: details.status,
+        title: details.title,
+        message: details.message,
+        actionLabel: details.action,
+        icon: details.icon,
+        accent: details.accent,
       ),
     );
     if (action != true) return;
@@ -861,6 +875,157 @@ enum _LocationProblem {
   timeout,
   lowAccuracy,
   unavailable
+}
+
+class _LocationProblemDialog extends StatelessWidget {
+  final String status;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final IconData icon;
+  final Color accent;
+
+  const _LocationProblemDialog({
+    required this.status,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.icon,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        namesRoute: true,
+        label: '$title. $message',
+        child: Dialog(
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          backgroundColor: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 410),
+            child: Material(
+              color: const Color(0xfffbfcf8),
+              borderRadius: BorderRadius.circular(28),
+              clipBehavior: Clip.antiAlias,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        accent.withValues(alpha: .13),
+                        const Color(0xfff4f8f1),
+                      ],
+                    ),
+                  ),
+                  child: Stack(children: [
+                    Positioned(
+                      right: 18,
+                      top: 16,
+                      child: Icon(
+                        Icons.location_on_rounded,
+                        size: 96,
+                        color: accent.withValues(alpha: .055),
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: accent.withValues(alpha: .22),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Icon(icon, color: Colors.white, size: 25),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          status,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: TriSafeColors.black,
+                            fontSize: 22,
+                            height: 1.16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 19, 22, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: TriSafeColors.muted,
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Not now', maxLines: 1),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.pop(context, true),
+                            icon: Icon(
+                              actionLabel.startsWith('Open')
+                                  ? Icons.settings_rounded
+                                  : Icons.refresh_rounded,
+                              size: 18,
+                            ),
+                            label: Text(actionLabel),
+                          ),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
 }
 
 class _PoorLocationAccuracyException implements Exception {

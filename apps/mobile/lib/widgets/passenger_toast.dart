@@ -21,6 +21,7 @@ class PassengerToast extends StatefulWidget {
 
 class _PassengerToastState extends State<PassengerToast> {
   bool visible = false;
+  double dragOffset = 0;
   Timer? timer;
 
   @override
@@ -29,13 +30,31 @@ class _PassengerToastState extends State<PassengerToast> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => visible = true);
     });
-    timer = Timer(const Duration(milliseconds: 3600), dismiss);
+    timer = Timer(const Duration(seconds: 5), dismiss);
   }
 
   void dismiss() {
     if (!mounted || !visible) return;
     setState(() => visible = false);
     Timer(const Duration(milliseconds: 260), widget.onDismiss);
+  }
+
+  void _handleVerticalDragUpdate(DragUpdateDetails details) {
+    if (!visible || details.delta.dy >= 0) return;
+    setState(() {
+      dragOffset =
+          (dragOffset + details.delta.dy / 90).clamp(-.48, 0).toDouble();
+    });
+  }
+
+  void _handleVerticalDragEnd(DragEndDetails details) {
+    final movedFarEnough = dragOffset <= -.18;
+    final flickedUpward = (details.primaryVelocity ?? 0) < -260;
+    if (movedFarEnough || flickedUpward) {
+      dismiss();
+      return;
+    }
+    setState(() => dragOffset = 0);
   }
 
   @override
@@ -46,6 +65,9 @@ class _PassengerToastState extends State<PassengerToast> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final motionDuration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 220);
     final (color, background, icon) = switch (widget.type) {
       PassengerToastType.success => (
           TriSafeColors.forest,
@@ -66,48 +88,59 @@ class _PassengerToastState extends State<PassengerToast> {
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(14, 12, 14, 0),
       child: Align(
-        alignment: Alignment.topRight,
+        alignment: Alignment.topCenter,
         child: AnimatedSlide(
-          duration: const Duration(milliseconds: 250),
+          duration: motionDuration,
           curve: Curves.easeOutCubic,
-          offset: visible ? Offset.zero : const Offset(.12, -.35),
+          offset:
+              visible ? Offset(0, dragOffset) : Offset(0, -.28 + dragOffset),
           child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 220),
+            duration: motionDuration,
             opacity: visible ? 1 : 0,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 380),
-                padding: const EdgeInsets.fromLTRB(13, 11, 8, 11),
-                decoration: BoxDecoration(
-                    color: background,
-                    border: Border.all(color: color.withValues(alpha: .25)),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x1f000000),
-                          blurRadius: 24,
-                          offset: Offset(0, 8))
-                    ]),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, color: color, size: 20),
-                  const SizedBox(width: 9),
-                  Flexible(
-                      child: Text(widget.message,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragUpdate: _handleVerticalDragUpdate,
+              onVerticalDragEnd: _handleVerticalDragEnd,
+              onVerticalDragCancel: () => setState(() => dragOffset = 0),
+              child: Semantics(
+                liveRegion: true,
+                label: '${widget.message}. Swipe up to dismiss.',
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 318),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 13, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: background,
+                      border: Border.all(color: color.withValues(alpha: .25)),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x1a000000),
+                          blurRadius: 18,
+                          offset: Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(icon, color: color, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          widget.message,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                              color: color,
-                              fontSize: 12,
-                              height: 1.35,
-                              fontWeight: FontWeight.w700))),
-                  const SizedBox(width: 5),
-                  IconButton(
-                      onPressed: dismiss,
-                      icon: const Icon(Icons.close_rounded),
-                      color: color,
-                      iconSize: 17,
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Dismiss'),
-                ]),
+                            color: color,
+                            fontSize: 11,
+                            height: 1.3,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
               ),
             ),
           ),
