@@ -36,18 +36,41 @@ export enum IncidentStatus {
 export type FareEstimateRequest = {
   fromLocationId: string;
   toLocationId: string;
-  passengerCount?: number;
 };
 
 export type FareEstimate = {
   currency: 'PHP';
   amount: number;
+  subtotal: number;
   baseFare: number;
   distanceCharge: number;
-  passengerSurcharge: number;
+  passengerType: PassengerFareType;
+  discountPercent: number;
+  discountAmount: number;
   matrixVersion: string;
   disclaimer: string;
 };
+
+export const PASSENGER_FARE_TYPES = ['REGULAR', 'STUDENT', 'SENIOR_CITIZEN'] as const;
+export type PassengerFareType = (typeof PASSENGER_FARE_TYPES)[number];
+
+function applyPassengerDiscount(
+  subtotal: number,
+  passengerType: PassengerFareType = 'REGULAR',
+  discountPercent = 0,
+) {
+  const appliedDiscountPercent = passengerType === 'REGULAR'
+    ? 0
+    : Math.max(0, Math.min(100, discountPercent));
+  const discountAmount = subtotal * (appliedDiscountPercent / 100);
+  return {
+    subtotal: Number(subtotal.toFixed(2)),
+    passengerType,
+    discountPercent: Number(appliedDiscountPercent.toFixed(2)),
+    discountAmount: Number(discountAmount.toFixed(2)),
+    amount: Number((subtotal - discountAmount).toFixed(2)),
+  };
+}
 
 export type VerifiedVehicle = {
   driverId: string;
@@ -77,6 +100,7 @@ export type SafeSharePayload = {
   from?: string;
   to?: string;
   startedAt: string;
+  estimatedArrivalSeconds?: number;
   liveLocationUrl?: string;
 };
 
@@ -84,20 +108,22 @@ export const calculateFare = (input: {
   baseFare: number;
   distanceKm: number;
   perKm: number;
-  passengerCount: number;
-  passengerSurcharge: number;
   minimumFare?: number;
+  passengerType?: PassengerFareType;
+  discountPercent?: number;
 }): FareEstimate => {
   const distanceCharge = Math.max(0, input.distanceKm) * input.perKm;
-  const surcharge = Math.max(0, input.passengerCount - 1) * input.passengerSurcharge;
-  const amount = Math.max(input.minimumFare ?? 0, input.baseFare + distanceCharge + surcharge);
+  const discount = applyPassengerDiscount(
+    Math.max(input.minimumFare ?? 0, input.baseFare + distanceCharge),
+    input.passengerType,
+    input.discountPercent,
+  );
 
   return {
     currency: 'PHP',
-    amount: Number(amount.toFixed(2)),
+    ...discount,
     baseFare: input.baseFare,
     distanceCharge: Number(distanceCharge.toFixed(2)),
-    passengerSurcharge: Number(surcharge.toFixed(2)),
     matrixVersion: 'runtime',
     disclaimer: 'Estimate based on the active LGU fare matrix. Final fare may depend on approved local rules.',
   };
@@ -107,26 +133,23 @@ export const calculateDistanceFare = (input: {
   baseFare: number;
   distanceMeters: number;
   ratePerKm: number;
-  passengerCount: number;
-  passengerSurcharge: number;
   minimumFare?: number;
+  passengerType?: PassengerFareType;
+  discountPercent?: number;
 }): FareEstimate & { distanceMeters: number; distanceKm: number; ratePerKm: number } => {
   const distanceMeters = Math.max(0, input.distanceMeters);
   const distanceKm = distanceMeters / 1000;
   const distanceCharge = distanceKm * input.ratePerKm;
-  const surcharge =
-    Math.max(0, input.passengerCount - 1) * input.passengerSurcharge;
-  const amount = Math.max(
+  const discount = applyPassengerDiscount(Math.max(
     input.minimumFare ?? 0,
-    input.baseFare + distanceCharge + surcharge,
-  );
+    input.baseFare + distanceCharge,
+  ), input.passengerType, input.discountPercent);
 
   return {
     currency: 'PHP',
-    amount: Number(amount.toFixed(2)),
+    ...discount,
     baseFare: Number(input.baseFare.toFixed(2)),
     distanceCharge: Number(distanceCharge.toFixed(2)),
-    passengerSurcharge: Number(surcharge.toFixed(2)),
     distanceMeters: Number(distanceMeters.toFixed(1)),
     distanceKm: Number(distanceKm.toFixed(3)),
     ratePerKm: Number(input.ratePerKm.toFixed(2)),

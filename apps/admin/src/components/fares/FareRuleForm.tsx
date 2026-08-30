@@ -19,7 +19,6 @@ function initialValues(rule?: FareRule): FareRuleInput {
     baseFare: Number(rule?.baseFare ?? 15),
     distanceKm: Number(rule?.distanceKm ?? 0),
     perKm: Number(rule?.perKm ?? 0),
-    passengerSurcharge: Number(rule?.passengerSurcharge ?? 0),
     minimumFare: Number(rule?.minimumFare ?? 0),
     version: rule?.version ?? `LGU-${new Date().getFullYear()}-01`,
     effectiveFrom: rule?.effectiveFrom?.slice(0, 10) ?? today(),
@@ -56,7 +55,7 @@ export function FareRuleForm({ locations, rule, onCancel, onSave }: Props) {
       setError("Enter the LGU matrix version for this rule.");
       return;
     }
-    if (values.distanceKm < 0 || values.baseFare < 0 || values.perKm < 0 || values.minimumFare < 0 || values.passengerSurcharge < 0) {
+    if (values.distanceKm < 0 || values.baseFare < 0 || values.perKm < 0 || values.minimumFare < 0) {
       setError("Fare values cannot be negative.");
       return;
     }
@@ -111,12 +110,11 @@ export function FareRuleForm({ locations, rule, onCancel, onSave }: Props) {
         </section>
 
         <section className="fare-rule-section">
-          <header><span><PhilippinePeso aria-hidden="true" /></span><div><h3>Route fare calculation</h3><p>The calculation is base fare + distance charge + any passenger surcharge, with the minimum fare applied as the floor.</p></div></header>
+          <header><span><PhilippinePeso aria-hidden="true" /></span><div><h3>Route fare calculation</h3><p>The calculation is base fare + distance charge, with the minimum fare applied as the floor.</p></div></header>
           <div className="form-grid fare-rule-money-grid">
             <NumberField label="Base fare" hint="Starting amount before distance is charged." currency value={values.baseFare} onChange={(value) => update("baseFare", value)} />
             <NumberField label="Price per kilometer" hint="Amount added for every route kilometer." currency value={values.perKm} onChange={(value) => update("perKm", value)} />
             <NumberField label="Minimum fare" hint="Lowest final fare allowed for a short trip." currency value={values.minimumFare} onChange={(value) => update("minimumFare", value)} />
-            <NumberField label="Extra passenger surcharge" hint="Applied for each passenger after the first." currency value={values.passengerSurcharge} onChange={(value) => update("passengerSurcharge", value)} />
           </div>
         </section>
 

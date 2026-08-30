@@ -2,7 +2,6 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
-  IsInt,
   IsLatitude,
   IsLongitude,
   IsNumber,
@@ -11,6 +10,8 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { PASSENGER_FARE_TYPES } from '@trisafe/contracts';
+import type { PassengerFareType } from '@trisafe/contracts';
 
 export const SUPPORTED_VEHICLE_TYPES = ['TRICYCLE', 'HABAL_HABAL'] as const;
 
@@ -32,7 +33,13 @@ export class SaveVehicleFarePolicyDto {
 
   @IsNumber()
   @Min(0)
-  passengerSurcharge!: number;
+  @Max(100)
+  studentDiscountPercent!: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  seniorDiscountPercent!: number;
 
   @IsString()
   version!: string;
@@ -53,6 +60,10 @@ export class DistanceFareEstimateDto {
   @IsIn(SUPPORTED_VEHICLE_TYPES)
   vehicleType!: (typeof SUPPORTED_VEHICLE_TYPES)[number];
 
+  @IsOptional()
+  @IsIn(PASSENGER_FARE_TYPES)
+  passengerType: PassengerFareType = 'REGULAR';
+
   @IsLatitude()
   originLatitude!: number;
 
@@ -64,10 +75,4 @@ export class DistanceFareEstimateDto {
 
   @IsLongitude()
   destinationLongitude!: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(8)
-  passengerCount = 1;
 }

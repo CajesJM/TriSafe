@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../models/fare_models.dart';
 import '../../models/ride_models.dart';
 import '../../models/vehicle_models.dart';
@@ -42,7 +42,7 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
   LatLng? destination;
   FareEstimate? fare;
   String vehicleType = 'TRICYCLE';
-  int passengers = 1;
+  String passengerType = 'REGULAR';
   int calculationRequest = 0;
   bool locating = false;
   bool calculating = false;
@@ -101,12 +101,7 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
+      final position = await _bestAvailablePosition();
       if (!mounted) return;
       setState(() =>
           currentLocation = LatLng(position.latitude, position.longitude));
@@ -115,6 +110,8 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
         widget.onSuccess('Location detected successfully.');
       }
       if (destination != null) await _calculateFare(showValidation: false);
+    } on _PoorLocationAccuracyException {
+      if (mounted) await _showLocationProblem(_LocationProblem.lowAccuracy);
     } on TimeoutException {
       if (mounted) await _showLocationProblem(_LocationProblem.timeout);
     } catch (_) {
@@ -122,6 +119,47 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     } finally {
       if (mounted) setState(() => locating = false);
     }
+  }
+
+  Future<Position> _bestAvailablePosition() async {
+    var best = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: Duration(seconds: 15),
+      ),
+    );
+    if (best.accuracy <= 25) return best;
+
+    // A phone's first fix may come from a coarse network estimate. Give GPS a
+    // short window to improve it and retain the most accurate sample instead
+    // of accepting the first coordinate blindly.
+    final finished = Completer<void>();
+    final timer = Timer(const Duration(seconds: 8), () {
+      if (!finished.isCompleted) finished.complete();
+    });
+    late final StreamSubscription<Position> subscription;
+    subscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 0,
+      ),
+    ).listen(
+      (position) {
+        if (position.accuracy < best.accuracy) best = position;
+        if (best.accuracy <= 25 && !finished.isCompleted) finished.complete();
+      },
+      onError: (_) {
+        if (!finished.isCompleted) finished.complete();
+      },
+    );
+    await finished.future;
+    timer.cancel();
+    await subscription.cancel();
+
+    // At this precision a point can easily cross a barangay boundary. Do not
+    // present an administrative name as accurate when the device is not.
+    if (best.accuracy > 50) throw const _PoorLocationAccuracyException();
+    return best;
   }
 
   Future<void> _showLocationProblem(_LocationProblem problem) async {
@@ -145,6 +183,11 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
           'Location detection timed out',
           'Move to an area with a clearer GPS or network signal, then try again.',
           'Try again'
+        ),
+      _LocationProblem.lowAccuracy => (
+          'Precise location is needed',
+          'Your phone is providing an approximate position, which can select the wrong barangay. Allow precise location for TriSafe, move where the GPS signal is clearer, then try again.',
+          'Open app settings'
         ),
       _LocationProblem.unavailable => (
           'Location is unavailable',
@@ -175,7 +218,8 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     if (action != true) return;
     if (problem == _LocationProblem.servicesDisabled) {
       await Geolocator.openLocationSettings();
-    } else if (problem == _LocationProblem.deniedForever) {
+    } else if (problem == _LocationProblem.deniedForever ||
+        problem == _LocationProblem.lowAccuracy) {
       await Geolocator.openAppSettings();
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _ensureLocation());
@@ -225,11 +269,11 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     try {
       final result = await widget.api.estimateDistanceFare(
           vehicleType: vehicleType,
+          passengerType: passengerType,
           originLatitude: origin.latitude,
           originLongitude: origin.longitude,
           destinationLatitude: selectedDestination.latitude,
-          destinationLongitude: selectedDestination.longitude,
-          passengerCount: passengers);
+          destinationLongitude: selectedDestination.longitude);
       if (!mounted || request != calculationRequest) return;
       setState(() => fare = result);
       widget.onSuccess(
@@ -254,9 +298,10 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
     if (destination != null) _calculateFare(showValidation: false);
   }
 
-  void _changePassengers(int value) {
+  void _changePassengerType(String value) {
+    if (value == passengerType) return;
     setState(() {
-      passengers = value;
+      passengerType = value;
       fare = null;
     });
     if (destination != null) _calculateFare(showValidation: false);
@@ -327,6 +372,9 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
             distance: _compactDistanceLabel(estimate.distanceKm ?? 0),
             duration: _durationLabel(estimate.routeDurationSeconds),
             estimatedFare: '₱${estimate.amount.toStringAsFixed(2)}',
+            passengerType: estimate.passengerType,
+            discountPercent: estimate.discountPercent,
+            discountAmount: estimate.discountAmount,
           ),
         ) ??
         false;
@@ -343,7 +391,7 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
         destinationLongitude: selectedDestination.longitude,
         originLocationName: placeNames[0].context,
         destinationLocationName: placeNames[1].context,
-        passengerCount: passengers,
+        passengerType: passengerType,
       );
       if (!mounted) return;
       widget.onRideStarted(ride);
@@ -377,10 +425,10 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
               final wide = constraints.maxWidth >= 760;
               final controls = _FareControls(
                 vehicleType: vehicleType,
-                passengers: passengers,
+                passengerType: passengerType,
                 verifiedVehicle: widget.vehicle,
                 onVehicleChanged: _changeVehicleType,
-                onPassengersChanged: _changePassengers,
+                onPassengerTypeChanged: _changePassengerType,
                 onScan: widget.onScan,
               );
               final routePlanner = _RoutePlanner(
@@ -811,7 +859,12 @@ enum _LocationProblem {
   deniedForever,
   denied,
   timeout,
+  lowAccuracy,
   unavailable
+}
+
+class _PoorLocationAccuracyException implements Exception {
+  const _PoorLocationAccuracyException();
 }
 
 class _LocationStatus extends StatelessWidget {
@@ -908,17 +961,17 @@ class _LocationStatus extends StatelessWidget {
 
 class _FareControls extends StatelessWidget {
   final String vehicleType;
-  final int passengers;
+  final String passengerType;
   final VerifiedVehicle? verifiedVehicle;
   final ValueChanged<String?> onVehicleChanged;
-  final ValueChanged<int> onPassengersChanged;
+  final ValueChanged<String> onPassengerTypeChanged;
   final VoidCallback onScan;
   const _FareControls({
     required this.vehicleType,
-    required this.passengers,
+    required this.passengerType,
     required this.verifiedVehicle,
     required this.onVehicleChanged,
-    required this.onPassengersChanged,
+    required this.onPassengerTypeChanged,
     required this.onScan,
   });
 
@@ -1092,61 +1145,40 @@ class _FareControls extends StatelessWidget {
                   ),
                 ),
               ],
-              const Divider(height: 26),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Passengers',
-                          style: TextStyle(
-                            color: TriSafeColors.black,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Surcharge applies after the first passenger',
-                          style: TextStyle(
-                            fontSize: 10,
-                            height: 1.3,
-                            color: TriSafeColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _PassengerStepperButton(
-                    icon: Icons.remove_rounded,
-                    enabled: passengers > 1,
-                    tooltip: 'Remove passenger',
-                    onTap: () => onPassengersChanged(passengers - 1),
-                  ),
-                  SizedBox(
-                    width: 42,
-                    child: Text(
-                      '$passengers',
-                      textAlign: TextAlign.center,
-                      semanticsLabel: '$passengers passengers',
-                      style: const TextStyle(
-                        color: TriSafeColors.black,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  _PassengerStepperButton(
-                    icon: Icons.add_rounded,
-                    enabled: passengers < 8,
-                    tooltip: 'Add passenger',
-                    onTap: () => onPassengersChanged(passengers + 1),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 16),
+              const Text('Passenger type',
+                  style: TextStyle(
+                      color: TriSafeColors.charcoal,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              const Text(
+                  'Choose the fare category you can verify with a valid ID at boarding.',
+                  style: TextStyle(
+                      color: TriSafeColors.muted, fontSize: 10, height: 1.35)),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                    child: _PassengerTypeChoice(
+                        icon: Icons.person_outline_rounded,
+                        label: 'Regular',
+                        selected: passengerType == 'REGULAR',
+                        onTap: () => onPassengerTypeChanged('REGULAR'))),
+                const SizedBox(width: 6),
+                Expanded(
+                    child: _PassengerTypeChoice(
+                        icon: Icons.school_rounded,
+                        label: 'Student',
+                        selected: passengerType == 'STUDENT',
+                        onTap: () => onPassengerTypeChanged('STUDENT'))),
+                const SizedBox(width: 6),
+                Expanded(
+                    child: _PassengerTypeChoice(
+                        icon: Icons.elderly_rounded,
+                        label: 'Senior',
+                        selected: passengerType == 'SENIOR_CITIZEN',
+                        onTap: () => onPassengerTypeChanged('SENIOR_CITIZEN'))),
+              ]),
             ],
           ),
         ),
@@ -1220,35 +1252,61 @@ class _VehicleChoice extends StatelessWidget {
       );
 }
 
-class _PassengerStepperButton extends StatelessWidget {
+class _PassengerTypeChoice extends StatelessWidget {
   final IconData icon;
-  final bool enabled;
-  final String tooltip;
+  final String label;
+  final bool selected;
   final VoidCallback onTap;
 
-  const _PassengerStepperButton({
+  const _PassengerTypeChoice({
     required this.icon,
-    required this.enabled,
-    required this.tooltip,
+    required this.label,
+    required this.selected,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => IconButton(
-        onPressed: enabled ? onTap : null,
-        tooltip: tooltip,
-        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-        style: IconButton.styleFrom(
-          backgroundColor:
-              enabled ? TriSafeColors.softGreen : const Color(0xfff1f3f0),
-          foregroundColor: TriSafeColors.forest,
-          disabledForegroundColor: const Color(0xffa9b0aa),
-          shape: RoundedRectangleBorder(
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: Material(
+          color: selected ? TriSafeColors.forest : const Color(0xfff8faf7),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: TriSafeColors.line),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              constraints: const BoxConstraints(minHeight: 58),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color:
+                        selected ? TriSafeColors.forest : TriSafeColors.line),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon,
+                      size: 18,
+                      color:
+                          selected ? TriSafeColors.lime : TriSafeColors.forest),
+                  const SizedBox(height: 4),
+                  Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color:
+                              selected ? Colors.white : TriSafeColors.charcoal,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
           ),
         ),
-        icon: Icon(icon, size: 20),
       );
 }
 
@@ -1419,10 +1477,13 @@ class _FareResult extends StatelessWidget {
                       label: 'Distance charge',
                       value: fare!.distanceCharge,
                     ),
-                    _ResultRow(
-                      label: 'Passenger surcharge',
-                      value: fare!.passengerSurcharge,
-                    ),
+                    if (fare!.discountAmount > 0)
+                      _ResultRow(
+                        label:
+                            '${_passengerTypeLabel(fare!.passengerType)} discount (${fare!.discountPercent.toStringAsFixed(0)}%)',
+                        value: fare!.discountAmount,
+                        negative: true,
+                      ),
                     const Divider(height: 18, color: Color(0xff394139)),
                     Row(
                       children: [
@@ -1662,6 +1723,9 @@ class _StartVerifiedRideDialog extends StatelessWidget {
   final String distance;
   final String duration;
   final String estimatedFare;
+  final String passengerType;
+  final double discountPercent;
+  final double discountAmount;
 
   const _StartVerifiedRideDialog({
     required this.driverName,
@@ -1679,6 +1743,9 @@ class _StartVerifiedRideDialog extends StatelessWidget {
     required this.distance,
     required this.duration,
     required this.estimatedFare,
+    required this.passengerType,
+    required this.discountPercent,
+    required this.discountAmount,
   });
 
   @override
@@ -1771,6 +1838,12 @@ class _StartVerifiedRideDialog extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 12),
+                        _PassengerFareReview(
+                          passengerType: passengerType,
+                          discountPercent: discountPercent,
+                          discountAmount: discountAmount,
                         ),
                         const SizedBox(height: 14),
                         const _RideStartNotice(),
@@ -2174,6 +2247,126 @@ class _RideReviewMetric extends StatelessWidget {
       );
 }
 
+class _PassengerFareReview extends StatelessWidget {
+  final String passengerType;
+  final double discountPercent;
+  final double discountAmount;
+
+  const _PassengerFareReview({
+    required this.passengerType,
+    required this.discountPercent,
+    required this.discountAmount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDiscount = discountAmount > 0 && discountPercent > 0;
+    final isStudent = passengerType == 'STUDENT';
+    final isSenior = passengerType == 'SENIOR_CITIZEN';
+    final typeLabel = _passengerTypeLabel(passengerType);
+    final icon = isStudent
+        ? Icons.school_rounded
+        : isSenior
+            ? Icons.elderly_rounded
+            : Icons.person_rounded;
+
+    return Semantics(
+      label: hasDiscount
+          ? '$typeLabel passenger fare. ${discountPercent.toStringAsFixed(0)} percent LGU discount applied. ${discountAmount.toStringAsFixed(2)} pesos deducted. Valid identification is required at boarding.'
+          : '$typeLabel passenger fare. No passenger discount applied.',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color:
+              hasDiscount ? const Color(0xffeef8ea) : const Color(0xfff4f6f2),
+          border: Border.all(
+            color:
+                hasDiscount ? const Color(0xffd1e8c9) : const Color(0xffe1e6de),
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: hasDiscount
+                    ? TriSafeColors.forest
+                    : const Color(0xffe3e9e1),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                icon,
+                color: hasDiscount ? Colors.white : TriSafeColors.forest,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$typeLabel fare'.toUpperCase(),
+                    style: const TextStyle(
+                      color: TriSafeColors.forest,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasDiscount
+                        ? '${discountPercent.toStringAsFixed(0)}% LGU discount applied · Valid ID at boarding'
+                        : 'Regular LGU rate · No discount applied',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: TriSafeColors.muted,
+                      fontSize: 10,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (hasDiscount) ...[
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    'DISCOUNT',
+                    style: TextStyle(
+                      color: TriSafeColors.muted,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .55,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '-₱${discountAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: TriSafeColors.forest,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RideStartNotice extends StatelessWidget {
   const _RideStartNotice();
 
@@ -2204,7 +2397,9 @@ class _RideStartNotice extends StatelessWidget {
 class _ResultRow extends StatelessWidget {
   final String label;
   final double value;
-  const _ResultRow({required this.label, required this.value});
+  final bool negative;
+  const _ResultRow(
+      {required this.label, required this.value, this.negative = false});
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -2220,9 +2415,9 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
             Text(
-              '₱${value.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
+              '${negative ? '-' : ''}₱${value.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: negative ? TriSafeColors.lime : Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -2283,6 +2478,12 @@ class _FareNotice extends StatelessWidget {
 
 String _vehicleLabel(String value) =>
     value == 'HABAL_HABAL' ? 'Habal-Habal' : 'Tricycle';
+
+String _passengerTypeLabel(String value) => switch (value) {
+      'STUDENT' => 'Student',
+      'SENIOR_CITIZEN' => 'Senior citizen',
+      _ => 'Regular',
+    };
 
 String _compactDistanceLabel(double distanceKm) {
   if (distanceKm < 1) return '${(distanceKm * 1000).round()} m';

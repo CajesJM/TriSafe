@@ -6,7 +6,6 @@ export class CreateFareRuleDto {
   @IsNumber() @Min(0) baseFare!: number;
   @IsNumber() @Min(0) distanceKm!: number;
   @IsNumber() @Min(0) perKm!: number;
-  @IsNumber() @Min(0) passengerSurcharge!: number;
   @IsNumber() @Min(0) minimumFare!: number;
   @IsString() version!: string;
   @IsDateString() effectiveFrom!: string;

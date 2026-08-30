@@ -1,0 +1,3 @@
+sdk.dir=C:\\Android
+flutter.sdk=C:\\src\\flutter
+MAPS_API_KEY=replace-with-your-restricted-android-maps-key

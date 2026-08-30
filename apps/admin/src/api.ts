@@ -460,7 +460,6 @@ export type FareRule = {
   baseFare: number | string;
   distanceKm: number | string;
   perKm: number | string;
-  passengerSurcharge: number | string;
   minimumFare: number | string;
   version: string;
   effectiveFrom: string;
@@ -475,7 +474,6 @@ export type FareRuleInput = {
   baseFare: number;
   distanceKm: number;
   perKm: number;
-  passengerSurcharge: number;
   minimumFare: number;
   version: string;
   effectiveFrom: string;
@@ -487,7 +485,8 @@ export type VehicleFarePolicy = {
   baseFare: number | string;
   ratePerKm: number | string;
   minimumFare: number | string;
-  passengerSurcharge: number | string;
+  studentDiscountPercent: number | string;
+  seniorDiscountPercent: number | string;
   version: string;
   active: boolean;
   effectiveFrom: string;
@@ -499,7 +498,8 @@ export type VehicleFarePolicyInput = {
   baseFare: number;
   ratePerKm: number;
   minimumFare: number;
-  passengerSurcharge: number;
+  studentDiscountPercent: number;
+  seniorDiscountPercent: number;
   version: string;
   active: boolean;
   effectiveFrom: string;

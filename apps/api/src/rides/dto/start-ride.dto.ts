@@ -1,10 +1,13 @@
-import { IsLatitude, IsLongitude, IsOptional, IsString, IsInt, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsIn, IsLatitude, IsLongitude, IsOptional, IsString, IsInt, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { PASSENGER_FARE_TYPES } from '@trisafe/contracts';
+import type { PassengerFareType } from '@trisafe/contracts';
 
 export class StartRideDto {
   @IsString() vehicleId!: string;
   @IsString() fromLocationId!: string;
   @IsString() toLocationId!: string;
   @IsOptional() @IsInt() @Min(1) passengerCount = 1;
+  @IsOptional() @IsIn(PASSENGER_FARE_TYPES) passengerType: PassengerFareType = 'REGULAR';
   @IsOptional() @IsLatitude() startLatitude?: number;
   @IsOptional() @IsLongitude() startLongitude?: number;
 }
@@ -20,6 +23,7 @@ export class StartMapRideDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(160) originLocationName?: string;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(160) destinationLocationName?: string;
   @IsOptional() @IsInt() @Min(1) @Max(8) passengerCount = 1;
+  @IsOptional() @IsIn(PASSENGER_FARE_TYPES) passengerType: PassengerFareType = 'REGULAR';
 }
 
 export class EndRideDto {

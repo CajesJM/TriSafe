@@ -6,7 +6,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { calculateDistanceFare, calculateFare } from "@trisafe/contracts";
+import { calculateDistanceFare, calculateFare, PassengerFareType } from "@trisafe/contracts";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateFareRuleDto } from "./dto/create-fare-rule.dto";
 import { FareEstimateDto } from "./dto/fare-estimate.dto";
@@ -40,8 +40,6 @@ export class FaresService {
       baseFare: Number(rule.baseFare),
       distanceKm: Number(rule.distanceKm),
       perKm: Number(rule.perKm),
-      passengerCount: dto.passengerCount,
-      passengerSurcharge: Number(rule.passengerSurcharge),
       minimumFare: Number(rule.minimumFare),
     });
     return {
@@ -66,7 +64,7 @@ export class FaresService {
     const estimate = await this.calculateForVehicle(
       dto.vehicleType,
       route.distanceMeters,
-      dto.passengerCount,
+      dto.passengerType,
     );
     return {
       ...estimate,
@@ -76,14 +74,37 @@ export class FaresService {
     };
   }
 
+  async estimateRouteDuration(dto: Pick<
+    DistanceFareEstimateDto,
+    | 'originLatitude'
+    | 'originLongitude'
+    | 'destinationLatitude'
+    | 'destinationLongitude'
+  >) {
+    return (await this.findRoadRoute(dto)).durationSeconds;
+  }
+
   async reverseGeocode(dto: { latitude: number; longitude: number }) {
     // Round to roughly 11 metres before caching: close map taps should reuse a
     // result instead of repeatedly requesting the public geocoder.
     // Version the cache key so improved address formatting is immediately
     // applied instead of serving an older municipality-less label.
-    const cacheKey = `v5:${dto.latitude.toFixed(4)},${dto.longitude.toFixed(4)}`;
+    const cacheKey = `v6:${dto.latitude.toFixed(4)},${dto.longitude.toFixed(4)}`;
     const cached = this.reverseGeocodeCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    // Administrative names must come from an area containing the coordinate,
+    // not from the nearest mapped road or place. The boundary layer is based
+    // on Philippine barangay polygons and returns the exact three fields used
+    // by the passenger UI.
+    const boundaryLocation = await this.findBarangayBoundary(dto);
+    if (boundaryLocation) {
+      this.reverseGeocodeCache.set(cacheKey, {
+        value: boundaryLocation,
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      });
+      return boundaryLocation;
+    }
 
     // The public Nominatim service permits low-volume reverse lookups only.
     // Serialise uncached requests to remain below one request per second.
@@ -202,23 +223,101 @@ export class FaresService {
     }
   }
 
-  private async findRoadRoute(dto: DistanceFareEstimateDto) {
-    const baseUrl = this.config.get<string>(
-      "ROUTING_BASE_URL",
-      "https://router.project-osrm.org",
-    );
-    const coordinates = `${dto.originLongitude},${dto.originLatitude};${dto.destinationLongitude},${dto.destinationLatitude}`;
-    const url = new URL(`/route/v1/driving/${coordinates}`, baseUrl);
+  private async findBarangayBoundary(dto: {
+    latitude: number;
+    longitude: number;
+  }): Promise<{ name: string; context: string } | undefined> {
+    try {
+      const layerUrl = this.config.get<string>(
+        "BARANGAY_BOUNDARY_LAYER_URL",
+        "https://services7.arcgis.com/poQdgvLD6DHnbpsT/ArcGIS/rest/services/Philippine_Administrative_Boundaries/FeatureServer/3",
+      );
+      const url = new URL(`${layerUrl.replace(/\/$/, "")}/query`);
+      url.searchParams.set("f", "json");
+      url.searchParams.set(
+        "geometry",
+        `${dto.longitude},${dto.latitude}`,
+      );
+      url.searchParams.set("geometryType", "esriGeometryPoint");
+      url.searchParams.set("inSR", "4326");
+      url.searchParams.set("spatialRel", "esriSpatialRelIntersects");
+      url.searchParams.set("outFields", "BRGY_NAME,CITYMUN,PROVINCE");
+      url.searchParams.set("returnGeometry", "false");
 
-    url.searchParams.set("overview", "full");
-    url.searchParams.set("geometries", "geojson");
-    url.searchParams.set("steps", "false");
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(8_000),
+        headers: { "user-agent": "TriSafe/0.1 (LGU transport safety system)" },
+      });
+      if (!response.ok) {
+        throw new Error(`barangay boundary service returned ${response.status}`);
+      }
+      const payload = (await response.json()) as {
+        error?: { message?: string };
+        features?: Array<{
+          attributes?: {
+            BRGY_NAME?: string;
+            CITYMUN?: string;
+            PROVINCE?: string;
+          };
+        }>;
+      };
+      if (payload.error) {
+        throw new Error(payload.error.message ?? "barangay boundary query failed");
+      }
+      const attributes = payload.features?.[0]?.attributes;
+      const barangay = attributes?.BRGY_NAME?.trim();
+      const municipality = attributes?.CITYMUN?.trim();
+      const province = attributes?.PROVINCE?.trim();
+      if (
+        !barangay ||
+        !municipality ||
+        province?.toLowerCase() !== "bohol"
+      ) {
+        return undefined;
+      }
+      const context = `${barangay}, ${municipality}, Bohol`;
+      return { name: barangay, context };
+    } catch (error) {
+      this.logger.warn(
+        `Barangay boundary lookup failed; using reverse-geocoder fallback: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return undefined;
+    }
+  }
+
+  private async findRoadRoute(dto: Pick<
+    DistanceFareEstimateDto,
+    | 'originLatitude'
+    | 'originLongitude'
+    | 'destinationLatitude'
+    | 'destinationLongitude'
+  >) {
+    const apiKey = this.config.get<string>("GOOGLE_ROUTES_API_KEY");
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        "Google route calculation is not configured yet",
+      );
+    }
 
     let response: Response;
     try {
-      response = await fetch(url, {
+      response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+        method: "POST",
         signal: AbortSignal.timeout(10000),
-        headers: { "user-agent": "TriSafe/0.1 (LGU transport safety system)" },
+        headers: {
+          "content-type": "application/json",
+          "x-goog-api-key": apiKey,
+          "x-goog-fieldmask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
+        },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: dto.originLatitude, longitude: dto.originLongitude } } },
+          destination: { location: { latLng: { latitude: dto.destinationLatitude, longitude: dto.destinationLongitude } } },
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_UNAWARE",
+          polylineQuality: "HIGH_QUALITY",
+          polylineEncoding: "ENCODED_POLYLINE",
+          units: "METRIC",
+        }),
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -234,52 +333,81 @@ export class FaresService {
     }
 
     const payload = (await response.json()) as {
-      code?: string;
       routes?: Array<{
-        distance?: number;
-        duration?: number;
-        geometry?: { coordinates?: Array<[number, number]> };
+        distanceMeters?: number;
+        duration?: string;
+        polyline?: { encodedPolyline?: string };
       }>;
     };
     const route = payload.routes?.[0];
     if (
-      payload.code !== "Ok" ||
-      !route?.distance ||
-      !route.geometry?.coordinates
+      !route?.distanceMeters ||
+      !route.polyline?.encodedPolyline
     ) {
       throw new BadRequestException(
         "No drivable road route was found for the selected destination",
       );
     }
-    if (route.distance > 200000) {
+    if (route.distanceMeters > 200000) {
       throw new BadRequestException(
         "The selected destination is outside the supported 200 km fare-estimate range",
       );
     }
     return {
-      distanceMeters: route.distance,
-      durationSeconds: route.duration ?? 0,
-      coordinates: route.geometry.coordinates.map(([longitude, latitude]) => ({
-        latitude,
-        longitude,
-      })),
+      distanceMeters: route.distanceMeters,
+      durationSeconds: this.parseGoogleDuration(route.duration),
+      coordinates: this.decodeGooglePolyline(route.polyline.encodedPolyline),
     };
+  }
+
+  private parseGoogleDuration(duration?: string) {
+    const seconds = Number.parseFloat(duration?.replace(/s$/, "") ?? "0");
+    return Number.isFinite(seconds) ? seconds : 0;
+  }
+
+  private decodeGooglePolyline(encoded: string) {
+    const coordinates: Array<{ latitude: number; longitude: number }> = [];
+    let index = 0;
+    let latitude = 0;
+    let longitude = 0;
+    while (index < encoded.length) {
+      const decodeValue = () => {
+        let result = 0;
+        let shift = 0;
+        let byte: number;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20 && index < encoded.length);
+        return (result & 1) === 1 ? ~(result >> 1) : result >> 1;
+      };
+      latitude += decodeValue();
+      longitude += decodeValue();
+      coordinates.push({ latitude: latitude / 1e5, longitude: longitude / 1e5 });
+    }
+    return coordinates;
   }
 
   async calculateForVehicle(
     vehicleType: string,
     distanceMeters: number,
-    passengerCount = 1,
+    passengerType: PassengerFareType = 'REGULAR',
   ) {
     const normalizedType = this.normalizeVehicleType(vehicleType);
     const policy = await this.findActiveVehiclePolicy(normalizedType);
+    const discountPercent = passengerType === 'STUDENT'
+      ? Number(policy.studentDiscountPercent)
+      : passengerType === 'SENIOR_CITIZEN'
+        ? Number(policy.seniorDiscountPercent)
+        : 0;
     const estimate = calculateDistanceFare({
       baseFare: Number(policy.baseFare),
       distanceMeters,
       ratePerKm: Number(policy.ratePerKm),
-      passengerCount,
-      passengerSurcharge: Number(policy.passengerSurcharge),
       minimumFare: Number(policy.minimumFare),
+      passengerType,
+      discountPercent,
     });
     return {
       ...estimate,
@@ -323,7 +451,8 @@ export class FaresService {
         baseFare: dto.baseFare,
         ratePerKm: dto.ratePerKm,
         minimumFare: dto.minimumFare,
-        passengerSurcharge: dto.passengerSurcharge,
+        studentDiscountPercent: dto.studentDiscountPercent,
+        seniorDiscountPercent: dto.seniorDiscountPercent,
         version: dto.version,
         active: dto.active ?? true,
         effectiveFrom: new Date(dto.effectiveFrom),
@@ -333,7 +462,8 @@ export class FaresService {
         baseFare: dto.baseFare,
         ratePerKm: dto.ratePerKm,
         minimumFare: dto.minimumFare,
-        passengerSurcharge: dto.passengerSurcharge,
+        studentDiscountPercent: dto.studentDiscountPercent,
+        seniorDiscountPercent: dto.seniorDiscountPercent,
         version: dto.version,
         active: dto.active ?? true,
         effectiveFrom: new Date(dto.effectiveFrom),
@@ -348,6 +478,8 @@ export class FaresService {
       details: {
         vehicleType,
         ratePerKm: dto.ratePerKm,
+        studentDiscountPercent: dto.studentDiscountPercent,
+        seniorDiscountPercent: dto.seniorDiscountPercent,
         version: dto.version,
       },
     });
@@ -380,7 +512,6 @@ export class FaresService {
         baseFare: dto.baseFare,
         distanceKm: dto.distanceKm,
         perKm: dto.perKm,
-        passengerSurcharge: dto.passengerSurcharge,
         minimumFare: dto.minimumFare,
         version: dto.version,
         effectiveFrom: new Date(dto.effectiveFrom),
@@ -412,7 +543,6 @@ export class FaresService {
         baseFare: dto.baseFare,
         distanceKm: dto.distanceKm,
         perKm: dto.perKm,
-        passengerSurcharge: dto.passengerSurcharge,
         minimumFare: dto.minimumFare,
         version: dto.version,
         effectiveFrom: new Date(dto.effectiveFrom),

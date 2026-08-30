@@ -28,5 +28,26 @@ export class RidesController {
   ) {
     return this.service.recordLocation(req.user.id, id, dto);
   }
-  @Get(':id/share') share(@Req() req: RequestWithUser, @Param('id') id: string, @Query('liveLocationUrl') liveLocationUrl?: string) { return this.service.share(req.user.id, id, liveLocationUrl); }
+  @Get(':id/share') share(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+    @Query('latitude') latitude?: string,
+    @Query('longitude') longitude?: string,
+    // Kept as a fallback for older app versions while they update.
+    @Query('liveLocationUrl') legacyLiveLocationUrl?: string,
+  ) {
+    return this.service.share(
+      req.user.id,
+      id,
+      this.queryCoordinate(latitude),
+      this.queryCoordinate(longitude),
+      legacyLiveLocationUrl,
+    );
+  }
+
+  private queryCoordinate(value?: string) {
+    if (value == null || value.trim() === '') return undefined;
+    const coordinate = Number(value);
+    return Number.isFinite(coordinate) ? coordinate : undefined;
+  }
 }

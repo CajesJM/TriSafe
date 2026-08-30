@@ -232,29 +232,27 @@ class TriSafeApi {
   Future<FareEstimate> estimateFare(
           {required String vehicleId,
           required String fromLocationId,
-          required String toLocationId,
-          int passengerCount = 1}) async =>
+          required String toLocationId}) async =>
       FareEstimate.fromJson(await _post('/rides/preview', {
         'vehicleId': vehicleId,
         'fromLocationId': fromLocationId,
         'toLocationId': toLocationId,
-        'passengerCount': passengerCount
       }));
   Future<FareEstimate> estimateDistanceFare({
     required String vehicleType,
+    required String passengerType,
     required double originLatitude,
     required double originLongitude,
     required double destinationLatitude,
     required double destinationLongitude,
-    int passengerCount = 1,
   }) async =>
       FareEstimate.fromJson(await _post('/distance-fare-estimates', {
         'vehicleType': vehicleType,
+        'passengerType': passengerType,
         'originLatitude': originLatitude,
         'originLongitude': originLongitude,
         'destinationLatitude': destinationLatitude,
         'destinationLongitude': destinationLongitude,
-        'passengerCount': passengerCount,
       }));
   Future<FareLocationName> fareLocationName({
     required double latitude,
@@ -288,6 +286,7 @@ class TriSafeApi {
     required double destinationLongitude,
     String? originLocationName,
     String? destinationLocationName,
+    required String passengerType,
     int passengerCount = 1,
   }) async =>
       Ride.fromJson(await _post('/rides/map', {
@@ -302,6 +301,7 @@ class TriSafeApi {
         if (destinationLocationName != null)
           'destinationLocationName': destinationLocationName,
         'passengerCount': passengerCount,
+        'passengerType': passengerType,
       }));
   Future<Ride> endRide(String rideId,
           {double? endLatitude, double? endLongitude}) async =>
@@ -347,12 +347,19 @@ class TriSafeApi {
         .toList();
   }
 
-  Future<Map<String, dynamic>> shareRide(String rideId,
-      {String? liveLocationUrl}) async {
+  Future<Map<String, dynamic>> shareRide(
+    String rideId, {
+    double? latitude,
+    double? longitude,
+  }) async {
     final uri = Uri.parse('$baseUrl/rides/$rideId/share').replace(
-        queryParameters: liveLocationUrl == null
-            ? null
-            : {'liveLocationUrl': liveLocationUrl});
+      queryParameters: latitude != null && longitude != null
+          ? {
+              'latitude': latitude.toString(),
+              'longitude': longitude.toString(),
+            }
+          : null,
+    );
     return Map<String, dynamic>.from(await _getUri(uri));
   }
 

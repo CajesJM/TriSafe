@@ -1,8 +1,11 @@
 class FareEstimate {
   final double amount;
+  final double subtotal;
   final double baseFare;
   final double distanceCharge;
-  final double passengerSurcharge;
+  final String passengerType;
+  final double discountPercent;
+  final double discountAmount;
   final String matrixVersion;
   final String disclaimer;
   final double? distanceMeters;
@@ -14,9 +17,13 @@ class FareEstimate {
 
   FareEstimate.fromJson(Map<String, dynamic> json)
       : amount = (json['amount'] as num).toDouble(),
+        subtotal = (json['subtotal'] as num?)?.toDouble() ??
+            (json['amount'] as num).toDouble(),
         baseFare = (json['baseFare'] as num).toDouble(),
         distanceCharge = (json['distanceCharge'] as num).toDouble(),
-        passengerSurcharge = (json['passengerSurcharge'] as num).toDouble(),
+        passengerType = json['passengerType'] as String? ?? 'REGULAR',
+        discountPercent = (json['discountPercent'] as num?)?.toDouble() ?? 0,
+        discountAmount = (json['discountAmount'] as num?)?.toDouble() ?? 0,
         matrixVersion = json['matrixVersion'],
         disclaimer = json['disclaimer'],
         distanceMeters = (json['distanceMeters'] as num?)?.toDouble(),
@@ -64,11 +71,6 @@ class RidePlan {
   final LocationOption from;
   final LocationOption to;
   final FareEstimate fare;
-  final int passengerCount;
 
-  const RidePlan(
-      {required this.from,
-      required this.to,
-      required this.fare,
-      required this.passengerCount});
+  const RidePlan({required this.from, required this.to, required this.fare});
 }

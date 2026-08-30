@@ -191,7 +191,11 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     try {
-      await rideSharing.shareRide(api: widget.api, ride: ride);
+      await rideSharing.shareRide(
+        api: widget.api,
+        ride: ride,
+        lastTrackedPosition: locationTracking.latestPosition,
+      );
       _toast(
           'SafeShare details are ready to share.', PassengerToastType.success);
     } catch (_) {

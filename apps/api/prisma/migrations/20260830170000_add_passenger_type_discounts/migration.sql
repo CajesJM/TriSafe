@@ -1,0 +1,6 @@
+ALTER TABLE "VehicleFarePolicy"
+  ADD COLUMN "studentDiscountPercent" DECIMAL(5,2) NOT NULL DEFAULT 20,
+  ADD COLUMN "seniorDiscountPercent" DECIMAL(5,2) NOT NULL DEFAULT 20;
+
+ALTER TABLE "Ride"
+  ADD COLUMN "passengerType" TEXT NOT NULL DEFAULT 'REGULAR';

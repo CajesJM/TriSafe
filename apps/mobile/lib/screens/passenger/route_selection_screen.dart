@@ -19,7 +19,6 @@ class _RouteSelectionScreenState extends State<RouteSelectionScreen> {
   List<LocationOption> locations = [];
   LocationOption? from;
   LocationOption? to;
-  int passengerCount = 1;
   String? error;
   bool loading = true;
   bool calculating = false;
@@ -65,18 +64,13 @@ class _RouteSelectionScreenState extends State<RouteSelectionScreen> {
       final fare = await widget.api.estimateFare(
           vehicleId: widget.vehicle.vehicleId,
           fromLocationId: from!.id,
-          toLocationId: to!.id,
-          passengerCount: passengerCount);
+          toLocationId: to!.id);
       if (!mounted) {
         return;
       }
       final plan = await Navigator.of(context).push<RidePlan>(MaterialPageRoute(
           builder: (_) => FareConfirmationScreen(
-              vehicle: widget.vehicle,
-              from: from!,
-              to: to!,
-              fare: fare,
-              passengerCount: passengerCount)));
+              vehicle: widget.vehicle, from: from!, to: to!, fare: fare)));
       if (plan != null && mounted) {
         Navigator.of(context).pop(plan);
       }
@@ -143,30 +137,6 @@ class _RouteSelectionScreenState extends State<RouteSelectionScreen> {
                     value: to,
                     locations: locations,
                     onChanged: (value) => setState(() => to = value)),
-                const SizedBox(height: 22),
-                Card(
-                    child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Row(children: [
-                          const Expanded(
-                              child: Text('Passengers',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w700))),
-                          IconButton(
-                              onPressed: passengerCount > 1
-                                  ? () => setState(() => passengerCount--)
-                                  : null,
-                              icon: const Icon(Icons.remove_circle_outline)),
-                          Text('$passengerCount',
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w800)),
-                          IconButton(
-                              onPressed: passengerCount < 8
-                                  ? () => setState(() => passengerCount++)
-                                  : null,
-                              icon: const Icon(Icons.add_circle_outline))
-                        ]))),
                 const SizedBox(height: 24),
                 SizedBox(
                     height: 52,

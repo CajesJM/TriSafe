@@ -243,7 +243,6 @@ model FareRule {
   baseFare            Decimal  @db.Decimal(10, 2)
   distanceKm          Decimal  @db.Decimal(10, 2)
   perKm               Decimal  @db.Decimal(10, 2)
-  passengerSurcharge  Decimal  @db.Decimal(10, 2) @default(0)
   minimumFare         Decimal  @db.Decimal(10, 2) @default(0)
   version             String
   effectiveFrom       DateTime
@@ -260,7 +259,8 @@ model VehicleFarePolicy {
   baseFare            Decimal  @db.Decimal(10, 2) @default(0)
   ratePerKm            Decimal  @db.Decimal(10, 2)
   minimumFare         Decimal  @db.Decimal(10, 2) @default(0)
-  passengerSurcharge  Decimal  @db.Decimal(10, 2) @default(0)
+  studentDiscountPercent Decimal @db.Decimal(5, 2) @default(20)
+  seniorDiscountPercent  Decimal @db.Decimal(5, 2) @default(20)
   version             String
   active              Boolean  @default(true)
   effectiveFrom       DateTime @default(now())
@@ -283,6 +283,7 @@ model Ride {
   finalFare       Decimal? @db.Decimal(10, 2)
   actualDistanceMeters Float @default(0)
   passengerCount  Int      @default(1)
+  passengerType   String   @default("REGULAR")
   vehicleType     String   @default("TRICYCLE")
   fareVersion     String
   status          RideStatus @default(ACTIVE)

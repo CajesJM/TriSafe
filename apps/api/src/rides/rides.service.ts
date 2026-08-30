@@ -20,7 +20,7 @@ export class RidesService {
     const fare = await this.fares.calculateForVehicle(
       vehicle.vehicleType,
       Number(routeRule.distanceKm) * 1000,
-      dto.passengerCount,
+      dto.passengerType,
     );
     return {
       vehicleId: vehicle.id,
@@ -40,7 +40,7 @@ export class RidesService {
     const fare = await this.fares.calculateForVehicle(
       vehicle.vehicleType,
       Number(routeRule.distanceKm) * 1000,
-      dto.passengerCount,
+      dto.passengerType,
     );
     const active = await this.prisma.ride.findFirst({ where: { passengerId, status: RideStatus.ACTIVE } });
     if (active) throw new ForbiddenException('Complete your active ride before starting another');
@@ -54,6 +54,7 @@ export class RidesService {
         estimatedFare: fare.amount,
         fareVersion: fare.matrixVersion,
         passengerCount: dto.passengerCount,
+        passengerType: dto.passengerType,
         vehicleType,
         startLatitude: dto.startLatitude,
         startLongitude: dto.startLongitude,
@@ -96,7 +97,7 @@ export class RidesService {
       originLongitude: dto.originLongitude,
       destinationLatitude: dto.destinationLatitude,
       destinationLongitude: dto.destinationLongitude,
-      passengerCount: dto.passengerCount,
+      passengerType: dto.passengerType,
     });
     const fallbackFromLocationName = 'Current location';
     const fallbackToLocationName = 'Selected destination';
@@ -121,6 +122,7 @@ export class RidesService {
         estimatedFare: estimate.amount,
         fareVersion: estimate.matrixVersion,
         passengerCount: dto.passengerCount,
+        passengerType: dto.passengerType,
         vehicleType: this.fares.normalizeVehicleType(vehicle.vehicleType),
         startLatitude: dto.originLatitude,
         startLongitude: dto.originLongitude,
@@ -167,7 +169,7 @@ export class RidesService {
     const finalEstimate = await this.fares.calculateForVehicle(
       ride.vehicleType,
       ride.actualDistanceMeters,
-      ride.passengerCount,
+      ride.passengerType as import('@trisafe/contracts').PassengerFareType,
     );
     const updatedRide = await this.prisma.ride.update({
       where: { id },
@@ -233,7 +235,7 @@ export class RidesService {
     const currentFare = await this.fares.calculateForVehicle(
       updatedRide.vehicleType,
       updatedRide.actualDistanceMeters,
-      updatedRide.passengerCount,
+      updatedRide.passengerType as import('@trisafe/contracts').PassengerFareType,
     );
     return {
       rideId: id,
@@ -261,10 +263,84 @@ export class RidesService {
     return Promise.all(rides.map((ride) => this.addLocationNames(ride)));
   }
 
-  async share(passengerId: string, id: string, liveLocationUrl?: string) {
+  async share(
+    passengerId: string,
+    id: string,
+    latitude?: number,
+    longitude?: number,
+    legacyLiveLocationUrl?: string,
+  ) {
     const ride = await this.ownedRide(passengerId, id);
     const namedRide = await this.addLocationNames(ride);
-    return { rideId: ride.id, driverName: ride.vehicle.driver.user.fullName, vehiclePlateNumber: ride.vehicle.plateNumber, from: namedRide.fromLocationName, to: namedRide.toLocationName, startedAt: ride.startedAt.toISOString(), liveLocationUrl };
+    const suppliedLocation =
+      latitude != null && longitude != null &&
+      latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
+        ? { latitude, longitude }
+        : undefined;
+    const latestRecordedLocation = suppliedLocation ||
+        Number(ride.actualDistanceMeters) <= 0
+      ? undefined
+      : await this.prisma.rideLocationPoint.findFirst({
+          where: { rideId: id },
+          orderBy: { recordedAt: 'desc' },
+          select: { latitude: true, longitude: true },
+        });
+    // Never substitute the trip pickup as a "live" location. A stored point
+    // is only a fallback after the ride has actually moved; otherwise we omit
+    // the map rather than sharing a stale pickup coordinate.
+    const currentLocation = suppliedLocation ??
+      (latestRecordedLocation
+        ? {
+            latitude: Number(latestRecordedLocation.latitude),
+            longitude: Number(latestRecordedLocation.longitude),
+          }
+        : undefined);
+    const destination =
+      ride.destinationLatitude != null && ride.destinationLongitude != null
+        ? {
+            latitude: Number(ride.destinationLatitude),
+            longitude: Number(ride.destinationLongitude),
+          }
+        : undefined;
+    let estimatedArrivalSeconds: number | undefined;
+    if (currentLocation && destination) {
+      try {
+        estimatedArrivalSeconds = await this.fares.estimateRouteDuration({
+          originLatitude: currentLocation.latitude,
+          originLongitude: currentLocation.longitude,
+          destinationLatitude: destination.latitude,
+          destinationLongitude: destination.longitude,
+        });
+      } catch {
+        // SafeShare remains available if the routing provider is temporarily
+        // unavailable; the recipient still receives the current location.
+      }
+    }
+    const liveLocationUrl = currentLocation && destination
+      ? this.safeShareDirectionsUrl(currentLocation, destination)
+      : legacyLiveLocationUrl;
+    return {
+      rideId: ride.id,
+      driverName: ride.vehicle.driver.user.fullName,
+      vehiclePlateNumber: ride.vehicle.plateNumber,
+      from: namedRide.fromLocationName,
+      to: namedRide.toLocationName,
+      startedAt: ride.startedAt.toISOString(),
+      estimatedArrivalSeconds,
+      liveLocationUrl,
+    };
+  }
+
+  private safeShareDirectionsUrl(
+    origin: { latitude: number; longitude: number },
+    destination: { latitude: number; longitude: number },
+  ) {
+    const url = new URL('https://www.google.com/maps/dir/');
+    url.searchParams.set('api', '1');
+    url.searchParams.set('origin', `${origin.latitude},${origin.longitude}`);
+    url.searchParams.set('destination', `${destination.latitude},${destination.longitude}`);
+    url.searchParams.set('travelmode', 'driving');
+    return url.toString();
   }
 
   private async getEligibleVehicle(vehicleId: string, qrToken?: string) {

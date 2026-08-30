@@ -15,7 +15,8 @@ function emptyPolicy(
     baseFare: vehicleType === "TRICYCLE" ? 15 : 20,
     ratePerKm: vehicleType === "TRICYCLE" ? 8 : 12,
     minimumFare: vehicleType === "TRICYCLE" ? 15 : 20,
-    passengerSurcharge: vehicleType === "TRICYCLE" ? 5 : 0,
+    studentDiscountPercent: 20,
+    seniorDiscountPercent: 20,
     version: `LGU-${new Date().getFullYear()}-01`,
     active: true,
     effectiveFrom: new Date().toISOString().slice(0, 10),
@@ -28,7 +29,8 @@ function toInput(policy: VehicleFarePolicy): VehicleFarePolicyInput {
     baseFare: Number(policy.baseFare),
     ratePerKm: Number(policy.ratePerKm),
     minimumFare: Number(policy.minimumFare),
-    passengerSurcharge: Number(policy.passengerSurcharge),
+    studentDiscountPercent: Number(policy.studentDiscountPercent),
+    seniorDiscountPercent: Number(policy.seniorDiscountPercent),
     version: policy.version,
     active: policy.active,
     effectiveFrom: policy.effectiveFrom.slice(0, 10),
@@ -50,7 +52,6 @@ export function VehicleFarePolicyPanel({
       ),
   );
   const [distanceKm, setDistanceKm] = useState(4.5);
-  const [passengers, setPassengers] = useState(1);
   const [saving, setSaving] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -119,15 +120,18 @@ export function VehicleFarePolicyPanel({
     () =>
       vehicleTypes.map((type) => {
         const policy = policies[type];
-        const surcharge =
-          Math.max(0, passengers - 1) * policy.passengerSurcharge;
         const total = Math.max(
           policy.minimumFare,
-          policy.baseFare + distanceKm * policy.ratePerKm + surcharge,
+          policy.baseFare + distanceKm * policy.ratePerKm,
         );
-        return { type, total };
+        return {
+          type,
+          total,
+          student: total * (1 - policy.studentDiscountPercent / 100),
+          senior: total * (1 - policy.seniorDiscountPercent / 100),
+        };
       }),
-    [distanceKm, passengers, policies],
+    [distanceKm, policies],
   );
 
   return (
@@ -142,7 +146,7 @@ export function VehicleFarePolicyPanel({
           </p>
         </div>
         <span className="formula-chip">
-          Fare = base + (tracked km × rate) + surcharge
+          Fare = base + (tracked km × rate)
         </span>
       </div>
       {error && <div className="error" role="alert">{error}</div>}
@@ -228,23 +232,17 @@ export function VehicleFarePolicyPanel({
                     </span>
                   </label>
                   <label>
-                    Extra passenger
+                    Student discount
                     <span className="money-input">
-                      <i>₱</i>
-                      <input
-                        min="0"
-                        onChange={(event) =>
-                          update(
-                            vehicleType,
-                            "passengerSurcharge",
-                            Number(event.target.value),
-                          )
-                        }
-                        required
-                        step="0.01"
-                        type="number"
-                        value={policy.passengerSurcharge}
-                      />
+                      <i>%</i>
+                      <input min="0" max="100" onChange={(event) => update(vehicleType, "studentDiscountPercent", Number(event.target.value))} required step="0.01" type="number" value={policy.studentDiscountPercent} />
+                    </span>
+                  </label>
+                  <label>
+                    Senior citizen discount
+                    <span className="money-input">
+                      <i>%</i>
+                      <input min="0" max="100" onChange={(event) => update(vehicleType, "seniorDiscountPercent", Number(event.target.value))} required step="0.01" type="number" value={policy.seniorDiscountPercent} />
                     </span>
                   </label>
                   <label>
@@ -294,28 +292,17 @@ export function VehicleFarePolicyPanel({
               <strong>{distanceKm.toFixed(1)} km</strong>
             </div>
           </label>
-          <label>
-            Passengers
-            <select
-              onChange={(event) => setPassengers(Number(event.target.value))}
-              value={passengers}
-            >
-              {[1, 2, 3, 4, 5, 6].map((count) => (
-                <option key={count} value={count}>{count}</option>
-              ))}
-            </select>
-          </label>
           <div className="preview-results">
             {examples.map((example) => (
               <div key={example.type}>
-                <span>{example.type.replaceAll("_", " ")}</span>
+                <span>{example.type.replaceAll("_", " ")} · Regular</span>
                 <strong>₱{example.total.toFixed(2)}</strong>
+                <span>Student ₱{example.student.toFixed(2)} · Senior ₱{example.senior.toFixed(2)}</span>
               </div>
             ))}
           </div>
           <p>
-            This preview uses the same formula as the passenger ride service.
-            Final fares use accepted GPS points, not straight-line distance.
+            Discounts apply after the official base, distance, and minimum-fare calculation. Passenger eligibility must be verified with the required ID at boarding.
           </p>
         </aside>
       </div>

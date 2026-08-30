@@ -7,15 +7,13 @@ class FareConfirmationScreen extends StatelessWidget {
   final LocationOption from;
   final LocationOption to;
   final FareEstimate fare;
-  final int passengerCount;
 
   const FareConfirmationScreen(
       {super.key,
       required this.vehicle,
       required this.from,
       required this.to,
-      required this.fare,
-      required this.passengerCount});
+      required this.fare});
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -43,9 +41,6 @@ class FareConfirmationScreen extends StatelessWidget {
                           fontSize: 40,
                           fontWeight: FontWeight.w900,
                           color: Color(0xff185449))),
-                  Text(
-                      '$passengerCount passenger${passengerCount == 1 ? '' : 's'}',
-                      style: const TextStyle(color: Color(0xff55766d)))
                 ]))),
         const SizedBox(height: 16),
         Card(
@@ -73,9 +68,6 @@ class FareConfirmationScreen extends StatelessWidget {
                           label:
                               'Planned distance charge${fare.ratePerKm == null ? '' : ' · PHP ${fare.ratePerKm!.toStringAsFixed(2)}/km'}',
                           value: fare.distanceCharge),
-                      _AmountRow(
-                          label: 'Passenger surcharge',
-                          value: fare.passengerSurcharge),
                       const Divider(),
                       _AmountRow(
                           label: 'Estimated total',
@@ -97,11 +89,8 @@ class FareConfirmationScreen extends StatelessWidget {
         SizedBox(
             height: 52,
             child: FilledButton.icon(
-                onPressed: () => Navigator.of(context).pop(RidePlan(
-                    from: from,
-                    to: to,
-                    fare: fare,
-                    passengerCount: passengerCount)),
+                onPressed: () => Navigator.of(context)
+                    .pop(RidePlan(from: from, to: to, fare: fare)),
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Start ride'))),
       ]));
