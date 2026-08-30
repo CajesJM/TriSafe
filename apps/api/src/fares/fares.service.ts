@@ -81,7 +81,7 @@ export class FaresService {
     // result instead of repeatedly requesting the public geocoder.
     // Version the cache key so improved address formatting is immediately
     // applied instead of serving an older municipality-less label.
-    const cacheKey = `v4:${dto.latitude.toFixed(4)},${dto.longitude.toFixed(4)}`;
+    const cacheKey = `v5:${dto.latitude.toFixed(4)},${dto.longitude.toFixed(4)}`;
     const cached = this.reverseGeocodeCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return cached.value;
 
@@ -145,10 +145,11 @@ export class FaresService {
         address.county,
       ].find((value) => value?.trim());
       // Philippine OSM data may expose a barangay as either `barangay` or
-      // `village`. Present both consistently to passengers as a barangay.
-      const barangay = (address.barangay ?? address.village)?.trim();
-      const barangayLabel = barangay ? `Barangay ${barangay}` : undefined;
-      const province = address.province ?? address.state ?? 'Bohol';
+      // `village`. Keep only its proper name in the passenger-facing address.
+      const barangay = (address.barangay ?? address.village)
+          ?.trim()
+          .replace(/^Barangay\s+/i, '');
+      const province = 'Bohol';
       const primaryName =
         localName?.trim() ||
         result.display_name?.split(',')[0]?.trim() ||
@@ -157,32 +158,27 @@ export class FaresService {
           .split(',')
           .map((part) => part.trim())
           .filter(Boolean);
-      const normalizedProvince = province.trim().toLowerCase();
-      const isExcludedDisplayPart = (part: string) => {
-        const normalized = part.toLowerCase();
-        return normalized === primaryName.toLowerCase() ||
-          normalized === normalizedProvince ||
-          normalized === 'philippines' ||
-          normalized === 'central visayas' ||
-          !/\D/.test(part);
-      };
-      // Use the normal administrative fields first. Some Nominatim responses
-      // put a Philippine municipality only in display_name, so take the last
-      // useful local segment before Bohol as a fallback (e.g. Trinidad).
-      const municipality = [
+      const normalizedProvince = province.toLowerCase();
+      const boholIndex = displayParts.findIndex(
+        (part) => part.toLowerCase() === normalizedProvince,
+      );
+      // Use a structured municipality first. If it is missing, the segment
+      // immediately before Bohol in Nominatim's hierarchy is the municipality
+      // (for example: Kauswagan, Trinidad, Bohol).
+      const rawMunicipality = [
         address.municipality,
         address.town,
         address.city,
-        address.city_district,
-        address.county,
-      ].find((part) => part?.trim() && part.trim().toLowerCase() !== normalizedProvince) ??
-          [...displayParts].reverse().find((part) => !isExcludedDisplayPart(part));
-      const context = [
-        address.purok ?? address.road,
-        barangayLabel,
-        municipality,
-        province,
-      ]
+      ].find(
+        (part) =>
+          part?.trim() && part.trim().toLowerCase() !== normalizedProvince,
+      ) ?? (boholIndex > 0 ? displayParts[boholIndex - 1] : undefined);
+      const municipality = rawMunicipality
+          ?.trim()
+          .replace(/^(Municipality(?: of)?|City of)\s+/i, '');
+      // The modal contract is intentionally strict: Barangay, Municipality,
+      // Province. Never append roads, puroks, regions, postcodes, or country.
+      const context = [barangay, municipality, province]
           .reduce<string[]>((parts, part) => {
         const cleaned = part?.trim();
         if (cleaned && !parts.some((existing) => existing.toLowerCase() === cleaned.toLowerCase())) {

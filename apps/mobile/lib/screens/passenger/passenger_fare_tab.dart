@@ -341,10 +341,8 @@ class _PassengerFareTabState extends State<PassengerFareTab> {
         originLongitude: origin.longitude,
         destinationLatitude: selectedDestination.latitude,
         destinationLongitude: selectedDestination.longitude,
-        originLocationName: placeNames[0].name == 'Selected location'
-            ? 'Current location'
-            : placeNames[0].name,
-        destinationLocationName: placeNames[1].name,
+        originLocationName: placeNames[0].context,
+        destinationLocationName: placeNames[1].context,
         passengerCount: passengers,
       );
       if (!mounted) return;
