@@ -385,11 +385,31 @@ class TriSafeApi {
         if (finalDescription != null) 'finalDescription': finalDescription,
         if (category != null) 'category': category
       }));
+  Future<Map<String, dynamic>> updateIncidentDraft(String incidentId,
+          {required String description,
+          String? category,
+          String? evidenceData,
+          String? evidenceName,
+          bool removeEvidence = false}) async =>
+      Map<String, dynamic>.from(await _patch('/incidents/$incidentId/draft', {
+        'rawDescription': description,
+        if (category != null) 'category': category,
+        if (evidenceData != null) 'evidenceData': evidenceData,
+        if (evidenceName != null) 'evidenceName': evidenceName,
+        if (removeEvidence) 'removeEvidence': true,
+      }));
   Future<List<PassengerIncident>> incidentHistory() async =>
       (await _get('/incidents'))
           .map<PassengerIncident>((item) =>
               PassengerIncident.fromJson(item as Map<String, dynamic>))
           .toList();
+  Future<PassengerIncident?> incidentForRide(String rideId) async {
+    final item = await _get('/incidents/ride/${Uri.encodeComponent(rideId)}');
+    return item == null
+        ? null
+        : PassengerIncident.fromJson(item as Map<String, dynamic>);
+  }
+
   Future<void> createRating(
           {required String rideId,
           required int score,

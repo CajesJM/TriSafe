@@ -4,6 +4,32 @@ import '../theme/trisafe_theme.dart';
 
 enum PassengerToastType { success, error, info }
 
+OverlayEntry? _activePassengerToast;
+
+void showPassengerToast(
+  BuildContext context, {
+  required String message,
+  required PassengerToastType type,
+}) {
+  final overlay = Overlay.of(context, rootOverlay: true);
+  _activePassengerToast?.remove();
+  late final OverlayEntry entry;
+  entry = OverlayEntry(
+    builder: (_) => PassengerToast(
+      message: message,
+      type: type,
+      onDismiss: () {
+        if (entry.mounted) entry.remove();
+        if (identical(_activePassengerToast, entry)) {
+          _activePassengerToast = null;
+        }
+      },
+    ),
+  );
+  _activePassengerToast = entry;
+  overlay.insert(entry);
+}
+
 class PassengerToast extends StatefulWidget {
   final String message;
   final PassengerToastType type;

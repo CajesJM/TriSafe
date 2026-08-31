@@ -17,6 +17,7 @@ class PassengerIncident {
   final String category;
   final String status;
   final String rawDescription;
+  final String? aiDraft;
   final String? finalDescription;
   final String? reviewerNotes;
   final DateTime createdAt;
@@ -28,6 +29,7 @@ class PassengerIncident {
         category = json['category'] as String,
         status = json['status'] as String,
         rawDescription = json['rawDescription'] as String,
+        aiDraft = json['aiDraft'] as String?,
         finalDescription = json['finalDescription'] as String?,
         reviewerNotes = json['reviewerNotes'] as String?,
         createdAt = DateTime.parse(json['createdAt'].toString()),

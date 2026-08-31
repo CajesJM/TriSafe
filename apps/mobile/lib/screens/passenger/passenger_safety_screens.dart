@@ -2,17 +2,50 @@ import 'package:flutter/material.dart';
 import '../../models/passenger_safety_models.dart';
 import '../../services/trisafe_api.dart';
 import '../../theme/trisafe_theme.dart';
+import '../../widgets/incident_report_dialog.dart';
 import '../../widgets/passenger_page_header.dart';
 
-class PassengerReportHistoryScreen extends StatelessWidget {
+class PassengerReportHistoryScreen extends StatefulWidget {
   final TriSafeApi api;
   const PassengerReportHistoryScreen({super.key, required this.api});
+
+  @override
+  State<PassengerReportHistoryScreen> createState() =>
+      _PassengerReportHistoryScreenState();
+}
+
+class _PassengerReportHistoryScreenState
+    extends State<PassengerReportHistoryScreen> {
+  late Future<List<PassengerIncident>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.incidentHistory();
+  }
+
+  Future<void> _refresh() async {
+    final future = widget.api.incidentHistory();
+    setState(() => _future = future);
+    await future;
+  }
+
+  Future<void> _open(PassengerIncident report) async {
+    if (report.status == 'DRAFT') {
+      final changed =
+          await showIncidentDraftEditor(context, widget.api, report);
+      if (changed && mounted) await _refresh();
+      return;
+    }
+    if (mounted) _showReport(context, report);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: TriSafeColors.offWhite,
         appBar: AppBar(title: const Text('Report history')),
         body: FutureBuilder<List<PassengerIncident>>(
-          future: api.incidentHistory(),
+          future: _future,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -21,37 +54,63 @@ class PassengerReportHistoryScreen extends StatelessWidget {
               return const Center(child: Text('Reports could not be loaded.'));
             }
             final reports = snapshot.data ?? [];
-            return ListView(
-                padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
-                children: [
-                  const PassengerPageHeader(
-                      eyebrow: 'SAFETY REPORTS',
-                      title: 'Report history',
-                      description:
-                          'Track only the incident reports you submitted to the LGU.'),
-                  const SizedBox(height: 18),
-                  if (reports.isEmpty)
-                    const _Empty(
-                        icon: Icons.assignment_outlined,
-                        title: 'No submitted reports',
-                        message:
-                            'Your draft and submitted transport incident reports will appear here.')
-                  else
-                    ...reports.map((report) => Card(
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+                  children: [
+                    const PassengerPageHeader(
+                        eyebrow: 'SAFETY REPORTS',
+                        title: 'Report history',
+                        description:
+                            'Continue saved drafts and track reports submitted to the LGU.'),
+                    const SizedBox(height: 18),
+                    if (reports.isEmpty)
+                      const _Empty(
+                          icon: Icons.assignment_outlined,
+                          title: 'No incident reports',
+                          message:
+                              'Your saved drafts and submitted transport incident reports will appear here.')
+                    else
+                      ...reports.map((report) {
+                        final draft = report.status == 'DRAFT';
+                        return Card(
                           margin: const EdgeInsets.only(bottom: 10),
                           child: ListTile(
-                            onTap: () => _showReport(context, report),
+                            onTap: () => _open(report),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 7),
                             leading: _StatusIcon(status: report.status),
-                            title: Text(_label(report.category),
+                            title: Text(_reportTitle(report),
                                 style: const TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w900)),
-                            subtitle: Text(
-                                '${_label(report.status)} · ${_date(report.createdAt)}${report.evidenceName == null ? '' : ' · Evidence attached'}',
-                                style: const TextStyle(fontSize: 9)),
-                            trailing: const Icon(Icons.chevron_right_rounded),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                  '${draft ? 'Saved draft · Tap to continue editing' : '${_label(report.status)} · ${_date(report.createdAt)}'}${report.evidenceName == null ? '' : ' · Evidence attached'}',
+                                  style: TextStyle(
+                                      fontSize: 9.5,
+                                      height: 1.35,
+                                      color: draft
+                                          ? TriSafeColors.forest
+                                          : TriSafeColors.muted,
+                                      fontWeight: draft
+                                          ? FontWeight.w800
+                                          : FontWeight.w500)),
+                            ),
+                            trailing: Icon(
+                                draft
+                                    ? Icons.edit_note_rounded
+                                    : Icons.chevron_right_rounded,
+                                color: draft
+                                    ? TriSafeColors.forest
+                                    : TriSafeColors.muted),
                           ),
-                        )),
-                ]);
+                        );
+                      }),
+                  ]),
+            );
           },
         ),
       );
@@ -306,6 +365,14 @@ class _StatusIcon extends StatelessWidget {
           color: status == 'RESOLVED'
               ? TriSafeColors.forest
               : const Color(0xff8a5a00)));
+}
+
+String _reportTitle(PassengerIncident report) {
+  final match = RegExp(r'^Incident type:\s*([^\r\n]+)', caseSensitive: false)
+      .firstMatch(report.rawDescription.trim());
+  return match?.group(1)?.trim().isNotEmpty == true
+      ? match!.group(1)!.trim()
+      : _label(report.category);
 }
 
 String _label(String value) => value

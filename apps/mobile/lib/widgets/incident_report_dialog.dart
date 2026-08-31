@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../models/passenger_safety_models.dart';
 import '../services/trisafe_api.dart';
 import '../theme/trisafe_theme.dart';
+import 'passenger_toast.dart';
 
 const _categories = [
   _Category(
@@ -55,21 +57,44 @@ const _categories = [
 
 Future<void> showIncidentReport(BuildContext context, TriSafeApi api,
     {String? rideId}) async {
-  final input = await showModalBottomSheet<Map<String, dynamic>>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withValues(alpha: .58),
-    builder: (_) => _ReportSheet(isRideLinked: rideId != null),
-  );
+  if (rideId != null) {
+    PassengerIncident? existing;
+    try {
+      existing = await api.incidentForRide(rideId);
+    } catch (_) {
+      if (context.mounted) {
+        showPassengerToast(context,
+            message:
+                'Report history could not be checked. Please try again when you are connected.',
+            type: PassengerToastType.error);
+      }
+      return;
+    }
+    if (!context.mounted) return;
+    if (existing?.status == 'DRAFT') {
+      showPassengerToast(context,
+          message: 'Your saved draft for this ride is ready to continue.',
+          type: PassengerToastType.info);
+      await showIncidentDraftEditor(context, api, existing!);
+      return;
+    }
+    if (existing != null) {
+      showPassengerToast(context,
+          message:
+              'This ride already has ${_existingReportPhrase(existing.status)}. Track it in Report history.',
+          type: PassengerToastType.info);
+      return;
+    }
+  }
+
+  final input = await _showReportSheet(context, isRideLinked: rideId != null);
   if (input == null || !context.mounted) return;
 
   _showProgress(context, 'Preparing your report',
       'Organizing the details for your review…');
-  var progressOpen = true;
+  Map<String, dynamic> draft;
   try {
-    final draft = await api.draftIncident(
+    draft = await api.draftIncident(
       input['description'] as String,
       rideId: rideId,
       category: input['category'] as String,
@@ -78,49 +103,263 @@ Future<void> showIncidentReport(BuildContext context, TriSafeApi api,
     );
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
-    progressOpen = false;
+  } catch (_) {
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+    if (rideId != null) {
+      try {
+        final existing = await api.incidentForRide(rideId);
+        if (!context.mounted) return;
+        if (existing?.status == 'DRAFT') {
+          showPassengerToast(context,
+              message:
+                  'This ride already has a draft. Opening it so you can continue.',
+              type: PassengerToastType.info);
+          await showIncidentDraftEditor(context, api, existing!);
+          return;
+        }
+        if (existing != null) {
+          showPassengerToast(context,
+              message:
+                  'This ride already has ${_existingReportPhrase(existing.status)}. Track it in Report history.',
+              type: PassengerToastType.info);
+          return;
+        }
+      } catch (_) {
+        // Fall through to the standard save error when recovery cannot load.
+      }
+    }
+    if (!context.mounted) return;
+    showPassengerToast(context,
+        message: 'The report could not be saved. Please try again.',
+        type: PassengerToastType.error);
+    return;
+  }
 
-    final review = await showModalBottomSheet<_ReviewResult>(
+  if (!context.mounted) return;
+  await _continueDraftWorkflow(
+    context,
+    api,
+    incidentId: draft['id'] as String,
+    input: input,
+    draft: draft,
+    isRideLinked: rideId != null,
+  );
+}
+
+String _existingReportPhrase(String status) => switch (status) {
+      'SUBMITTED' => 'a submitted report',
+      'UNDER_REVIEW' => 'a report under LGU review',
+      'RESOLVED' => 'a resolved report',
+      'DISMISSED' => 'a closed report',
+      _ => 'an existing report',
+    };
+
+Future<bool> showIncidentDraftEditor(
+    BuildContext context, TriSafeApi api, PassengerIncident incident) async {
+  if (incident.status != 'DRAFT') return false;
+  final categoryTitle = _incidentTypeTitle(incident);
+  return _continueDraftWorkflow(
+    context,
+    api,
+    incidentId: incident.id,
+    input: {
+      'category': incident.category,
+      'categoryId': _categoryIdFor(incident.category, categoryTitle),
+      'categoryTitle': categoryTitle,
+      'description': incident.rawDescription,
+      'evidenceName': incident.evidenceName,
+      'evidenceChanged': false,
+    },
+    draft: {
+      'aiDraft': incident.aiDraft,
+      'missingInformation': const <String>[],
+    },
+    isRideLinked: incident.rideId != null,
+  );
+}
+
+Future<Map<String, dynamic>?> _showReportSheet(
+  BuildContext context, {
+  required bool isRideLinked,
+  Map<String, dynamic>? initial,
+}) =>
+    showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: .58),
-      builder: (_) => _ReviewSheet(
-        category: draft['category']?.toString() ?? input['category'] as String,
-        categoryTitle: input['categoryTitle'] as String,
-        description:
-            draft['aiDraft'] as String? ?? input['description'] as String,
-        missingInformation: ((draft['missingInformation'] as List?) ?? const [])
-            .map((item) => item.toString())
-            .where((item) => item.trim().isNotEmpty)
-            .toList(),
-        hasEvidence: input['evidenceData'] != null,
-        isRideLinked: rideId != null,
+      sheetAnimationStyle: const AnimationStyle(
+        duration: Duration(milliseconds: 220),
+        reverseDuration: Duration(milliseconds: 160),
+      ),
+      builder: (_) => _ReportSheet(
+        isRideLinked: isRideLinked,
+        initialCategoryId: initial?['categoryId'] as String?,
+        initialDescription: initial == null
+            ? null
+            : _statementOnly(initial['description'] as String,
+                initial['categoryTitle'] as String),
+        initialEvidenceName: initial?['evidenceName'] as String?,
       ),
     );
-    if (review == null || !context.mounted) return;
 
-    _showProgress(context, 'Submitting securely',
-        'Sending your report to the LGU review team…');
-    progressOpen = true;
-    await api.submitIncident(draft['id'] as String,
-        finalDescription: review.description, category: review.category);
-    if (!context.mounted) return;
+Future<bool> _continueDraftWorkflow(
+  BuildContext context,
+  TriSafeApi api, {
+  required String incidentId,
+  required Map<String, dynamic> input,
+  required Map<String, dynamic> draft,
+  required bool isRideLinked,
+}) async {
+  final category = draft['category']?.toString() ?? input['category'] as String;
+  final categoryTitle = input['categoryTitle'] as String;
+  final review = await _showReviewSheet(
+    context,
+    category: category,
+    categoryTitle: categoryTitle,
+    originalDescription:
+        _statementOnly(input['description'] as String, categoryTitle),
+    aiDescription: _statementOnly(
+        draft['aiDraft'] as String? ?? input['description'] as String,
+        categoryTitle),
+    missingInformation: ((draft['missingInformation'] as List?) ?? const [])
+        .map((item) => item.toString())
+        .where((item) => item.trim().isNotEmpty)
+        .toList(),
+    hasEvidence: input['evidenceName'] != null,
+    isRideLinked: isRideLinked,
+  );
+  if (!context.mounted) return false;
+  if (review == null) {
+    showPassengerToast(context,
+        message: 'Draft saved. Continue editing it from Report history.',
+        type: PassengerToastType.success);
+    return false;
+  }
+  if (review.action != _ReviewAction.back) {
+    return _finishDraftReview(context, api, incidentId, review);
+  }
+
+  final revisedInput = await _showReportSheet(
+    context,
+    isRideLinked: isRideLinked,
+    initial: {
+      ...input,
+      'description': review.description,
+    },
+  );
+  if (!context.mounted || revisedInput == null) {
+    if (context.mounted) {
+      showPassengerToast(context,
+          message: 'Draft saved. Continue editing it from Report history.',
+          type: PassengerToastType.success);
+    }
+    return false;
+  }
+
+  _showProgress(context, 'Updating your draft',
+      'Refreshing your report details for the final review…');
+  try {
+    final evidenceChanged = revisedInput['evidenceChanged'] == true;
+    final updated = await api.updateIncidentDraft(
+      incidentId,
+      description: revisedInput['description'] as String,
+      category: revisedInput['category'] as String,
+      evidenceData:
+          evidenceChanged ? revisedInput['evidenceData'] as String? : null,
+      evidenceName:
+          evidenceChanged ? revisedInput['evidenceName'] as String? : null,
+      removeEvidence: evidenceChanged && revisedInput['evidenceData'] == null,
+    );
+    if (!context.mounted) return false;
     Navigator.of(context, rootNavigator: true).pop();
-    progressOpen = false;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Report submitted. Track its status in Report history.'),
-      backgroundColor: TriSafeColors.forest,
-      behavior: SnackBarBehavior.floating,
-    ));
-  } catch (error) {
-    if (!context.mounted) return;
-    if (progressOpen) Navigator.of(context, rootNavigator: true).pop();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('The report could not be saved. Please try again.'),
-      behavior: SnackBarBehavior.floating,
-    ));
+    return _continueDraftWorkflow(
+      context,
+      api,
+      incidentId: incidentId,
+      input: revisedInput,
+      draft: updated,
+      isRideLinked: isRideLinked,
+    );
+  } catch (_) {
+    if (!context.mounted) return false;
+    Navigator.of(context, rootNavigator: true).pop();
+    showPassengerToast(context,
+        message: 'Your draft changes could not be saved. Please try again.',
+        type: PassengerToastType.error);
+    return false;
+  }
+}
+
+Future<_ReviewResult?> _showReviewSheet(
+  BuildContext context, {
+  required String category,
+  required String categoryTitle,
+  required String originalDescription,
+  required String aiDescription,
+  required List<String> missingInformation,
+  required bool hasEvidence,
+  required bool isRideLinked,
+}) =>
+    showModalBottomSheet<_ReviewResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: .58),
+      sheetAnimationStyle: const AnimationStyle(
+        duration: Duration(milliseconds: 220),
+        reverseDuration: Duration(milliseconds: 160),
+      ),
+      builder: (_) => _ReviewSheet(
+        category: category,
+        categoryTitle: categoryTitle,
+        originalDescription: originalDescription,
+        aiDescription: aiDescription,
+        missingInformation: missingInformation,
+        hasEvidence: hasEvidence,
+        isRideLinked: isRideLinked,
+      ),
+    );
+
+Future<bool> _finishDraftReview(BuildContext context, TriSafeApi api,
+    String incidentId, _ReviewResult review) async {
+  final submitting = review.action == _ReviewAction.submit;
+  _showProgress(
+      context,
+      submitting ? 'Submitting securely' : 'Saving your changes',
+      submitting
+          ? 'Sending your report to the LGU review team…'
+          : 'Updating your private incident draft…');
+  try {
+    if (submitting) {
+      await api.submitIncident(incidentId,
+          finalDescription: review.description, category: review.category);
+    } else {
+      await api.updateIncidentDraft(incidentId,
+          description: review.description, category: review.category);
+    }
+    if (!context.mounted) return false;
+    Navigator.of(context, rootNavigator: true).pop();
+    showPassengerToast(context,
+        message: submitting
+            ? 'Report submitted. Track its status in Report history.'
+            : 'Draft updated. You can continue editing it anytime.',
+        type: PassengerToastType.success);
+    return true;
+  } catch (_) {
+    if (!context.mounted) return false;
+    Navigator.of(context, rootNavigator: true).pop();
+    showPassengerToast(context,
+        message: submitting
+            ? 'The report could not be submitted. Please try again.'
+            : 'The draft could not be updated. Please try again.',
+        type: PassengerToastType.error);
+    return false;
   }
 }
 
@@ -169,7 +408,15 @@ void _showProgress(BuildContext context, String title, String message) {
 
 class _ReportSheet extends StatefulWidget {
   final bool isRideLinked;
-  const _ReportSheet({required this.isRideLinked});
+  final String? initialCategoryId;
+  final String? initialDescription;
+  final String? initialEvidenceName;
+  const _ReportSheet({
+    required this.isRideLinked,
+    this.initialCategoryId,
+    this.initialDescription,
+    this.initialEvidenceName,
+  });
 
   @override
   State<_ReportSheet> createState() => _ReportSheetState();
@@ -177,11 +424,21 @@ class _ReportSheet extends StatefulWidget {
 
 class _ReportSheetState extends State<_ReportSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _description = TextEditingController();
+  late final TextEditingController _description;
   final _descriptionFocus = FocusNode();
-  String _categoryId = 'OVERCHARGING';
+  late String _categoryId;
   XFile? _evidence;
+  String? _existingEvidenceName;
+  bool _evidenceChanged = false;
   bool _preparing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _description = TextEditingController(text: widget.initialDescription);
+    _categoryId = widget.initialCategoryId ?? 'OVERCHARGING';
+    _existingEvidenceName = widget.initialEvidenceName;
+  }
 
   @override
   void dispose() {
@@ -191,11 +448,17 @@ class _ReportSheetState extends State<_ReportSheet> {
   }
 
   Future<void> _chooseEvidenceSource() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       useSafeArea: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: .46),
+      sheetAnimationStyle: const AnimationStyle(
+        duration: Duration(milliseconds: 180),
+        reverseDuration: Duration(milliseconds: 140),
+      ),
       builder: (sheetContext) => _PhotoSourceSheet(
         onCamera: () => Navigator.pop(sheetContext, ImageSource.camera),
         onGallery: () => Navigator.pop(sheetContext, ImageSource.gallery),
@@ -216,7 +479,11 @@ class _ReportSheetState extends State<_ReportSheet> {
             behavior: SnackBarBehavior.floating));
         return;
       }
-      setState(() => _evidence = file);
+      setState(() {
+        _evidence = file;
+        _existingEvidenceName = null;
+        _evidenceChanged = true;
+      });
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -246,9 +513,11 @@ class _ReportSheetState extends State<_ReportSheet> {
       'description':
           'Incident type: ${selected.title}\n\n${_description.text.trim()}',
       'category': selected.backendValue,
+      'categoryId': selected.id,
       'categoryTitle': selected.title,
       'evidenceData': data,
-      'evidenceName': _evidence?.name,
+      'evidenceName': _evidence?.name ?? _existingEvidenceName,
+      'evidenceChanged': _evidenceChanged,
     });
   }
 
@@ -319,9 +588,13 @@ class _ReportSheetState extends State<_ReportSheet> {
                     'Optional · one JPG or PNG · up to 2 MB'),
                 const SizedBox(height: 12),
                 _EvidenceCard(
-                  file: _evidence,
+                  fileName: _evidence?.name ?? _existingEvidenceName,
                   onAdd: _chooseEvidenceSource,
-                  onRemove: () => setState(() => _evidence = null),
+                  onRemove: () => setState(() {
+                    _evidence = null;
+                    _existingEvidenceName = null;
+                    _evidenceChanged = true;
+                  }),
                 ),
                 const SizedBox(height: 14),
                 const _InfoNote(
@@ -347,14 +620,16 @@ class _ReportSheetState extends State<_ReportSheet> {
 class _ReviewSheet extends StatefulWidget {
   final String category;
   final String categoryTitle;
-  final String description;
+  final String originalDescription;
+  final String aiDescription;
   final List<String> missingInformation;
   final bool hasEvidence;
   final bool isRideLinked;
   const _ReviewSheet({
     required this.category,
     required this.categoryTitle,
-    required this.description,
+    required this.originalDescription,
+    required this.aiDescription,
     required this.missingInformation,
     required this.hasEvidence,
     required this.isRideLinked,
@@ -367,11 +642,12 @@ class _ReviewSheet extends StatefulWidget {
 class _ReviewSheetState extends State<_ReviewSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _description;
+  bool _aiApplied = false;
 
   @override
   void initState() {
     super.initState();
-    _description = TextEditingController(text: widget.description);
+    _description = TextEditingController(text: widget.originalDescription);
   }
 
   @override
@@ -380,12 +656,44 @@ class _ReviewSheetState extends State<_ReviewSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  void _applyAi() {
+    setState(() {
+      _description.text = widget.aiDescription;
+      _description.selection =
+          TextSelection.collapsed(offset: _description.text.length);
+      _aiApplied = true;
+    });
+  }
+
+  void _restoreOriginal() {
+    setState(() {
+      _description.text = widget.originalDescription;
+      _description.selection =
+          TextSelection.collapsed(offset: _description.text.length);
+      _aiApplied = false;
+    });
+  }
+
+  void _finish(_ReviewAction action) {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     Navigator.pop(
         context,
         _ReviewResult(
-            category: widget.category, description: _description.text.trim()));
+            category: widget.category,
+            description:
+                _composeStatement(widget.categoryTitle, _description.text),
+            action: action));
+  }
+
+  void _backToDetails() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.pop(
+        context,
+        _ReviewResult(
+            category: widget.category,
+            description:
+                _composeStatement(widget.categoryTitle, _description.text),
+            action: _ReviewAction.back));
   }
 
   @override
@@ -397,6 +705,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
           subtitle:
               'Make sure every detail is correct before sending it to the LGU.',
           step: 'STEP 2 OF 2',
+          onBack: _backToDetails,
           onClose: () => Navigator.pop(context),
         ),
         body: Form(
@@ -427,6 +736,12 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                           ? '1 photo attached'
                           : 'No photo attached'),
                 ]),
+              ),
+              const SizedBox(height: 22),
+              _AiAssistanceCard(
+                applied: _aiApplied,
+                onApply: _applyAi,
+                onRestore: _restoreOriginal,
               ),
               const SizedBox(height: 22),
               const _SectionTitle('01', 'Your statement',
@@ -462,11 +777,11 @@ class _ReviewSheetState extends State<_ReviewSheet> {
           ),
         ),
         footer: _Footer(
-          primaryLabel: 'Submit to LGU',
+          primaryLabel: 'Submit Report',
           primaryIcon: Icons.send_rounded,
-          onPrimary: _submit,
-          secondaryLabel: 'Keep draft',
-          onSecondary: () => Navigator.pop(context),
+          onPrimary: () => _finish(_ReviewAction.submit),
+          secondaryLabel: 'Save draft',
+          onSecondary: () => _finish(_ReviewAction.save),
         ),
       );
 }
@@ -483,21 +798,28 @@ class _SheetFrame extends StatelessWidget {
       required this.footer});
 
   @override
-  Widget build(BuildContext context) => AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: FractionallySizedBox(
-          heightFactor: heightFactor,
-          child: Material(
-            color: const Color(0xfff7f8f5),
-            clipBehavior: Clip.antiAlias,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            child: Column(children: [header, Expanded(child: body), footer]),
-          ),
+  Widget build(BuildContext context) => FractionallySizedBox(
+        heightFactor: heightFactor,
+        child: Material(
+          color: const Color(0xfff7f8f5),
+          clipBehavior: Clip.antiAlias,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          child: Column(children: [
+            RepaintBoundary(child: header),
+            Expanded(child: body),
+            RepaintBoundary(child: footer),
+            const _KeyboardInset(),
+          ]),
         ),
       );
+}
+
+class _KeyboardInset extends StatelessWidget {
+  const _KeyboardInset();
+
+  @override
+  Widget build(BuildContext context) =>
+      SizedBox(height: MediaQuery.viewInsetsOf(context).bottom);
 }
 
 class _Header extends StatelessWidget {
@@ -505,12 +827,14 @@ class _Header extends StatelessWidget {
   final String title;
   final String subtitle;
   final String step;
+  final VoidCallback? onBack;
   final VoidCallback onClose;
   const _Header(
       {required this.eyebrow,
       required this.title,
       required this.subtitle,
       required this.step,
+      this.onBack,
       required this.onClose});
 
   @override
@@ -532,22 +856,39 @@ class _Header extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99))),
           const SizedBox(height: 12),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: TriSafeColors.danger,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                      color: TriSafeColors.danger.withValues(alpha: .18),
-                      blurRadius: 18,
-                      offset: const Offset(0, 7))
-                ],
+            if (onBack != null)
+              Semantics(
+                button: true,
+                label: 'Back to report details',
+                child: IconButton.filledTonal(
+                  onPressed: onBack,
+                  tooltip: 'Back to report details',
+                  icon: const Icon(Icons.arrow_back_rounded, size: 23),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size.square(48),
+                    backgroundColor: Colors.white,
+                    foregroundColor: TriSafeColors.deepGreen,
+                    side: const BorderSide(color: TriSafeColors.line),
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: TriSafeColors.danger,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                        color: TriSafeColors.danger.withValues(alpha: .18),
+                        blurRadius: 18,
+                        offset: const Offset(0, 7))
+                  ],
+                ),
+                child: const Icon(Icons.shield_outlined,
+                    color: Colors.white, size: 25),
               ),
-              child: const Icon(Icons.shield_outlined,
-                  color: Colors.white, size: 25),
-            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -698,8 +1039,7 @@ class _CategoryTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(17),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
+            child: Container(
               constraints: const BoxConstraints(minHeight: 82),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -752,18 +1092,18 @@ class _CategoryTile extends StatelessWidget {
 }
 
 class _EvidenceCard extends StatelessWidget {
-  final XFile? file;
+  final String? fileName;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
   const _EvidenceCard(
-      {required this.file, required this.onAdd, required this.onRemove});
+      {required this.fileName, required this.onAdd, required this.onRemove});
 
   @override
   Widget build(BuildContext context) => Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          onTap: file == null ? onAdd : null,
+          onTap: fileName == null ? onAdd : null,
           borderRadius: BorderRadius.circular(18),
           child: Container(
             constraints: const BoxConstraints(minHeight: 78),
@@ -777,7 +1117,7 @@ class _EvidenceCard extends StatelessWidget {
                     color: const Color(0xffeef4ec),
                     borderRadius: BorderRadius.circular(14)),
                 child: Icon(
-                    file == null
+                    fileName == null
                         ? Icons.add_photo_alternate_outlined
                         : Icons.image_outlined,
                     color: TriSafeColors.forest,
@@ -788,23 +1128,23 @@ class _EvidenceCard extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(file == null ? 'Add a photo' : 'Photo attached',
+                      Text(fileName == null ? 'Add a photo' : 'Photo attached',
                           style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w900,
                               color: TriSafeColors.black)),
                       const SizedBox(height: 3),
                       Text(
-                          file == null
+                          fileName == null
                               ? 'Take a photo or choose from your gallery'
-                              : file!.name,
+                              : fileName!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                               fontSize: 11, color: TriSafeColors.muted)),
                     ]),
               ),
-              if (file == null)
+              if (fileName == null)
                 const Icon(Icons.chevron_right_rounded,
                     color: TriSafeColors.muted)
               else
@@ -936,7 +1276,7 @@ class _PhotoSourceAction extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 116),
+            height: 116,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
@@ -974,6 +1314,121 @@ class _PhotoSourceAction extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      );
+}
+
+class _AiAssistanceCard extends StatelessWidget {
+  final bool applied;
+  final VoidCallback onApply;
+  final VoidCallback onRestore;
+
+  const _AiAssistanceCard({
+    required this.applied,
+    required this.onApply,
+    required this.onRestore,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xffedf8eb), Color(0xfff8fbf5)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xffcfe5c8)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: TriSafeColors.deepGreen,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.auto_awesome_rounded,
+                      color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AI writing assistance',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: TriSafeColors.black)),
+                      SizedBox(height: 3),
+                      Text(
+                        'Improve clarity, grammar, and completeness while keeping your report factual.',
+                        style: TextStyle(
+                            fontSize: 11,
+                            height: 1.4,
+                            color: TriSafeColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: applied
+                  ? OutlinedButton.icon(
+                      onPressed: onRestore,
+                      icon: const Icon(Icons.undo_rounded, size: 18),
+                      label: const Text('Restore my original'),
+                    )
+                  : FilledButton.icon(
+                      onPressed: onApply,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: TriSafeColors.deepGreen,
+                        side: const BorderSide(color: Color(0xffb8d8af)),
+                      ),
+                      icon: const Icon(Icons.auto_fix_high_rounded, size: 18),
+                      label: const Text('Enhance with AI'),
+                    ),
+            ),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Icon(
+                  applied
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.info_outline_rounded,
+                  size: 16,
+                  color: applied ? TriSafeColors.forest : TriSafeColors.muted,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    applied
+                        ? 'AI enhancement applied. Review and edit the result before submitting.'
+                        : 'Optional. Your original statement stays unchanged until you choose this.',
+                    style: TextStyle(
+                      fontSize: 10,
+                      height: 1.35,
+                      color: applied
+                          ? TriSafeColors.deepGreen
+                          : TriSafeColors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       );
 }
@@ -1150,5 +1605,49 @@ class _Category {
 class _ReviewResult {
   final String category;
   final String description;
-  const _ReviewResult({required this.category, required this.description});
+  final _ReviewAction action;
+  const _ReviewResult(
+      {required this.category,
+      required this.description,
+      required this.action});
 }
+
+enum _ReviewAction { back, save, submit }
+
+String _categoryIdFor(String backendValue, String categoryTitle) {
+  for (final item in _categories) {
+    if (item.backendValue == backendValue && item.title == categoryTitle) {
+      return item.id;
+    }
+  }
+  return _categories
+      .firstWhere((item) => item.backendValue == backendValue,
+          orElse: () => _categories.last)
+      .id;
+}
+
+String _incidentTypeTitle(PassengerIncident incident) {
+  final match = RegExp(r'^Incident type:\s*([^\r\n]+)', caseSensitive: false)
+      .firstMatch(incident.rawDescription.trim());
+  if (match != null && match.group(1)?.trim().isNotEmpty == true) {
+    return match.group(1)!.trim();
+  }
+  for (final item in _categories) {
+    if (item.backendValue == incident.category) return item.title;
+  }
+  return incident.category;
+}
+
+String _statementOnly(String value, String categoryTitle) {
+  var clean = value.trim();
+  clean = clean.replaceFirst(
+      RegExp(r'^Incident summary:\s*', caseSensitive: false), '');
+  clean = clean.replaceFirst(
+      RegExp('^Incident type:\\s*${RegExp.escape(categoryTitle)}[.:]?\\s*',
+          caseSensitive: false),
+      '');
+  return clean.trim();
+}
+
+String _composeStatement(String categoryTitle, String statement) =>
+    'Incident type: $categoryTitle\n\n${statement.trim()}';
