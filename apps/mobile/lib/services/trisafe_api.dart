@@ -140,11 +140,15 @@ class TriSafeApi {
   Future<PassengerProfile> accountProfile() async =>
       PassengerProfile.fromJson(await _get('/auth/me'));
   Future<PassengerProfile> updatePassengerProfile(
-          {String? phone,
+          {String? fullName,
+          String? username,
+          String? phone,
           String? email,
           String? avatarData,
           bool updateAvatar = false}) async =>
       PassengerProfile.fromJson(await _patch('/auth/me/profile', {
+        if (fullName != null) 'fullName': fullName,
+        if (username != null) 'username': username,
         if (phone != null) 'phone': phone,
         if (email != null) 'email': email,
         if (updateAvatar) 'avatarData': avatarData

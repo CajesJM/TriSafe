@@ -5,10 +5,11 @@ import '../../services/trisafe_api.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/passenger_page_header.dart';
 import '../../widgets/passenger_rating_dialog.dart';
+import '../../widgets/incident_report_dialog.dart';
 
 enum RideHistoryPeriod { day, week, month }
 
-enum RideStatusFilter { all, completed, active }
+enum RideVehicleFilter { all, tricycle, habalHabal }
 
 class PassengerRidesTab extends StatefulWidget {
   final TriSafeApi api;
@@ -25,7 +26,7 @@ class PassengerRidesTab extends StatefulWidget {
 
 class _PassengerRidesTabState extends State<PassengerRidesTab> {
   RideHistoryPeriod period = RideHistoryPeriod.week;
-  RideStatusFilter statusFilter = RideStatusFilter.all;
+  RideVehicleFilter vehicleFilter = RideVehicleFilter.all;
   bool newestFirst = true;
   DateTime anchorDate = DateTime.now();
   List<Ride> rides = [];
@@ -63,28 +64,79 @@ class _PassengerRidesTabState extends State<PassengerRidesTab> {
     }
   }
 
-  Future<bool> _chooseDate() async {
-    final selected = await showDatePicker(
-        context: context,
-        initialDate: anchorDate,
-        firstDate: DateTime(2020),
-        lastDate: DateTime.now(),
-        helpText: period == RideHistoryPeriod.day
-            ? 'SELECT RIDE DATE'
-            : 'SELECT A DATE WITHIN THE PERIOD');
-    if (selected == null || !mounted) return false;
-    setState(() => anchorDate = selected);
+  Future<void> _openPeriodPicker() async {
+    final selection = await showModalBottomSheet<
+        ({RideHistoryPeriod period, DateTime anchor})>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          _PeriodPickerSheet(period: period, anchorDate: anchorDate),
+    );
+    if (selection == null || !mounted) return;
+    setState(() {
+      period = selection.period;
+      anchorDate = selection.anchor;
+    });
     await _loadHistory();
-    return true;
   }
 
-  Future<void> _selectPeriod(RideHistoryPeriod value) async {
-    final previousPeriod = period;
-    setState(() => period = value);
-    final dateSelected = await _chooseDate();
-    if (!dateSelected && mounted && previousPeriod != value) {
-      setState(() => period = previousPeriod);
-    }
+  Future<void> _openVehiclePicker() async {
+    final selected = await showModalBottomSheet<RideVehicleFilter>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SelectionSheet<RideVehicleFilter>(
+        eyebrow: 'RIDE HISTORY',
+        title: 'Filter by vehicle',
+        description: 'Show only the transport type you used.',
+        actionLabel: 'Apply vehicle filter',
+        selected: vehicleFilter,
+        options: const [
+          _PickerOption(
+              value: RideVehicleFilter.all,
+              label: 'All rides',
+              detail: 'Show every ride in this period',
+              icon: Icons.list_alt_rounded),
+          _PickerOption(
+              value: RideVehicleFilter.tricycle,
+              label: 'Tricycle',
+              detail: 'Show your tricycle rides',
+              icon: Icons.electric_rickshaw_rounded),
+          _PickerOption(
+              value: RideVehicleFilter.habalHabal,
+              label: 'Habal-habal',
+              detail: 'Show your motorcycle rides',
+              icon: Icons.two_wheeler_rounded),
+        ],
+      ),
+    );
+    if (selected != null && mounted) setState(() => vehicleFilter = selected);
+  }
+
+  Future<void> _openSortPicker() async {
+    final selected = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SelectionSheet<bool>(
+        eyebrow: 'RIDE HISTORY',
+        title: 'Sort your rides',
+        description: 'Choose the order that is easiest for you to review.',
+        actionLabel: 'Apply sort order',
+        selected: newestFirst,
+        options: const [
+          _PickerOption(
+              value: true,
+              label: 'Newest first',
+              detail: 'Show your most recent ride at the top',
+              icon: Icons.south_rounded),
+          _PickerOption(
+              value: false,
+              label: 'Oldest first',
+              detail: 'Show your earliest ride at the top',
+              icon: Icons.north_rounded),
+        ],
+      ),
+    );
+    if (selected != null && mounted) setState(() => newestFirst = selected);
   }
 
   Future<void> _openDetails(Ride ride) async {
@@ -100,10 +152,10 @@ class _PassengerRidesTabState extends State<PassengerRidesTab> {
   @override
   Widget build(BuildContext context) {
     final shownRides = rides
-        .where((ride) => switch (statusFilter) {
-              RideStatusFilter.all => true,
-              RideStatusFilter.completed => ride.status == 'COMPLETED',
-              RideStatusFilter.active => ride.status == 'ACTIVE',
+        .where((ride) => switch (vehicleFilter) {
+              RideVehicleFilter.all => true,
+              RideVehicleFilter.tricycle => ride.vehicleType == 'TRICYCLE',
+              RideVehicleFilter.habalHabal => ride.vehicleType == 'HABAL_HABAL',
             })
         .toList()
       ..sort((a, b) => newestFirst
@@ -144,13 +196,11 @@ class _PassengerRidesTabState extends State<PassengerRidesTab> {
               _HistoryFilters(
                   period: period,
                   periodLabel: _rangeLabel(period, range),
-                  statusFilter: statusFilter,
+                  vehicleFilter: vehicleFilter,
                   newestFirst: newestFirst,
-                  onPeriodSelected: _selectPeriod,
-                  onStatusSelected: (value) =>
-                      setState(() => statusFilter = value),
-                  onSortSelected: (value) =>
-                      setState(() => newestFirst = value)),
+                  onChoosePeriod: _openPeriodPicker,
+                  onChooseVehicle: _openVehiclePicker,
+                  onChooseSort: _openSortPicker),
               const SizedBox(height: 14),
               _JourneySummary(
                   completed: completed,
@@ -186,83 +236,385 @@ class _PassengerRidesTabState extends State<PassengerRidesTab> {
 class _HistoryFilters extends StatelessWidget {
   final RideHistoryPeriod period;
   final String periodLabel;
-  final RideStatusFilter statusFilter;
+  final RideVehicleFilter vehicleFilter;
   final bool newestFirst;
-  final ValueChanged<RideHistoryPeriod> onPeriodSelected;
-  final ValueChanged<RideStatusFilter> onStatusSelected;
-  final ValueChanged<bool> onSortSelected;
+  final VoidCallback onChoosePeriod;
+  final VoidCallback onChooseVehicle;
+  final VoidCallback onChooseSort;
   const _HistoryFilters(
       {required this.period,
       required this.periodLabel,
-      required this.statusFilter,
+      required this.vehicleFilter,
       required this.newestFirst,
-      required this.onPeriodSelected,
-      required this.onStatusSelected,
-      required this.onSortSelected});
+      required this.onChoosePeriod,
+      required this.onChooseVehicle,
+      required this.onChooseSort});
   @override
   Widget build(BuildContext context) => Row(children: [
         Expanded(
           flex: 14,
-          child: PopupMenuButton<RideHistoryPeriod>(
-            tooltip: 'Choose date period',
-            onSelected: onPeriodSelected,
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                  value: RideHistoryPeriod.day, child: Text('Choose a day')),
-              PopupMenuItem(
-                  value: RideHistoryPeriod.week, child: Text('Choose a week')),
-              PopupMenuItem(
-                  value: RideHistoryPeriod.month,
-                  child: Text('Choose a month')),
-            ],
-            child: _FilterControl(
-              icon: Icons.calendar_today_outlined,
-              label: periodLabel,
-              semanticLabel: 'Date range: $periodLabel',
+          child: Tooltip(
+            message: 'Choose date period',
+            child: InkWell(
+              onTap: onChoosePeriod,
+              borderRadius: BorderRadius.circular(10),
+              child: _FilterControl(
+                icon: Icons.calendar_today_outlined,
+                label: periodLabel,
+                semanticLabel: 'Date range: $periodLabel',
+              ),
             ),
           ),
         ),
         const SizedBox(width: 7),
         Expanded(
           flex: 11,
-          child: PopupMenuButton<RideStatusFilter>(
-            tooltip: 'Filter ride status',
-            onSelected: onStatusSelected,
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                  value: RideStatusFilter.all, child: Text('All rides')),
-              PopupMenuItem(
-                  value: RideStatusFilter.completed,
-                  child: Text('Completed rides')),
-              PopupMenuItem(
-                  value: RideStatusFilter.active, child: Text('Active rides')),
-            ],
-            child: _FilterControl(
-              icon: Icons.filter_alt_outlined,
-              label: _statusLabel(statusFilter),
-              semanticLabel: 'Ride status: ${_statusLabel(statusFilter)}',
+          child: Tooltip(
+            message: 'Filter vehicle type',
+            child: InkWell(
+              onTap: onChooseVehicle,
+              borderRadius: BorderRadius.circular(10),
+              child: _FilterControl(
+                icon: Icons.directions_transit_outlined,
+                label: _vehicleFilterLabel(vehicleFilter),
+                semanticLabel:
+                    'Vehicle filter: ${_vehicleFilterLabel(vehicleFilter)}',
+              ),
             ),
           ),
         ),
         const SizedBox(width: 7),
         Expanded(
           flex: 11,
-          child: PopupMenuButton<bool>(
-            tooltip: 'Change record order',
-            onSelected: onSortSelected,
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: true, child: Text('Newest first')),
-              PopupMenuItem(value: false, child: Text('Oldest first')),
-            ],
-            child: _FilterControl(
-              icon: Icons.swap_vert_rounded,
-              label: newestFirst ? 'Newest first' : 'Oldest first',
-              semanticLabel:
-                  'Sort: ${newestFirst ? 'newest first' : 'oldest first'}',
+          child: Tooltip(
+            message: 'Change record order',
+            child: InkWell(
+              onTap: onChooseSort,
+              borderRadius: BorderRadius.circular(10),
+              child: _FilterControl(
+                icon: Icons.swap_vert_rounded,
+                label: newestFirst ? 'Newest first' : 'Oldest first',
+                semanticLabel:
+                    'Sort: ${newestFirst ? 'newest first' : 'oldest first'}',
+              ),
             ),
           ),
         ),
       ]);
+}
+
+class _PeriodPickerSheet extends StatefulWidget {
+  final RideHistoryPeriod period;
+  final DateTime anchorDate;
+  const _PeriodPickerSheet({required this.period, required this.anchorDate});
+  @override
+  State<_PeriodPickerSheet> createState() => _PeriodPickerSheetState();
+}
+
+class _PeriodPickerSheetState extends State<_PeriodPickerSheet> {
+  late RideHistoryPeriod period = widget.period;
+  late DateTime anchorDate = widget.anchorDate;
+
+  void _move(int direction) {
+    final candidate = _shiftPeriod(period, anchorDate, direction);
+    if (candidate.isAfter(DateTime.now())) return;
+    setState(() => anchorDate = candidate);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final range = _selectedRange(period, anchorDate);
+    final canMoveNext = _shiftPeriod(period, anchorDate, 1)
+        .isBefore(DateTime.now().add(const Duration(days: 1)));
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        decoration: const BoxDecoration(
+          color: Color(0xfffbfcf8),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: TriSafeColors.line,
+                  borderRadius: BorderRadius.circular(99))),
+          const SizedBox(height: 18),
+          Row(children: [
+            const Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('VIEW RIDE HISTORY',
+                      style: TextStyle(
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          color: TriSafeColors.forest,
+                          fontWeight: FontWeight.w900)),
+                  SizedBox(height: 3),
+                  Text('Choose a time period',
+                      style:
+                          TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                ])),
+            IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Close period picker',
+                icon: const Icon(Icons.close_rounded)),
+          ]),
+          const SizedBox(height: 16),
+          SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<RideHistoryPeriod>(
+                segments: const [
+                  ButtonSegment(
+                      value: RideHistoryPeriod.day,
+                      icon: Icon(Icons.today_outlined),
+                      label: Text('Day')),
+                  ButtonSegment(
+                      value: RideHistoryPeriod.week,
+                      icon: Icon(Icons.view_week_outlined),
+                      label: Text('Week')),
+                  ButtonSegment(
+                      value: RideHistoryPeriod.month,
+                      icon: Icon(Icons.calendar_month_outlined),
+                      label: Text('Month')),
+                ],
+                selected: {period},
+                showSelectedIcon: false,
+                onSelectionChanged: (values) =>
+                    setState(() => period = values.first),
+              )),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            decoration: BoxDecoration(
+                color: TriSafeColors.softGreen,
+                borderRadius: BorderRadius.circular(16)),
+            child: Row(children: [
+              IconButton(
+                  onPressed: () => _move(-1),
+                  tooltip: 'Previous ${period.name}',
+                  icon: const Icon(Icons.chevron_left_rounded)),
+              Expanded(
+                  child: Column(children: [
+                Text(_periodPickerLabel(period),
+                    style: const TextStyle(
+                        fontSize: 8,
+                        color: TriSafeColors.forest,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .9)),
+                const SizedBox(height: 3),
+                Text(_rangeLabel(period, range),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w900)),
+              ])),
+              IconButton(
+                  onPressed: canMoveNext ? () => _move(1) : null,
+                  tooltip: 'Next ${period.name}',
+                  icon: const Icon(Icons.chevron_right_rounded)),
+            ]),
+          ),
+          const SizedBox(height: 11),
+          Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                  onPressed: () => setState(() => anchorDate = DateTime.now()),
+                  icon: const Icon(Icons.today_rounded, size: 17),
+                  label: Text(
+                      'Current ${_periodPickerLabel(period).toLowerCase()}'))),
+          const SizedBox(height: 4),
+          SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: FilledButton.icon(
+                  onPressed: () => Navigator.of(context)
+                      .pop((period: period, anchor: anchorDate)),
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Show ride history'))),
+        ]),
+      ),
+    );
+  }
+}
+
+class _PickerOption<T> {
+  final T value;
+  final String label;
+  final String detail;
+  final IconData icon;
+  const _PickerOption(
+      {required this.value,
+      required this.label,
+      required this.detail,
+      required this.icon});
+}
+
+class _SelectionSheet<T> extends StatefulWidget {
+  final String eyebrow;
+  final String title;
+  final String description;
+  final String actionLabel;
+  final T selected;
+  final List<_PickerOption<T>> options;
+  const _SelectionSheet(
+      {required this.eyebrow,
+      required this.title,
+      required this.description,
+      required this.actionLabel,
+      required this.selected,
+      required this.options});
+  @override
+  State<_SelectionSheet<T>> createState() => _SelectionSheetState<T>();
+}
+
+class _SelectionSheetState<T> extends State<_SelectionSheet<T>> {
+  late T selected = widget.selected;
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+          decoration: const BoxDecoration(
+              color: Color(0xfffbfcf8),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: TriSafeColors.line,
+                    borderRadius: BorderRadius.circular(99))),
+            const SizedBox(height: 18),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                      color: TriSafeColors.softGreen,
+                      borderRadius: BorderRadius.circular(14)),
+                  child: const Icon(Icons.tune_rounded,
+                      color: TriSafeColors.forest)),
+              const SizedBox(width: 11),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(widget.eyebrow,
+                        style: const TextStyle(
+                            fontSize: 9,
+                            letterSpacing: 1,
+                            color: TriSafeColors.forest,
+                            fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 2),
+                    Text(widget.title,
+                        style: const TextStyle(
+                            fontSize: 19, fontWeight: FontWeight.w900)),
+                  ])),
+              IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Close selection',
+                  icon: const Icon(Icons.close_rounded)),
+            ]),
+            const SizedBox(height: 10),
+            Align(
+                alignment: Alignment.centerLeft,
+                child: Text(widget.description,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        height: 1.35,
+                        color: TriSafeColors.muted))),
+            const SizedBox(height: 16),
+            ...widget.options.map((option) => Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: _SelectionOptionTile<T>(
+                      option: option,
+                      selected: selected == option.value,
+                      onTap: () => setState(() => selected = option.value)),
+                )),
+            const SizedBox(height: 5),
+            SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context).pop(selected),
+                    icon: const Icon(Icons.check_rounded),
+                    label: Text(widget.actionLabel))),
+          ]),
+        ),
+      );
+}
+
+class _SelectionOptionTile<T> extends StatelessWidget {
+  final _PickerOption<T> option;
+  final bool selected;
+  final VoidCallback onTap;
+  const _SelectionOptionTile(
+      {required this.option, required this.selected, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: '${option.label}. ${option.detail}',
+        child: Material(
+          color: selected ? const Color(0xffeef8ea) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 68),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+              decoration: BoxDecoration(
+                  border: Border.all(
+                      color: selected
+                          ? const Color(0xff9fce92)
+                          : TriSafeColors.line),
+                  borderRadius: BorderRadius.circular(16)),
+              child: Row(children: [
+                Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                        color: selected
+                            ? TriSafeColors.forest
+                            : TriSafeColors.softGreen,
+                        borderRadius: BorderRadius.circular(12)),
+                    child: Icon(option.icon,
+                        size: 19,
+                        color: selected ? Colors.white : TriSafeColors.forest)),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(option.label,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 2),
+                      Text(option.detail,
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: TriSafeColors.muted,
+                              height: 1.25)),
+                    ])),
+                const SizedBox(width: 8),
+                Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected
+                        ? TriSafeColors.forest
+                        : const Color(0xffaeb9aa),
+                    size: 21),
+              ]),
+            ),
+          ),
+        ),
+      );
 }
 
 class _FilterControl extends StatelessWidget {
@@ -808,6 +1160,26 @@ class _RideDetailsSheet extends StatelessWidget {
                                   label: 'Ended',
                                   value: _fullDateTime(ride.endedAt))
                           ]),
+                          if (completed) ...[
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: OutlinedButton.icon(
+                                onPressed: () => showIncidentReport(
+                                    context, api,
+                                    rideId: ride.id),
+                                icon: const Icon(Icons.report_problem_outlined),
+                                label: const Text(
+                                    'Report an issue with this ride'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xffa92d34),
+                                  side: const BorderSide(
+                                      color: Color(0xffe4b5b8)),
+                                ),
+                              ),
+                            ),
+                          ],
                           if (completed && !ride.isRated) ...[
                             const SizedBox(height: 16),
                             SizedBox(
@@ -965,10 +1337,23 @@ DateTime _rideDate(Ride ride) =>
     ride.startedAt ?? ride.endedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 String _vehicleLabel(String type) =>
     type == 'HABAL_HABAL' ? 'Habal-habal' : 'Tricycle';
-String _statusLabel(RideStatusFilter value) => switch (value) {
-      RideStatusFilter.all => 'All rides',
-      RideStatusFilter.completed => 'Completed',
-      RideStatusFilter.active => 'Active',
+String _vehicleFilterLabel(RideVehicleFilter value) => switch (value) {
+      RideVehicleFilter.all => 'All rides',
+      RideVehicleFilter.tricycle => 'Tricycle',
+      RideVehicleFilter.habalHabal => 'Habal-habal',
+    };
+String _periodPickerLabel(RideHistoryPeriod value) => switch (value) {
+      RideHistoryPeriod.day => 'Day',
+      RideHistoryPeriod.week => 'Week',
+      RideHistoryPeriod.month => 'Month',
+    };
+DateTime _shiftPeriod(
+        RideHistoryPeriod period, DateTime anchor, int direction) =>
+    switch (period) {
+      RideHistoryPeriod.day => anchor.add(Duration(days: direction)),
+      RideHistoryPeriod.week => anchor.add(Duration(days: 7 * direction)),
+      RideHistoryPeriod.month =>
+        DateTime(anchor.year, anchor.month + direction, 1),
     };
 String? _vehicleIdentifier(Ride ride) {
   final value =

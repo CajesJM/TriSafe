@@ -15,6 +15,7 @@ class PassengerRideSafetyHero extends StatelessWidget {
   final VoidCallback onShareRide;
   final VoidCallback onSos;
   final VoidCallback onEndRide;
+  final VoidCallback onReport;
 
   const PassengerRideSafetyHero({
     super.key,
@@ -26,6 +27,7 @@ class PassengerRideSafetyHero extends StatelessWidget {
     required this.onShareRide,
     required this.onSos,
     required this.onEndRide,
+    required this.onReport,
   });
 
   @override
@@ -36,6 +38,7 @@ class PassengerRideSafetyHero extends StatelessWidget {
         onShareRide: onShareRide,
         onSos: onSos,
         onEndRide: onEndRide,
+        onReport: onReport,
       );
     }
     if (verifiedVehicle != null) {
@@ -379,12 +382,14 @@ class _ActiveRideHero extends StatelessWidget {
   final VoidCallback onShareRide;
   final VoidCallback onSos;
   final VoidCallback onEndRide;
+  final VoidCallback onReport;
 
   const _ActiveRideHero({
     required this.ride,
     required this.onShareRide,
     required this.onSos,
     required this.onEndRide,
+    required this.onReport,
   });
 
   @override
@@ -412,6 +417,17 @@ class _ActiveRideHero extends StatelessWidget {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _RideActionStrip(onShareRide: onShareRide, onSos: onSos),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: onReport,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  foregroundColor: const Color(0xffa92d34),
+                  side: const BorderSide(color: Color(0xffe4b5b8)),
+                ),
+                icon: const Icon(Icons.report_problem_outlined, size: 18),
+                label: const Text('Report driver or incident'),
+              ),
               const SizedBox(height: 14),
               _RidePanel(
                 icon: Icons.verified_user_rounded,

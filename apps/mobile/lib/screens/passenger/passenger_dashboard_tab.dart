@@ -28,6 +28,7 @@ class PassengerDashboardTab extends StatelessWidget {
   final VoidCallback onShareRide;
   final VoidCallback onEndRide;
   final VoidCallback onChangePhoto;
+  final ValueChanged<Ride?> onReportRide;
   final VoidCallback onNotifications;
   final Future<void> Function() onRefresh;
 
@@ -48,6 +49,7 @@ class PassengerDashboardTab extends StatelessWidget {
     required this.onShareRide,
     required this.onEndRide,
     required this.onChangePhoto,
+    required this.onReportRide,
     required this.onNotifications,
     required this.onRefresh,
   });
@@ -88,6 +90,7 @@ class PassengerDashboardTab extends StatelessWidget {
                   onShareRide: onShareRide,
                   onSos: onSos,
                   onEndRide: onEndRide,
+                  onReport: () => onReportRide(activeRide),
                 ),
                 const SizedBox(height: 22),
                 const _SectionHeading(

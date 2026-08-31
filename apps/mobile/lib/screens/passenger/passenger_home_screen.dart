@@ -12,6 +12,7 @@ import '../../widgets/passenger_bottom_navigation.dart';
 import '../../widgets/passenger_qr_result_modal.dart';
 import '../../widgets/passenger_rating_dialog.dart';
 import '../../widgets/passenger_profile_editor.dart';
+import '../../widgets/incident_report_dialog.dart';
 import '../../widgets/passenger/passenger_notifications_sheet.dart';
 import '../../widgets/passenger_toast.dart';
 import '../auth/login_screen.dart';
@@ -260,11 +261,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _changePassengerPhoto() async {
-    final updated = await pickAndSavePassengerProfilePhoto(context, widget.api);
+    final updated =
+        await showPassengerProfilePhotoActions(context, widget.api, profile);
     if (updated != null && mounted) {
       setState(() => profile = updated);
       _toast('Profile photo updated successfully.', PassengerToastType.success);
     }
+  }
+
+  Future<void> _reportRide(Ride? ride) async {
+    await showIncidentReport(context, widget.api, rideId: ride?.id);
+    if (mounted) _loadData();
   }
 
   Future<void> _openPassengerNotifications() async {
@@ -345,6 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onSos: _openEmergencyContacts,
           onShareRide: _shareRide,
           onEndRide: _endRide,
+          onReportRide: _reportRide,
           onChangePhoto: _changePassengerPhoto,
           onNotifications: _openPassengerNotifications,
           onRefresh: _loadData),
@@ -368,6 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
         rideCount: rides.length,
         onLogout: _logout,
         onEditProfile: _editPassengerProfile,
+        onChangePhoto: _changePassengerPhoto,
         onOpenRides: () => _selectTab(3),
         onOpenReports: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => PassengerReportHistoryScreen(api: widget.api))),
