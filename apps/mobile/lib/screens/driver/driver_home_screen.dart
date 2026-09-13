@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../models/driver_models.dart';
 import '../../models/driver_rating_models.dart';
 import '../../models/driver_violation_models.dart';
-import '../../services/location_tracking_service.dart';
 import '../../services/trisafe_api.dart';
 import '../../theme/trisafe_theme.dart';
 import '../../widgets/driver_bottom_navigation.dart';
@@ -42,18 +40,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   int toastId = 0;
   String? toastMessage;
   PassengerToastType toastType = PassengerToastType.info;
-  late final LocationTrackingService locationTracking;
-
   @override
   void initState() {
     super.initState();
-    locationTracking = LocationTrackingService(api: widget.api);
-    locationTracking.start(_reportLocation).catchError((_) => false);
     _load();
   }
-
-  Future<void> _reportLocation(Position position) =>
-      locationTracking.reportPresence(position);
 
   Future<void> _load({bool silent = false}) async {
     if (!silent && mounted) setState(() => loading = true);
@@ -187,7 +178,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         ) ??
         false;
     if (!confirmed || !mounted) return;
-    await locationTracking.stop();
     widget.api.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -257,11 +247,5 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           selectedIndex: selectedTab,
           onSelected: (index) => setState(() => selectedTab = index)),
     );
-  }
-
-  @override
-  void dispose() {
-    locationTracking.stop();
-    super.dispose();
   }
 }

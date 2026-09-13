@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     profile = PassengerProfile.fromSession(widget.session);
-    locationTracking = LocationTrackingService(api: widget.api);
+    locationTracking = LocationTrackingService();
     _loadData();
     locationTracking.start(_handlePosition).then((enabled) {
       if (!enabled && mounted && locationTracking.permissionMessage != null) {
@@ -97,10 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _handlePosition(Position position) async {
     final ride = activeRide;
-    if (ride == null) {
-      await locationTracking.reportPresence(position);
-      return;
-    }
+    if (ride == null) return;
     final progress = await widget.api.recordRideLocation(ride.id,
         latitude: position.latitude,
         longitude: position.longitude,
