@@ -1,4 +1,3 @@
-/* TriSafe reference theme — UI only. Data, API calls, and component behavior are unchanged. */
 :root {
   --black: #0f0f0f;
   --charcoal: #202020;
@@ -65,7 +64,6 @@ textarea {
 .metric-card-modern,
 .data-card,
 .registration-form,
-.fare-form,
 .role-card,
 .policy-form,
 .qr-panel,
@@ -695,22 +693,18 @@ textarea::placeholder {
 
 /* Tables, directories, forms, and operational workspaces */
 .data-card,
-.live-map-card,
 .fare-policy-card,
-.registration-form,
-.fare-form {
+.registration-form {
   padding: 20px;
 }
 .section-heading h3,
 .form-heading h3,
-.live-map-header h3,
 .role-toolbar h4 {
   color: var(--black);
 }
 .section-description,
 .form-heading p,
-.role-toolbar p,
-.live-map-header p {
+.role-toolbar p {
   color: var(--muted);
 }
 .data-toolbar {
@@ -835,46 +829,6 @@ textarea::placeholder {
 .phone-input:focus-within {
   border-color: var(--forest);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 20%, transparent);
-}
-.map-sync,
-.map-stats button,
-.map-frame {
-  border-color: var(--line);
-  background: var(--surface-soft);
-}
-.map-stats button:hover,
-.map-stats button.active {
-  border-color: var(--lime);
-  background: var(--primary-100);
-}
-.map-stats button.passenger-stat.active,
-.map-stats button.driver-stat.active {
-  border-color: var(--lime);
-  color: var(--black);
-  background: var(--primary-100);
-}
-.map-sync > span.online {
-  background: var(--lime);
-  box-shadow: 0 0 0 4px rgba(93, 214, 44, 0.15);
-}
-.map-sync > span.offline {
-  background: var(--charcoal);
-  box-shadow: 0 0 0 4px rgba(32, 32, 32, 0.1);
-}
-.map-legend i.passenger,
-.transport-marker.passenger {
-  background: var(--lime);
-}
-.map-legend i.driver,
-.transport-marker.driver {
-  background: var(--forest);
-}
-.transport-marker {
-  border-color: var(--off-white);
-  color: var(--black);
-}
-.transport-marker.driver {
-  color: var(--off-white);
 }
 .formula-chip {
   color: var(--forest);
@@ -1062,10 +1016,8 @@ textarea::placeholder {
   }
   .dashboard-card,
   .data-card,
-  .live-map-card,
   .fare-policy-card,
-  .registration-form,
-  .fare-form {
+  .registration-form {
     padding: 16px;
   }
 }
