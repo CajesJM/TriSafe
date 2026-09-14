@@ -7,16 +7,22 @@ import {
   CalendarDays,
   CarFront,
   CheckCircle2,
+  Cloud,
+  CloudDrizzle,
+  CloudLightning,
+  CloudMoon,
+  CloudRain,
+  Clock3,
   CloudSun,
   Droplets,
   FileClock,
   MapPin,
   Megaphone,
+  Moon,
   RefreshCw,
   ShieldCheck,
-  Thermometer,
+  Sun,
   UsersRound,
-  Wind,
 } from "lucide-react";
 import {
   api,
@@ -62,6 +68,13 @@ export function DashboardHome({
     ? Math.round((dashboard.verifiedDrivers / dashboard.drivers) * 100)
     : 0;
   const administratorName = user?.fullName?.trim() || "Administrator";
+  const generatedAt = new Date(dashboard.generatedAt);
+  const operationalSummary =
+    dashboard.openIncidents > 0
+      ? `${dashboard.openIncidents} ${dashboard.openIncidents === 1 ? "report requires" : "reports require"} review${dashboard.activeRides > 0 ? ` while ${dashboard.activeRides} ${dashboard.activeRides === 1 ? "ride is" : "rides are"} active` : ""}.`
+      : dashboard.activeRides > 0
+        ? `${dashboard.activeRides} ${dashboard.activeRides === 1 ? "ride is" : "rides are"} active, with no incident reports waiting for review.`
+        : "Transport records are clear and no incident reports are waiting for review.";
 
   useEffect(() => {
     const clock = window.setInterval(
@@ -126,69 +139,87 @@ export function DashboardHome({
 
   return (
     <div className="dashboard-page">
-      <section className="dashboard-welcome">
-        <div>
-          <span className="eyebrow">TRINIDAD · BOHOL OPERATIONS</span>
-          <h2>
-            {timeGreeting(currentHour)},{" "}
-            <span className="welcome-username">{administratorName}</span>.
-          </h2>
-          <p>
-            Keep transport verified, fares transparent, and every passenger
-            journey visible.
-          </p>
-        </div>
-        <div className="live-status">
-          <span />
-          <strong>Live system</strong>
-          <small>PostgreSQL connected</small>
-        </div>
-      </section>
-
-      <section className="metric-grid" aria-label="Current TriSafe metrics">
-        <MetricCard
-          icon={<UsersRound />}
-          label="Passenger accounts"
-          value={dashboard.users.passengers}
-          detail={`${dashboard.users.total} total TriSafe accounts`}
-          onClick={() => onNavigate("passengers")}
-          action="Manage passengers"
+      <div className="dashboard-top-grid">
+        <section
+          className="dashboard-command"
+          aria-labelledby="dashboard-greeting"
+        >
+          <div className="dashboard-command-copy">
+            <div className="dashboard-command-context">
+              <time dateTime={generatedAt.toISOString()}>
+                {generatedAt.toLocaleDateString("en-PH", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </time>
+            </div>
+            <h1 id="dashboard-greeting">
+              {timeGreeting(currentHour)}, <span>{administratorName}</span>
+            </h1>
+            <p>{operationalSummary}</p>
+            <div
+              className="operations-pulse"
+              aria-label="Current operations status"
+            >
+              <span className="operations-pulse-online">
+                <i aria-hidden="true" /> System operational
+              </span>
+              <span>
+                <Clock3 aria-hidden="true" /> Updated{" "}
+                {generatedAt.toLocaleTimeString("en-PH", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+              <span>
+                <ShieldCheck aria-hidden="true" /> {verifiedPercent}% of drivers
+                verified
+              </span>
+            </div>
+          </div>
+        </section>
+        <WeatherCard
+          weather={weather}
+          loading={weatherLoading}
+          error={weatherError}
+          usesDeviceLocation={weatherUsesDevice}
         />
-        <MetricCard
-          icon={<ShieldCheck />}
-          label="Verified drivers"
-          value={dashboard.verifiedDrivers}
-          detail={`${verifiedPercent}% of ${dashboard.drivers} registered`}
-          onClick={() => onNavigate("drivers")}
-          action="Open registry"
-        />
-        <MetricCard
-          icon={<CarFront />}
-          label="Active rides"
-          value={dashboard.activeRides}
-          detail={`${dashboard.rides.completed} completed overall`}
-        />
-        <MetricCard
-          icon={<AlertTriangle />}
-          label="Reports to review"
-          value={dashboard.openIncidents}
-          detail={`${dashboard.incidents.underReview} already assigned`}
-          warning={dashboard.openIncidents > 0}
-          onClick={() => onNavigate("incidents")}
-          action="Review queue"
-        />
-      </section>
+      </div>
 
       <section className="dashboard-main-grid">
-        <RideAnalyticsPanel />
+        <div className="dashboard-primary-stack">
+          <section className="metric-grid" aria-label="Current TriSafe metrics">
+            <MetricCard
+              icon={<UsersRound />}
+              label="Passenger accounts"
+              value={dashboard.users.passengers}
+              detail={`${dashboard.users.total} total TriSafe accounts`}
+              onClick={() => onNavigate("passengers")}
+              tone="passenger"
+            />
+            <MetricCard
+              icon={<ShieldCheck />}
+              label="Verified drivers"
+              value={dashboard.verifiedDrivers}
+              detail={`${verifiedPercent}% of ${dashboard.drivers} registered`}
+              onClick={() => onNavigate("drivers")}
+              tone="driver"
+            />
+            <MetricCard
+              icon={<AlertTriangle />}
+              label="Reports to review"
+              value={dashboard.openIncidents}
+              detail={`${dashboard.incidents.underReview} already assigned`}
+              onClick={() => onNavigate("incidents")}
+              tone="report"
+            />
+          </section>
+          <RideAnalyticsPanel />
+        </div>
 
         <div className="dashboard-side-stack">
-          <WeatherCard
-            weather={weather}
-            loading={weatherLoading}
-            error={weatherError}
-            usesDeviceLocation={weatherUsesDevice}
-          />
           <CalendarCard
             events={dashboard.calendarEvents}
             onNavigate={onNavigate}
@@ -347,56 +378,70 @@ function WeatherCard({
   error: boolean;
   usesDeviceLocation: boolean;
 }) {
+  const locationName =
+    weather?.locationName ??
+    (usesDeviceLocation
+      ? "Locating administrator…"
+      : defaultWeatherLocation.locationName);
+  const condition = weather
+    ? weatherPresentation(weather.weatherCode, weather.isDay)
+    : error
+      ? {
+          label: "Weather unavailable",
+          tone: "neutral",
+          icon: <Cloud aria-hidden="true" />,
+        }
+      : {
+          label: "Local weather",
+          tone: "neutral",
+          icon: <CloudSun aria-hidden="true" />,
+        };
+
   return (
-    <article className="dashboard-card weather-card">
-      <div className="weather-top">
-        <div>
-          <span className="eyebrow">LOCAL WEATHER</span>
-          <h3>
-            {weather?.locationName ??
-              (usesDeviceLocation
-                ? "Locating administrator…"
-                : defaultWeatherLocation.locationName)}
-          </h3>
-          <small className="weather-location-source">
-            <MapPin size={11} />{" "}
-            {usesDeviceLocation
-              ? "Current device location"
-              : "Default location · Trinidad, Bohol"}
-          </small>
+    <article
+      className={`metric-card-modern metric-card-weather weather-stat-card weather-${condition.tone}`}
+      aria-label={`${condition.label} in ${locationName}`}
+    >
+      <div className="weather-scene" aria-hidden="true">
+        <span className="weather-orb" />
+        <span className="weather-cloud weather-cloud-a" />
+        <span className="weather-cloud weather-cloud-b" />
+        <span className="weather-cloud weather-cloud-c" />
+        <span className="weather-rainfall" />
+        <span className="weather-fog-bands" />
+        <span className="weather-lightning" />
+      </div>
+      <div className="metric-card-topline">
+        <div className="metric-card-title">
+          <span className="metric-icon-modern">{condition.icon}</span>
+          <p>{condition.label}</p>
         </div>
-        <CloudSun size={30} />
       </div>
       {loading ? (
-        <div className="widget-loading">
-          Getting current location and conditions…
-        </div>
+        <div className="weather-stat-state">Getting local conditions…</div>
       ) : error || !weather ? (
-        <div className="widget-empty">
-          Weather data is temporarily unavailable.
+        <div className="weather-stat-content">
+          <div className="metric-value-block">
+            <strong>—</strong>
+            <small>{locationName}</small>
+          </div>
+          <span className="weather-stat-state">Temporarily unavailable</span>
         </div>
       ) : (
-        <>
-          <div className="weather-temperature">
+        <div className="weather-stat-content">
+          <div className="metric-value-block">
             <strong>{Number(weather.temperatureC).toFixed(0)}°</strong>
-            <span>{weatherLabel(weather.weatherCode)}</span>
+            <small>
+              <MapPin aria-hidden="true" size={11} /> {locationName}
+            </small>
           </div>
-          <div className="weather-details">
+          <div className="weather-stat-summary">
+            <b>Feels {Number(weather.apparentC).toFixed(0)}°</b>
             <span>
-              <Thermometer size={14} /> Feels{" "}
-              {Number(weather.apparentC).toFixed(0)}°
-            </span>
-            <span>
-              <Droplets size={14} /> {weather.humidity}% humidity
-            </span>
-            <span>
-              <Wind size={14} /> {Number(weather.windKmh).toFixed(0)} km/h wind
+              <Droplets aria-hidden="true" /> {weather.humidity}%
             </span>
           </div>
-          <small className="weather-updated">
-            Updated {new Date(weather.fetchedAt).toLocaleTimeString("en-PH")}
-          </small>
-        </>
+        </div>
       )}
     </article>
   );
@@ -594,30 +639,41 @@ function MetricCard({
   label,
   value,
   detail,
-  action,
   onClick,
-  warning,
+  tone,
 }: {
   icon: ReactNode;
   label: string;
   value: number;
   detail: string;
-  action?: string;
-  onClick?: () => void;
-  warning?: boolean;
+  onClick: () => void;
+  tone: "passenger" | "driver" | "report";
 }) {
   return (
-    <article className={`metric-card-modern ${warning ? "warning" : ""}`}>
-      <span className="metric-icon-modern">{icon}</span>
-      <div>
-        <p>{label}</p>
-        <strong>{value.toLocaleString()}</strong>
-        <small>{detail}</small>
-        {action && onClick && (
-          <button onClick={onClick} type="button">
-            {action} <ArrowUpRight size={13} />
-          </button>
-        )}
+    <article
+      className={`metric-card-modern metric-card-${tone} metric-card-interactive`}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${label}`}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+    >
+      <div className="metric-card-topline">
+        <div className="metric-card-title">
+          <span className="metric-icon-modern">{icon}</span>
+          <p>{label}</p>
+        </div>
+      </div>
+      <div className="metric-card-content">
+        <div className="metric-value-block">
+          <strong>{value.toLocaleString()}</strong>
+          <small>{detail}</small>
+        </div>
       </div>
     </article>
   );
@@ -712,14 +768,17 @@ function DonutChart({ values, total }: { values: number[]; total: number }) {
   ];
   let offset = 0;
   return (
-    <div className="donut-chart" role="img" aria-label={`${total} accounts distributed across passenger, driver, and administrator roles`}>
+    <div
+      className="donut-chart"
+      role="img"
+      aria-label={`${total} accounts distributed across passenger, driver, and administrator roles`}
+    >
       <svg viewBox="0 0 110 110" aria-hidden="true">
         <circle className="donut-track" cx="55" cy="55" r={radius} />
         {roles.map((role) => {
           const completeLength = (role.value / safeTotal) * circumference;
-          const visibleLength = role.value > 0
-            ? Math.max(2, completeLength - segmentGap)
-            : 0;
+          const visibleLength =
+            role.value > 0 ? Math.max(2, completeLength - segmentGap) : 0;
           const dashOffset = -offset;
           offset += completeLength;
           return (
@@ -780,13 +839,70 @@ async function resolveDeviceLocationName(latitude: number, longitude: number) {
     window.clearTimeout(timeout);
   }
 }
-function weatherLabel(code: number) {
-  if (code === 0) return "Clear skies";
-  if (code < 4) return "Partly cloudy";
-  if (code < 60) return "Cloudy";
-  if (code < 80) return "Rain showers";
-  if (code < 100) return "Thunderstorms";
-  return "Variable conditions";
+function weatherPresentation(code: number, isDay: boolean) {
+  if (code === 0) {
+    return isDay
+      ? { label: "Sunny", tone: "sunny", icon: <Sun aria-hidden="true" /> }
+      : {
+          label: "Clear night",
+          tone: "night",
+          icon: <Moon aria-hidden="true" />,
+        };
+  }
+  if (code === 1 || code === 2) {
+    return {
+      label: "Partly cloudy",
+      tone: isDay ? "partly-cloudy" : "night-cloudy",
+      icon: isDay ? (
+        <CloudSun aria-hidden="true" />
+      ) : (
+        <CloudMoon aria-hidden="true" />
+      ),
+    };
+  }
+  if (code === 3) {
+    return {
+      label: "Cloudy",
+      tone: "overcast",
+      icon: <Cloud aria-hidden="true" />,
+    };
+  }
+  if (code === 45 || code === 48) {
+    return { label: "Foggy", tone: "fog", icon: <Cloud aria-hidden="true" /> };
+  }
+  if (code >= 51 && code <= 57) {
+    return {
+      label: "Light rain",
+      tone: "drizzle",
+      icon: <CloudDrizzle aria-hidden="true" />,
+    };
+  }
+  if ((code >= 61 && code <= 67) || (code >= 71 && code <= 77)) {
+    return {
+      label: code === 65 || code === 67 || code >= 71 ? "Heavy rain" : "Rainy",
+      tone: code === 65 || code === 67 || code >= 71 ? "heavy-rain" : "rain",
+      icon: <CloudRain aria-hidden="true" />,
+    };
+  }
+  if (code >= 80 && code <= 86) {
+    return {
+      label: code === 82 || code >= 85 ? "Heavy showers" : "Rain showers",
+      tone: code === 82 || code >= 85 ? "heavy-rain" : "rain",
+      icon: <CloudRain aria-hidden="true" />,
+    };
+  }
+  if (code >= 95 && code <= 99) {
+    return {
+      label: "Stormy",
+      tone: "storm",
+      icon: <CloudLightning aria-hidden="true" />,
+    };
+  }
+  return {
+    label: "Variable skies",
+    tone: "partly-cloudy",
+    icon: <CloudSun aria-hidden="true" />,
+  };
 }
 function timeGreeting(hour: number) {
   if (hour < 5) return "Good night";

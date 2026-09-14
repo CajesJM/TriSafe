@@ -54,7 +54,9 @@ export function PageHeader({
   onProfile,
 }: Props) {
   return (
-    <header className="page-header">
+    <header
+      className={`page-header${tab === "overview" ? " page-header-dashboard" : ""}`}
+    >
       <div className="topbar">
         <button
           className="menu-button"
@@ -100,18 +102,20 @@ export function PageHeader({
           </button>
         </div>
       </div>
-      <div className="page-title-row">
-        <div>
-          <p className="eyebrow">TRINIDAD BPLO · TRANSPORT SAFETY</p>
-          <h1>{titleByTab[tab]}</h1>
-          <p>{hintByTab[tab]}</p>
+      {tab !== "overview" && (
+        <div className="page-title-row">
+          <div>
+            <p className="eyebrow">TRINIDAD BPLO · TRANSPORT SAFETY</p>
+            <h1>{titleByTab[tab]}</h1>
+            <p>{hintByTab[tab]}</p>
+          </div>
+          {tab === "incidents" && openIncidents > 0 && (
+            <span className="attention-chip">
+              {openIncidents} awaiting action
+            </span>
+          )}
         </div>
-        {tab === "incidents" && openIncidents > 0 && (
-          <span className="attention-chip">
-            {openIncidents} awaiting action
-          </span>
-        )}
-      </div>
+      )}
     </header>
   );
 }
