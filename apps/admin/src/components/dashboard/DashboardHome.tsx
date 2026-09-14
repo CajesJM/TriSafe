@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   Banknote,
   BellRing,
-  CalendarDays,
   CarFront,
   CheckCircle2,
   Cloud,
@@ -198,6 +197,8 @@ export function DashboardHome({
               detail={`${dashboard.users.total} total TriSafe accounts`}
               onClick={() => onNavigate("passengers")}
               tone="passenger"
+              trend={dashboard.metricActivity.passengerAccounts}
+              trendLabel="New passenger accounts during the last 7 months"
             />
             <MetricCard
               icon={<ShieldCheck />}
@@ -206,6 +207,8 @@ export function DashboardHome({
               detail={`${verifiedPercent}% of ${dashboard.drivers} registered`}
               onClick={() => onNavigate("drivers")}
               tone="driver"
+              trend={dashboard.metricActivity.verifiedDrivers}
+              trendLabel="New verified drivers during the last 7 months"
             />
             <MetricCard
               icon={<AlertTriangle />}
@@ -214,6 +217,8 @@ export function DashboardHome({
               detail={`${dashboard.incidents.underReview} already assigned`}
               onClick={() => onNavigate("incidents")}
               tone="report"
+              trend={dashboard.metricActivity.incidentReports}
+              trendLabel="New open incident reports during the last 7 months"
             />
           </section>
           <RideAnalyticsPanel />
@@ -222,11 +227,9 @@ export function DashboardHome({
         <div className="dashboard-side-stack">
           <CalendarCard
             events={dashboard.calendarEvents}
-            onNavigate={onNavigate}
           />
           <AccountDistributionCard
             dashboard={dashboard}
-            onNavigate={onNavigate}
           />
         </div>
       </section>
@@ -449,11 +452,10 @@ function WeatherCard({
 
 function CalendarCard({
   events,
-  onNavigate,
 }: {
   events: CalendarEvent[];
-  onNavigate: (tab: Tab) => void;
 }) {
+  const [calendarView, setCalendarView] = useState<"weekly" | "monthly">("weekly");
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const daysInMonth = new Date(
@@ -478,110 +480,129 @@ function CalendarCard({
     const day = new Date(event.date).getDate();
     eventDates.set(day, [...(eventDates.get(day) ?? []), event]);
   });
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + index);
+    return date;
+  });
+  const eventCountLabel = `${monthEvents.length} scheduled ${monthEvents.length === 1 ? "item" : "items"}`;
+
   return (
-    <article className="dashboard-card calendar-card">
-      <PanelHeading
-        eyebrow="UPCOMING SCHEDULE"
-        title="LGU calendar"
-        action={
+    <article className="dashboard-card calendar-card calendar-card-visual">
+      <div className="calendar-view-toolbar">
+        <div className="calendar-view-switch" role="tablist" aria-label="Calendar view">
           <button
-            className="icon-button"
-            aria-label="Open announcements"
-            onClick={() => onNavigate("announcements")}
+            className={calendarView === "weekly" ? "active" : ""}
+            role="tab"
+            aria-selected={calendarView === "weekly"}
+            onClick={() => setCalendarView("weekly")}
             type="button"
           >
-            <CalendarDays size={16} />
+            Weekly
           </button>
-        }
-      />
-      <div className="calendar-month">
-        <strong>
-          {today.toLocaleDateString("en-PH", {
-            month: "long",
-            year: "numeric",
+          <button
+            className={calendarView === "monthly" ? "active" : ""}
+            role="tab"
+            aria-selected={calendarView === "monthly"}
+            onClick={() => setCalendarView("monthly")}
+            type="button"
+          >
+            Monthly
+          </button>
+        </div>
+      </div>
+
+      <div className="calendar-date-hero">
+        <div>
+          <span>LGU schedule</span>
+          <strong>{today.toLocaleDateString("en-PH", { month: "long" })}</strong>
+        </div>
+        <b>{today.getDate()}</b>
+      </div>
+
+      {calendarView === "weekly" ? (
+        <div className="calendar-week-strip" role="tabpanel">
+          {weekDays.map((date) => {
+            const isToday = date.toDateString() === today.toDateString();
+            const dayEvents = date.getMonth() === today.getMonth()
+              ? eventDates.get(date.getDate()) ?? []
+              : [];
+            return (
+              <div className={isToday ? "today" : ""} key={date.toISOString()}>
+                <span>{date.toLocaleDateString("en-PH", { weekday: "short" })}</span>
+                <b>{date.getDate()}</b>
+                {dayEvents.length > 0 && (
+                  <i
+                    className={dayEvents[0].type.toLowerCase()}
+                    title={dayEvents.map((event) => event.label).join(", ")}
+                  />
+                )}
+              </div>
+            );
           })}
-        </strong>
-        <span>
-          {monthEvents.length} scheduled item
-          {monthEvents.length === 1 ? "" : "s"}
-        </span>
-      </div>
-      <div className="calendar-weekdays">
-        {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
-          <span key={`${day}-${index}`}>{day}</span>
-        ))}
-      </div>
-      <div className="calendar-grid">
-        {[...blanks, ...days].map((value) => {
-          if (typeof value === "string")
-            return <span className="calendar-cell empty" key={value} />;
-          const dayEvents = eventDates.get(value) ?? [];
-          const isToday = value === today.getDate();
-          return (
-            <span
-              className={`calendar-cell ${isToday ? "today" : ""}`}
-              key={value}
-            >
-              <b>{value}</b>
-              {dayEvents.length > 0 && (
-                <i
-                  className={dayEvents[0].type.toLowerCase()}
-                  title={dayEvents.map((event) => event.label).join(", ")}
-                />
-              )}
-            </span>
-          );
-        })}
-      </div>
-      {monthEvents.length > 0 && (
-        <div className="calendar-next">
-          {monthEvents.slice(0, 2).map((event) => (
-            <div key={event.id}>
-              <span className={event.type.toLowerCase()} />
-              <strong>{event.label}</strong>
-              <small>
-                {new Date(event.date).toLocaleDateString("en-PH", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </small>
-            </div>
-          ))}
+        </div>
+      ) : (
+        <div className="calendar-month-panel" role="tabpanel">
+          <div className="calendar-weekdays">
+            {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+              <span key={`${day}-${index}`}>{day}</span>
+            ))}
+          </div>
+          <div className="calendar-grid">
+            {[...blanks, ...days].map((value) => {
+              if (typeof value === "string")
+                return <span className="calendar-cell empty" key={value} />;
+              const dayEvents = eventDates.get(value) ?? [];
+              const isToday = value === today.getDate();
+              return (
+                <span
+                  className={`calendar-cell ${isToday ? "today" : ""}`}
+                  key={value}
+                >
+                  <b>{value}</b>
+                  {dayEvents.length > 0 && (
+                    <i
+                      className={dayEvents[0].type.toLowerCase()}
+                      title={dayEvents.map((event) => event.label).join(", ")}
+                    />
+                  )}
+                </span>
+              );
+            })}
+          </div>
         </div>
       )}
+
+      <div className="calendar-card-footer">
+        <span>{eventCountLabel}</span>
+      </div>
     </article>
   );
 }
 
 function AccountDistributionCard({
   dashboard,
-  onNavigate,
 }: {
   dashboard: Dashboard;
-  onNavigate: (tab: Tab) => void;
 }) {
+  const roleValues = [
+    dashboard.users.passengers,
+    dashboard.users.drivers,
+    dashboard.users.administrators,
+  ];
+  const rolePercentages = normalizePercentages(roleValues);
+
   return (
     <article className="dashboard-card role-distribution-card">
       <PanelHeading
         eyebrow="ACCOUNT DISTRIBUTION"
         title="Users by role"
-        action={
-          <button
-            className="link-button"
-            onClick={() => onNavigate("passengers")}
-            type="button"
-          >
-            <ArrowUpRight size={14} />
-          </button>
-        }
       />
       <div className="donut-layout">
         <DonutChart
-          values={[
-            dashboard.users.passengers,
-            dashboard.users.drivers,
-            dashboard.users.administrators,
-          ]}
+          values={roleValues}
           total={dashboard.users.total}
         />
         <div className="donut-legend">
@@ -589,21 +610,21 @@ function AccountDistributionCard({
             icon={<UsersRound />}
             label="Passengers"
             value={dashboard.users.passengers}
-            total={dashboard.users.total}
+            percentage={rolePercentages[0]}
             tone="passenger"
           />
           <LegendRow
             icon={<CarFront />}
             label="Drivers"
             value={dashboard.users.drivers}
-            total={dashboard.users.total}
+            percentage={rolePercentages[1]}
             tone="driver"
           />
           <LegendRow
             icon={<ShieldCheck />}
             label="Administrators"
             value={dashboard.users.administrators}
-            total={dashboard.users.total}
+            percentage={rolePercentages[2]}
             tone="admin"
           />
         </div>
@@ -641,6 +662,8 @@ function MetricCard({
   detail,
   onClick,
   tone,
+  trend,
+  trendLabel,
 }: {
   icon: ReactNode;
   label: string;
@@ -648,6 +671,8 @@ function MetricCard({
   detail: string;
   onClick: () => void;
   tone: "passenger" | "driver" | "report";
+  trend: { date: string; label: string; count: number }[];
+  trendLabel: string;
 }) {
   return (
     <article
@@ -674,9 +699,87 @@ function MetricCard({
           <strong>{value.toLocaleString()}</strong>
           <small>{detail}</small>
         </div>
+        <MetricSparkline data={trend} label={trendLabel} />
       </div>
     </article>
   );
+}
+
+function MetricSparkline({
+  data,
+  label,
+}: {
+  data: { date: string; label: string; count: number }[];
+  label: string;
+}) {
+  const width = 96;
+  const height = 38;
+  const padding = 4;
+  const values = data.length ? data.map((day) => day.count) : [0];
+  const maximum = Math.max(...values, 1);
+  const points = values.map((value, index) => {
+    const x = values.length === 1
+      ? width / 2
+      : padding + (index / (values.length - 1)) * (width - padding * 2);
+    const y = height - padding - (value / maximum) * (height - padding * 2);
+    return { x, y };
+  });
+  const linePath = createSmoothSparklinePath(points);
+  const firstPoint = points[0] ?? { x: padding, y: height - padding };
+  const lastPoint = points.at(-1) ?? { x: width - padding, y: height - padding };
+  const areaPath = `${linePath} L ${lastPoint.x} ${height - padding} L ${firstPoint.x} ${height - padding} Z`;
+  const currentValue = values.at(-1) ?? 0;
+  const previousValue = values.at(-2) ?? 0;
+  const percentage = previousValue === 0
+    ? currentValue === 0 ? 0 : null
+    : Math.round(((currentValue - previousValue) / previousValue) * 100);
+  const trendDirection = percentage === null || percentage > 0
+    ? "up"
+    : percentage < 0 ? "down" : "neutral";
+  const trendText = percentage === null
+    ? "New"
+    : `${percentage > 0 ? "+" : ""}${percentage}%`;
+  const comparisonText = percentage === null
+    ? "New activity with no previous-month baseline"
+    : percentage === 0
+      ? "No change from the previous month"
+      : `${Math.abs(percentage)} percent ${percentage > 0 ? "increase" : "decrease"} from the previous month`;
+  const spokenValues = data.map((day) => `${day.label}: ${day.count}`).join(", ");
+
+  return (
+    <div className={`metric-sparkline-panel trend-${trendDirection}`}>
+      <span className="metric-trend-rate" aria-hidden="true">{trendText}</span>
+      <svg
+        className="metric-sparkline"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`${label}. ${comparisonText}. ${spokenValues || "No activity recorded"}`}
+      >
+        <path className="metric-sparkline-area" d={areaPath} />
+        <path className="metric-sparkline-line" d={linePath} />
+        <circle cx={lastPoint.x} cy={lastPoint.y} r="2.75" />
+      </svg>
+    </div>
+  );
+}
+
+function createSmoothSparklinePath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const previous = points[index - 1] ?? points[index];
+    const current = points[index];
+    const next = points[index + 1];
+    const afterNext = points[index + 2] ?? next;
+    const controlOneX = current.x + (next.x - previous.x) / 6;
+    const controlOneY = current.y + (next.y - previous.y) / 6;
+    const controlTwoX = next.x - (afterNext.x - current.x) / 6;
+    const controlTwoY = next.y - (afterNext.y - current.y) / 6;
+    path += ` C ${controlOneX} ${controlOneY}, ${controlTwoX} ${controlTwoY}, ${next.x} ${next.y}`;
+  }
+  return path;
 }
 function ActionItem({
   icon,
@@ -710,13 +813,13 @@ function LegendRow({
   icon,
   label,
   value,
-  total,
+  percentage,
   tone,
 }: {
   icon: ReactNode;
   label: string;
   value: number;
-  total: number;
+  percentage: number;
   tone: "passenger" | "driver" | "admin";
 }) {
   return (
@@ -724,9 +827,8 @@ function LegendRow({
       <span>{icon}</span>
       <div>
         <b>{label}</b>
-        <small>{total ? Math.round((value / total) * 100) : 0}% of users</small>
+        <small>{value} {value === 1 ? "account" : "accounts"} · {percentage}%</small>
       </div>
-      <strong>{value}</strong>
     </div>
   );
 }
@@ -757,43 +859,57 @@ function OutcomeRow({
   );
 }
 function DonutChart({ values, total }: { values: number[]; total: number }) {
-  const safeTotal = Math.max(total, 1);
-  const radius = 44;
-  const circumference = 2 * Math.PI * radius;
-  const segmentGap = 9;
+  const chartLength = 100;
+  const segmentGap = 3;
+  const percentages = normalizePercentages(values);
   const roles = [
-    { label: "Passengers", value: values[0], className: "passenger" },
-    { label: "Drivers", value: values[1], className: "driver" },
-    { label: "Administrators", value: values[2], className: "admin" },
+    { label: "Passengers", value: values[0], percentage: percentages[0], className: "passenger" },
+    { label: "Drivers", value: values[1], percentage: percentages[1], className: "driver" },
+    { label: "Administrators", value: values[2], percentage: percentages[2], className: "admin" },
   ];
   let offset = 0;
   return (
     <div
       className="donut-chart"
-      role="img"
+      role="group"
       aria-label={`${total} accounts distributed across passenger, driver, and administrator roles`}
     >
-      <svg viewBox="0 0 110 110" aria-hidden="true">
-        <circle className="donut-track" cx="55" cy="55" r={radius} />
+      <svg viewBox="0 0 110 68">
+        <path className="donut-track" d="M 10 60 A 45 45 0 0 1 100 60" pathLength={chartLength} />
         {roles.map((role) => {
-          const completeLength = (role.value / safeTotal) * circumference;
+          const completeLength = role.percentage;
           const visibleLength =
             role.value > 0 ? Math.max(2, completeLength - segmentGap) : 0;
           const dashOffset = -offset;
+          const midpoint = (offset + completeLength / 2) / chartLength;
+          const angle = Math.PI - midpoint * Math.PI;
+          const labelX = 55 + 45 * Math.cos(angle);
+          const labelY = 60 - 45 * Math.sin(angle);
           offset += completeLength;
           return (
-            <circle
-              className={`donut-segment ${role.className}`}
-              cx="55"
-              cy="55"
-              r={radius}
-              key={role.className}
-              pathLength={circumference}
-              strokeDasharray={`${visibleLength} ${circumference}`}
-              strokeDashoffset={dashOffset}
-            >
-              <title>{`${role.label}: ${role.value} (${Math.round((role.value / safeTotal) * 100)}%)`}</title>
-            </circle>
+            <g key={role.className}>
+              <path
+                aria-label={`${role.label}: ${role.value} accounts, ${role.percentage}%`}
+                className={`donut-segment ${role.className}`}
+                d="M 10 60 A 45 45 0 0 1 100 60"
+                pathLength={chartLength}
+                role="img"
+                strokeDasharray={`${visibleLength} ${chartLength - visibleLength}`}
+                strokeDashoffset={dashOffset}
+                tabIndex={role.value > 0 ? 0 : -1}
+              >
+                <title>{`${role.label}: ${role.value} (${role.percentage}%)`}</title>
+              </path>
+              {role.value > 0 && (
+                <text
+                  className="donut-percentage"
+                  x={labelX}
+                  y={labelY}
+                >
+                  {role.percentage}%
+                </text>
+              )}
+            </g>
           );
         })}
       </svg>
@@ -803,6 +919,24 @@ function DonutChart({ values, total }: { values: number[]; total: number }) {
       </div>
     </div>
   );
+}
+
+function normalizePercentages(values: number[]) {
+  const total = values.reduce((sum, value) => sum + Math.max(0, value), 0);
+  if (total === 0) return values.map(() => 0);
+
+  const raw = values.map((value) => (Math.max(0, value) / total) * 100);
+  const percentages = raw.map(Math.floor);
+  let remainder = 100 - percentages.reduce((sum, value) => sum + value, 0);
+  const priority = raw
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+
+  for (let index = 0; index < priority.length && remainder > 0; index += 1) {
+    percentages[priority[index].index] += 1;
+    remainder -= 1;
+  }
+  return percentages;
 }
 async function resolveDeviceLocationName(latitude: number, longitude: number) {
   const controller = new AbortController();
