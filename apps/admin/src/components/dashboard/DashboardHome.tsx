@@ -225,12 +225,8 @@ export function DashboardHome({
         </div>
 
         <div className="dashboard-side-stack">
-          <CalendarCard
-            events={dashboard.calendarEvents}
-          />
-          <AccountDistributionCard
-            dashboard={dashboard}
-          />
+          <CalendarCard events={dashboard.calendarEvents} />
+          <AccountDistributionCard dashboard={dashboard} />
         </div>
       </section>
 
@@ -450,12 +446,10 @@ function WeatherCard({
   );
 }
 
-function CalendarCard({
-  events,
-}: {
-  events: CalendarEvent[];
-}) {
-  const [calendarView, setCalendarView] = useState<"weekly" | "monthly">("weekly");
+function CalendarCard({ events }: { events: CalendarEvent[] }) {
+  const [calendarView, setCalendarView] = useState<"weekly" | "monthly">(
+    "weekly",
+  );
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const daysInMonth = new Date(
@@ -492,7 +486,11 @@ function CalendarCard({
   return (
     <article className="dashboard-card calendar-card calendar-card-visual">
       <div className="calendar-view-toolbar">
-        <div className="calendar-view-switch" role="tablist" aria-label="Calendar view">
+        <div
+          className="calendar-view-switch"
+          role="tablist"
+          aria-label="Calendar view"
+        >
           <button
             className={calendarView === "weekly" ? "active" : ""}
             role="tab"
@@ -517,7 +515,9 @@ function CalendarCard({
       <div className="calendar-date-hero">
         <div>
           <span>LGU schedule</span>
-          <strong>{today.toLocaleDateString("en-PH", { month: "long" })}</strong>
+          <strong>
+            {today.toLocaleDateString("en-PH", { month: "long" })}
+          </strong>
         </div>
         <b>{today.getDate()}</b>
       </div>
@@ -526,12 +526,15 @@ function CalendarCard({
         <div className="calendar-week-strip" role="tabpanel">
           {weekDays.map((date) => {
             const isToday = date.toDateString() === today.toDateString();
-            const dayEvents = date.getMonth() === today.getMonth()
-              ? eventDates.get(date.getDate()) ?? []
-              : [];
+            const dayEvents =
+              date.getMonth() === today.getMonth()
+                ? (eventDates.get(date.getDate()) ?? [])
+                : [];
             return (
               <div className={isToday ? "today" : ""} key={date.toISOString()}>
-                <span>{date.toLocaleDateString("en-PH", { weekday: "short" })}</span>
+                <span>
+                  {date.toLocaleDateString("en-PH", { weekday: "short" })}
+                </span>
                 <b>{date.getDate()}</b>
                 {dayEvents.length > 0 && (
                   <i
@@ -582,11 +585,7 @@ function CalendarCard({
   );
 }
 
-function AccountDistributionCard({
-  dashboard,
-}: {
-  dashboard: Dashboard;
-}) {
+function AccountDistributionCard({ dashboard }: { dashboard: Dashboard }) {
   const roleValues = [
     dashboard.users.passengers,
     dashboard.users.drivers,
@@ -596,15 +595,9 @@ function AccountDistributionCard({
 
   return (
     <article className="dashboard-card role-distribution-card">
-      <PanelHeading
-        eyebrow="ACCOUNT DISTRIBUTION"
-        title="Users by role"
-      />
+      <PanelHeading eyebrow="ACCOUNT DISTRIBUTION" title="Users by role" />
       <div className="donut-layout">
-        <DonutChart
-          values={roleValues}
-          total={dashboard.users.total}
-        />
+        <DonutChart values={roleValues} total={dashboard.users.total} />
         <div className="donut-legend">
           <LegendRow
             icon={<UsersRound />}
@@ -718,37 +711,51 @@ function MetricSparkline({
   const values = data.length ? data.map((day) => day.count) : [0];
   const maximum = Math.max(...values, 1);
   const points = values.map((value, index) => {
-    const x = values.length === 1
-      ? width / 2
-      : padding + (index / (values.length - 1)) * (width - padding * 2);
+    const x =
+      values.length === 1
+        ? width / 2
+        : padding + (index / (values.length - 1)) * (width - padding * 2);
     const y = height - padding - (value / maximum) * (height - padding * 2);
     return { x, y };
   });
   const linePath = createSmoothSparklinePath(points);
   const firstPoint = points[0] ?? { x: padding, y: height - padding };
-  const lastPoint = points.at(-1) ?? { x: width - padding, y: height - padding };
+  const lastPoint = points.at(-1) ?? {
+    x: width - padding,
+    y: height - padding,
+  };
   const areaPath = `${linePath} L ${lastPoint.x} ${height - padding} L ${firstPoint.x} ${height - padding} Z`;
   const currentValue = values.at(-1) ?? 0;
   const previousValue = values.at(-2) ?? 0;
-  const percentage = previousValue === 0
-    ? currentValue === 0 ? 0 : null
-    : Math.round(((currentValue - previousValue) / previousValue) * 100);
-  const trendDirection = percentage === null || percentage > 0
-    ? "up"
-    : percentage < 0 ? "down" : "neutral";
-  const trendText = percentage === null
-    ? "New"
-    : `${percentage > 0 ? "+" : ""}${percentage}%`;
-  const comparisonText = percentage === null
-    ? "New activity with no previous-month baseline"
-    : percentage === 0
-      ? "No change from the previous month"
-      : `${Math.abs(percentage)} percent ${percentage > 0 ? "increase" : "decrease"} from the previous month`;
-  const spokenValues = data.map((day) => `${day.label}: ${day.count}`).join(", ");
+  const percentage =
+    previousValue === 0
+      ? currentValue === 0
+        ? 0
+        : null
+      : Math.round(((currentValue - previousValue) / previousValue) * 100);
+  const trendDirection =
+    percentage === null || percentage > 0
+      ? "up"
+      : percentage < 0
+        ? "down"
+        : "neutral";
+  const trendText =
+    percentage === null ? "New" : `${percentage > 0 ? "+" : ""}${percentage}%`;
+  const comparisonText =
+    percentage === null
+      ? "New activity with no previous-month baseline"
+      : percentage === 0
+        ? "No change from the previous month"
+        : `${Math.abs(percentage)} percent ${percentage > 0 ? "increase" : "decrease"} from the previous month`;
+  const spokenValues = data
+    .map((day) => `${day.label}: ${day.count}`)
+    .join(", ");
 
   return (
     <div className={`metric-sparkline-panel trend-${trendDirection}`}>
-      <span className="metric-trend-rate" aria-hidden="true">{trendText}</span>
+      <span className="metric-trend-rate" aria-hidden="true">
+        {trendText}
+      </span>
       <svg
         className="metric-sparkline"
         viewBox={`0 0 ${width} ${height}`}
@@ -827,7 +834,9 @@ function LegendRow({
       <span>{icon}</span>
       <div>
         <b>{label}</b>
-        <small>{value} {value === 1 ? "account" : "accounts"} · {percentage}%</small>
+        <small>
+          {value} {value === 1 ? "account" : "accounts"} · {percentage}%
+        </small>
       </div>
     </div>
   );
@@ -863,9 +872,24 @@ function DonutChart({ values, total }: { values: number[]; total: number }) {
   const segmentGap = 3;
   const percentages = normalizePercentages(values);
   const roles = [
-    { label: "Passengers", value: values[0], percentage: percentages[0], className: "passenger" },
-    { label: "Drivers", value: values[1], percentage: percentages[1], className: "driver" },
-    { label: "Administrators", value: values[2], percentage: percentages[2], className: "admin" },
+    {
+      label: "Passengers",
+      value: values[0],
+      percentage: percentages[0],
+      className: "passenger",
+    },
+    {
+      label: "Drivers",
+      value: values[1],
+      percentage: percentages[1],
+      className: "driver",
+    },
+    {
+      label: "Administrators",
+      value: values[2],
+      percentage: percentages[2],
+      className: "admin",
+    },
   ];
   let offset = 0;
   return (
@@ -875,7 +899,11 @@ function DonutChart({ values, total }: { values: number[]; total: number }) {
       aria-label={`${total} accounts distributed across passenger, driver, and administrator roles`}
     >
       <svg viewBox="0 0 110 68">
-        <path className="donut-track" d="M 10 60 A 45 45 0 0 1 100 60" pathLength={chartLength} />
+        <path
+          className="donut-track"
+          d="M 10 60 A 45 45 0 0 1 100 60"
+          pathLength={chartLength}
+        />
         {roles.map((role) => {
           const completeLength = role.percentage;
           const visibleLength =
@@ -883,8 +911,8 @@ function DonutChart({ values, total }: { values: number[]; total: number }) {
           const dashOffset = -offset;
           const midpoint = (offset + completeLength / 2) / chartLength;
           const angle = Math.PI - midpoint * Math.PI;
-          const labelX = 55 + 45 * Math.cos(angle);
-          const labelY = 60 - 45 * Math.sin(angle);
+          const labelX = 56 + 46 * Math.cos(angle);
+          const labelY = 65 - 50 * Math.sin(angle);
           offset += completeLength;
           return (
             <g key={role.className}>
@@ -901,11 +929,7 @@ function DonutChart({ values, total }: { values: number[]; total: number }) {
                 <title>{`${role.label}: ${role.value} (${role.percentage}%)`}</title>
               </path>
               {role.value > 0 && (
-                <text
-                  className="donut-percentage"
-                  x={labelX}
-                  y={labelY}
-                >
+                <text className="donut-percentage" x={labelX} y={labelY}>
                   {role.percentage}%
                 </text>
               )}
@@ -930,7 +954,10 @@ function normalizePercentages(values: number[]) {
   let remainder = 100 - percentages.reduce((sum, value) => sum + value, 0);
   const priority = raw
     .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+    .sort(
+      (left, right) =>
+        right.fraction - left.fraction || left.index - right.index,
+    );
 
   for (let index = 0; index < priority.length && remainder > 0; index += 1) {
     percentages[priority[index].index] += 1;

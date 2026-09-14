@@ -220,8 +220,13 @@
   flex: 0 0 32px;
   place-items: center;
   border-radius: 9px;
-  color: color-mix(in srgb, var(--metric-accent) 80%, var(--black));
-  background: color-mix(in srgb, var(--metric-accent) 14%, var(--off-white));
+  color: #101510;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--metric-accent) 9%, #ffffff),
+    color-mix(in srgb, var(--metric-accent) 30%, #ffffff)
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
 .dashboard-page .metric-icon-modern svg {
@@ -243,6 +248,59 @@
   display: grid;
   min-width: 0;
   gap: 4px;
+}
+
+.metric-sparkline-panel {
+  display: grid;
+  width: clamp(72px, 7.5vw, 96px);
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 1px;
+}
+
+.metric-trend-rate {
+  color: #69736b;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.metric-sparkline-panel.trend-up .metric-trend-rate {
+  color: #2f7b2e;
+}
+
+.metric-sparkline-panel.trend-down .metric-trend-rate {
+  color: #b14d45;
+}
+
+.metric-sparkline {
+  display: block;
+  width: 100%;
+  height: 38px;
+  overflow: visible;
+  color: #111511;
+}
+
+.metric-sparkline-area {
+  fill: color-mix(in srgb, var(--metric-accent) 13%, transparent);
+  stroke: none;
+}
+
+.metric-sparkline-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.metric-sparkline circle {
+  fill: var(--off-white);
+  stroke: currentColor;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
 }
 
 .dashboard-page .metric-card-modern strong {
@@ -656,6 +714,372 @@
   padding: 22px;
   box-shadow: 0 12px 32px rgba(15, 15, 15, 0.05);
 }
+
+.dashboard-page .calendar-card-visual {
+  position: relative;
+  min-height: 282px;
+  overflow: hidden;
+  border: 1px solid rgba(62, 82, 102, 0.16);
+  padding: 16px;
+  color: #102235;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255, 255, 255, 0.35), transparent 27%),
+    linear-gradient(145deg, #d9e4ed 0%, #b9cbdc 48%, #8eabc6 100%);
+  box-shadow: 0 16px 34px rgba(50, 76, 101, 0.16);
+  isolation: isolate;
+}
+
+.dashboard-page .calendar-card-visual::after {
+  position: absolute;
+  right: -20%;
+  bottom: -46%;
+  width: 125%;
+  height: 68%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  content: "";
+  pointer-events: none;
+  transform: rotate(-4deg);
+  z-index: -1;
+}
+
+.calendar-view-toolbar {
+  display: block;
+}
+
+.calendar-view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  border: 1px solid rgba(43, 64, 83, 0.09);
+  border-radius: 11px;
+  padding: 3px;
+  background: rgba(74, 98, 121, 0.16);
+}
+
+.calendar-view-switch button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.calendar-view-switch button {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 9px;
+  color: rgba(16, 34, 53, 0.66);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 650;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.calendar-view-switch button.active {
+  color: #102235;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 10px rgba(44, 67, 89, 0.12);
+}
+
+.calendar-view-switch button:focus-visible {
+  outline: 3px solid rgba(16, 34, 53, 0.24);
+  outline-offset: 2px;
+}
+
+.calendar-date-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.calendar-date-hero > div {
+  display: grid;
+  gap: 1px;
+}
+
+.calendar-date-hero span {
+  color: rgba(16, 34, 53, 0.62);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.calendar-date-hero strong {
+  color: #102235;
+  font-size: clamp(25px, 2.2vw, 34px);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.calendar-date-hero > b {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(42px, 3.8vw, 56px);
+  font-weight: 450;
+  line-height: 0.82;
+  letter-spacing: -0.07em;
+}
+
+.calendar-week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 18px;
+}
+
+.calendar-week-strip > div {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 55px;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  border-radius: 12px;
+  color: rgba(16, 34, 53, 0.68);
+}
+
+.calendar-week-strip > div.today {
+  color: #102235;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+.calendar-week-strip span {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 8px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
+.calendar-week-strip b {
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.calendar-week-strip i {
+  position: absolute;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #173f2a;
+}
+
+.calendar-week-strip i.announcement {
+  background: #3e9e21;
+}
+
+.calendar-month-panel {
+  min-height: 77px;
+  margin-top: 9px;
+}
+
+.calendar-card-visual .calendar-weekdays {
+  color: rgba(16, 34, 53, 0.58);
+}
+
+.calendar-card-visual .calendar-cell {
+  color: #102235;
+}
+
+.calendar-card-visual .calendar-cell.today {
+  color: #102235;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.calendar-card-footer {
+  display: flex;
+  align-items: center;
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.34);
+  padding-top: 12px;
+}
+
+.calendar-card-footer > span {
+  color: rgba(16, 34, 53, 0.68);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.dashboard-page .role-distribution-card {
+  min-height: 282px;
+  overflow: hidden;
+  border-color: rgba(62, 82, 102, 0.14);
+  color: #102235;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.42), transparent 30%),
+    linear-gradient(145deg, #e4edf4 0%, #cbdbe8 52%, #aec5d9 100%);
+  box-shadow: 0 16px 34px rgba(50, 76, 101, 0.13);
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+.dashboard-page .role-distribution-card .panel-title-modern .eyebrow,
+.dashboard-page .role-distribution-card .panel-title-modern h3 {
+  color: #102235;
+}
+
+.dashboard-page .role-distribution-card .link-button {
+  color: #102235;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .donut-layout {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .donut-chart {
+  width: 164px;
+  height: 110px;
+  border-radius: 0;
+}
+
+.dashboard-page .role-distribution-card .donut-chart svg {
+  transform: none;
+  filter: drop-shadow(0 7px 10px rgba(30, 58, 82, 0.12));
+}
+
+.dashboard-page .role-distribution-card .donut-track,
+.dashboard-page .role-distribution-card .donut-segment {
+  stroke-width: 17;
+}
+
+.dashboard-page .role-distribution-card .donut-track {
+  stroke: rgba(255, 255, 255, 0.38);
+}
+
+.dashboard-page .role-distribution-card .donut-segment.passenger {
+  stroke: #1f9ee5;
+}
+
+.dashboard-page .role-distribution-card .donut-segment.driver {
+  stroke: #1859b7;
+}
+
+.dashboard-page .role-distribution-card .donut-segment.admin {
+  stroke: #71879a;
+}
+
+.dashboard-page .role-distribution-card .donut-segment {
+  cursor: pointer;
+  transition:
+    stroke-width 160ms ease,
+    filter 160ms ease;
+}
+
+.dashboard-page .role-distribution-card .donut-segment:hover,
+.dashboard-page .role-distribution-card .donut-segment:focus-visible {
+  stroke-width: 21;
+  filter: brightness(1.08) drop-shadow(0 3px 4px rgba(16, 34, 53, 0.2));
+  outline: none;
+}
+
+.dashboard-page .role-distribution-card .donut-percentage {
+  fill: #ffffff;
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 6.5px;
+  font-weight: 750;
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: rgba(16, 34, 53, 0.28);
+  stroke-width: 1.25px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .donut-chart > div {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: translateX(-50%);
+}
+
+.dashboard-page .role-distribution-card .donut-chart strong {
+  color: #102235;
+  font-size: 30px;
+  font-weight: 750;
+}
+
+.dashboard-page .role-distribution-card .donut-chart small,
+.dashboard-page .role-distribution-card .legend-row small {
+  color: rgba(16, 34, 53, 0.62);
+}
+
+.dashboard-page .role-distribution-card .legend-row b,
+.dashboard-page .role-distribution-card .legend-row > strong {
+  color: #102235;
+}
+
+.dashboard-page .role-distribution-card .legend-row.passenger > span {
+  color: #1f9ee5;
+  background: rgba(31, 158, 229, 0.16);
+}
+
+.dashboard-page .role-distribution-card .legend-row.driver > span {
+  color: #1859b7;
+  background: rgba(24, 89, 183, 0.16);
+}
+
+.dashboard-page .role-distribution-card .legend-row.admin > span {
+  color: #52697d;
+  background: rgba(113, 135, 154, 0.2);
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .donut-legend {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 8px;
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .legend-row {
+  grid-template-columns: 1fr;
+  align-content: start;
+  justify-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .legend-row > div {
+  width: 100%;
+  text-align: center;
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .legend-row > span {
+  width: 27px;
+  height: 27px;
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .legend-row b {
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.dashboard-page .dashboard-side-stack .role-distribution-card .legend-row small {
+  font-size: 8px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
 
 .dashboard-page .panel-title-modern h3 {
   font-size: 16px;

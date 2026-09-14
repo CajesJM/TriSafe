@@ -1,15 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 import {
-  CalendarDays,
+  Check,
+  CheckCircle2,
   ChevronDown,
   CircleAlert,
+  TriangleAlert,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { api, type RideAnalytics } from "../../api";
 
 type Period = "last-7" | "previous-week" | "last-30" | "custom";
 type DateRange = { from: string; to: string };
+type ToastTone = "error" | "warning" | "success";
+type AnalyticsToast = { id: number; message: string; tone: ToastTone };
+const periodOptions: { value: Period; label: string }[] = [
+  { value: "last-7", label: "Last 7 days" },
+  { value: "previous-week", label: "Previous week" },
+  { value: "last-30", label: "Last 30 days" },
+  { value: "custom", label: "Custom dates" },
+];
 
 export function RideAnalyticsPanel() {
   const [period, setPeriod] = useState<Period>("last-7");
@@ -17,12 +29,34 @@ export function RideAnalyticsPanel() {
   const [draftRange, setDraftRange] = useState<DateRange>(() => rangeFor("last-7"));
   const [analytics, setAnalytics] = useState<RideAnalytics>();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState<AnalyticsToast | null>(null);
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const periodMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function closePeriodMenu(event: MouseEvent) {
+      if (!periodMenuRef.current?.contains(event.target as Node)) setPeriodMenuOpen(false);
+    }
+    function closePeriodMenuWithKeyboard(event: KeyboardEvent) {
+      if (event.key === "Escape") setPeriodMenuOpen(false);
+    }
+    document.addEventListener("mousedown", closePeriodMenu);
+    document.addEventListener("keydown", closePeriodMenuWithKeyboard);
+    return () => {
+      document.removeEventListener("mousedown", closePeriodMenu);
+      document.removeEventListener("keydown", closePeriodMenuWithKeyboard);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setError("");
     api
       .rideAnalytics(range)
       .then((result) => {
@@ -30,7 +64,7 @@ export function RideAnalyticsPanel() {
       })
       .catch((reason: unknown) => {
         if (active)
-          setError(reason instanceof Error ? reason.message : "Ride analytics could not be loaded.");
+          showToast(reason instanceof Error ? reason.message : "Ride analytics could not be loaded.", "error");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -42,6 +76,7 @@ export function RideAnalyticsPanel() {
 
   function selectPeriod(nextPeriod: Period) {
     setPeriod(nextPeriod);
+    setPeriodMenuOpen(false);
     if (nextPeriod !== "custom") {
       const nextRange = rangeFor(nextPeriod);
       setRange(nextRange);
@@ -51,81 +86,181 @@ export function RideAnalyticsPanel() {
 
   function applyCustomRange() {
     if (!draftRange.from || !draftRange.to || draftRange.from > draftRange.to) {
-      setError("Select a valid start and end date.");
+      showToast("Select a valid start and end date.", "warning");
+      return;
+    }
+    if (dateRangeLength(draftRange) > 90) {
+      showToast("Ride analytics can display up to 90 days at a time.", "warning");
       return;
     }
     setRange(draftRange);
+    showToast("Custom date range applied.", "success");
+  }
+
+  function showToast(message: string, tone: ToastTone) {
+    setToast({ id: Date.now(), message, tone });
   }
 
   return (
-    <article className="dashboard-card activity-chart-card analytics-card">
+    <>
+      {toast && createPortal(
+        <div className="analytics-toast-region" aria-live="polite">
+          <AnalyticsToastNotice key={toast.id} toast={toast} onDismiss={() => setToast(null)} />
+        </div>,
+        document.body,
+      )}
+      <article className="dashboard-card activity-chart-card analytics-card">
       <header className="analytics-header">
         <div>
           <p className="eyebrow">RIDE ANALYTICS</p>
           <h3>Transport activity</h3>
           <p>Explore ride sessions recorded by the passenger application.</p>
         </div>
-        <label className="analytics-period-select">
-          <span className="sr-only">Analytics period</span>
-          <select value={period} onChange={(event) => selectPeriod(event.target.value as Period)}>
-            <option value="last-7">Last 7 days</option>
-            <option value="previous-week">Previous week</option>
-            <option value="last-30">Last 30 days</option>
-            <option value="custom">Custom dates</option>
-          </select>
-          <ChevronDown aria-hidden="true" size={14} />
-        </label>
+        <div className="analytics-header-controls">
+          {period === "custom" && (
+            <div className="analytics-custom-range" aria-label="Custom analytics dates">
+              <label>
+                <span>From</span>
+                <input
+                  type="date"
+                  value={draftRange.from}
+                  max={draftRange.to || todayString()}
+                  onChange={(event) => setDraftRange((current) => ({ ...current, from: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>To</span>
+                <input
+                  type="date"
+                  value={draftRange.to}
+                  min={draftRange.from}
+                  max={todayString()}
+                  onChange={(event) => setDraftRange((current) => ({ ...current, to: event.target.value }))}
+                />
+              </label>
+              <button type="button" className="primary" onClick={applyCustomRange}>Apply</button>
+            </div>
+          )}
+          <div className={`analytics-period-select ${periodMenuOpen ? "is-open" : ""}`} ref={periodMenuRef}>
+            <button
+              aria-expanded={periodMenuOpen}
+              aria-haspopup="listbox"
+              className="analytics-period-trigger"
+              onClick={() => setPeriodMenuOpen((open) => !open)}
+              type="button"
+            >
+              <span>{periodOptions.find((option) => option.value === period)?.label}</span>
+              <ChevronDown aria-hidden="true" size={15} />
+            </button>
+            <div className="analytics-period-menu" role="listbox" aria-label="Analytics period">
+              {periodOptions.map((option) => (
+                <button
+                  aria-selected={period === option.value}
+                  className={period === option.value ? "selected" : ""}
+                  key={option.value}
+                  onClick={() => selectPeriod(option.value)}
+                  role="option"
+                  tabIndex={periodMenuOpen ? 0 : -1}
+                  type="button"
+                >
+                  <span>{option.label}</span>
+                  {period === option.value && <Check aria-hidden="true" size={14} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </header>
-
-      {period === "custom" && (
-        <div className="analytics-custom-range" aria-label="Custom analytics dates">
-          <label>
-            <span>From</span>
-            <input
-              type="date"
-              value={draftRange.from}
-              max={draftRange.to || todayString()}
-              onChange={(event) => setDraftRange((current) => ({ ...current, from: event.target.value }))}
-            />
-          </label>
-          <label>
-            <span>To</span>
-            <input
-              type="date"
-              value={draftRange.to}
-              min={draftRange.from}
-              max={todayString()}
-              onChange={(event) => setDraftRange((current) => ({ ...current, to: event.target.value }))}
-            />
-          </label>
-          <button type="button" className="primary" onClick={applyCustomRange}>Apply dates</button>
-        </div>
-      )}
-
-      {error && (
-        <div className="analytics-error" role="alert">
-          <CircleAlert size={16} /> {error}
-        </div>
-      )}
 
       {loading && !analytics ? (
         <div className="analytics-loading" aria-live="polite">Loading ride history…</div>
       ) : analytics ? (
         <AnalyticsContent analytics={analytics} loading={loading} />
       ) : null}
-    </article>
+      </article>
+    </>
+  );
+}
+
+function AnalyticsToastNotice({ toast, onDismiss }: { toast: AnalyticsToast; onDismiss: () => void }) {
+  const dragStart = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const icon = toast.tone === "success"
+    ? <CheckCircle2 aria-hidden="true" />
+    : toast.tone === "warning"
+      ? <TriangleAlert aria-hidden="true" />
+      : <CircleAlert aria-hidden="true" />;
+
+  function beginSwipe(event: ReactPointerEvent<HTMLDivElement>) {
+    dragStart.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function continueSwipe(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragStart.current !== null) setDragOffset(event.clientX - dragStart.current);
+  }
+
+  function finishSwipe() {
+    if (Math.abs(dragOffset) >= 80) onDismiss();
+    else setDragOffset(0);
+    dragStart.current = null;
+  }
+
+  return (
+    <div className="analytics-toast-entry">
+      <div
+        className={`analytics-toast analytics-toast-${toast.tone}`}
+        onPointerCancel={finishSwipe}
+        onPointerDown={beginSwipe}
+        onPointerMove={continueSwipe}
+        onPointerUp={finishSwipe}
+        role={toast.tone === "error" ? "alert" : "status"}
+        style={{ transform: `translateX(${dragOffset}px)` }}
+      >
+        <span className="analytics-toast-icon">{icon}</span>
+        <div>
+          <strong>{toast.tone === "success" ? "Success" : toast.tone === "warning" ? "Check your dates" : "Unable to continue"}</strong>
+          <p>{toast.message}</p>
+        </div>
+        <button
+          aria-label="Dismiss notification"
+          onClick={onDismiss}
+          onPointerDown={(event) => event.stopPropagation()}
+          type="button"
+        >
+          <X aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 }
 
 function AnalyticsContent({ analytics, loading }: { analytics: RideAnalytics; loading: boolean }) {
   const chart = useMemo(() => buildChart(analytics), [analytics]);
   const comparison = comparisonLabel(analytics);
+  const tricycleTotal = analytics.daily.reduce((sum, day) => sum + day.tricycle, 0);
+  const habalHabalTotal = analytics.daily.reduce((sum, day) => sum + day.habalHabal, 0);
+  const animatedTotal = useAnimatedNumber(analytics.summary.total);
+  const animatedTricycleTotal = useAnimatedNumber(tricycleTotal);
+  const animatedHabalHabalTotal = useAnimatedNumber(habalHabalTotal);
+  const animatedDays = useAnimatedNumber(analytics.days);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const hoveredDay = hoveredIndex === null ? null : analytics.daily[hoveredIndex];
+  const hoveredX = hoveredIndex === null ? 0 : chartX(hoveredIndex, analytics.daily.length);
+
+  function updateHoveredDay(event: ReactPointerEvent<SVGSVGElement>) {
+    if (analytics.daily.length === 0) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const chartPosition = ((event.clientX - bounds.left) / bounds.width) * 760;
+    const ratio = Math.min(1, Math.max(0, (chartPosition - 54) / 670));
+    setHoveredIndex(Math.round(ratio * (analytics.daily.length - 1)));
+  }
 
   return (
     <div className={loading ? "analytics-content is-refreshing" : "analytics-content"}>
       <section className="analytics-summary" aria-label="Selected period summary">
         <div className="analytics-primary-metric">
-          <strong>{analytics.summary.total.toLocaleString()}</strong>
+          <strong>{animatedTotal.toLocaleString()}</strong>
           <span>rides in selected period</span>
         </div>
         <div className={`analytics-comparison ${comparison.tone}`}>
@@ -134,18 +269,26 @@ function AnalyticsContent({ analytics, loading }: { analytics: RideAnalytics; lo
           <span>{comparison.detail}</span>
         </div>
         <div className="analytics-status-summary">
-          <span><i className="completed" /> {analytics.summary.completed} completed</span>
-          <span><i className="active" /> {analytics.summary.active} active</span>
-          <span><i className="cancelled" /> {analytics.summary.cancelled} cancelled</span>
+          <span><i className="tricycle" /> {animatedTricycleTotal} tricycle rides</span>
+          <span><i className="habal-habal" /> {animatedHabalHabalTotal} habal-habal rides</span>
         </div>
       </section>
 
-      <div className="analytics-chart" role="img" aria-label={`Ride totals from ${formatDate(analytics.from)} to ${formatDate(analytics.to)}`}>
-        <svg viewBox="0 0 760 250" preserveAspectRatio="xMidYMid meet">
+      <div className="analytics-chart" role="img" aria-label={`Tricycle and habal-habal rides from ${formatDate(analytics.from)} to ${formatDate(analytics.to)}`}>
+        <svg
+          onPointerLeave={() => setHoveredIndex(null)}
+          onPointerMove={updateHoveredDay}
+          preserveAspectRatio="xMidYMid meet"
+          viewBox="0 0 760 250"
+        >
           <defs>
-            <linearGradient id="analyticsRideArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--lime)" stopOpacity=".24" />
-              <stop offset="100%" stopColor="var(--lime)" stopOpacity="0" />
+            <linearGradient id="analyticsTricycleArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#55b982" stopOpacity=".16" />
+              <stop offset="100%" stopColor="#55b982" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="analyticsHabalArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6597d5" stopOpacity=".14" />
+              <stop offset="100%" stopColor="#6597d5" stopOpacity="0" />
             </linearGradient>
           </defs>
           {chart.ticks.map((tick, index) => {
@@ -157,77 +300,107 @@ function AnalyticsContent({ analytics, loading }: { analytics: RideAnalytics; lo
               </g>
             );
           })}
-          <polygon points={chart.area} fill="url(#analyticsRideArea)" />
-          <polyline points={chart.points} className="ride-chart-line" />
+          <path key={`tricycle-area-${analytics.from}-${analytics.to}`} className="ride-chart-area" d={chart.tricycleArea} fill="url(#analyticsTricycleArea)" />
+          <path key={`habal-area-${analytics.from}-${analytics.to}`} className="ride-chart-area" d={chart.habalHabalArea} fill="url(#analyticsHabalArea)" />
+          <path key={`tricycle-line-${analytics.from}-${analytics.to}`} d={chart.tricyclePath} className="ride-chart-line tricycle" pathLength="1" />
+          <path key={`habal-line-${analytics.from}-${analytics.to}`} d={chart.habalHabalPath} className="ride-chart-line habal-habal" pathLength="1" />
           {analytics.daily.map((day, index) => {
             const x = chartX(index, analytics.daily.length);
-            const y = chartY(day.total, chart.max);
             const showLabel = shouldShowChartLabel(index, analytics.daily.length);
             return (
               <g key={day.date}>
-                <circle cx={x} cy={y} r="5" className="ride-chart-point">
-                  <title>{`${formatDate(day.date)}: ${day.total} ride${day.total === 1 ? "" : "s"}`}</title>
-                </circle>
                 {showLabel && <text x={x} y="224" className="ride-day-label">{shortDate(day.date, analytics.days)}</text>}
-                {(analytics.days <= 10 || day.total > 0) && (
-                  <text x={x} y={Math.max(18, y - 12)} className="ride-value-label">{day.total}</text>
-                )}
               </g>
             );
           })}
+          <rect className="analytics-chart-hover-surface" x="54" y="28" width="670" height="180" />
+          {hoveredDay && (
+            <g className="analytics-chart-tooltip" pointerEvents="none">
+              <line x1={hoveredX} x2={hoveredX} y1="38" y2="198" />
+              <circle className="tricycle" cx={hoveredX} cy={chartY(hoveredDay.tricycle, chart.max)} r="5" />
+              <circle className="habal-habal" cx={hoveredX} cy={chartY(hoveredDay.habalHabal, chart.max)} r="5" />
+              <g transform={`translate(${hoveredX > 550 ? hoveredX - 174 : hoveredX + 14}, 44)`}>
+                <rect width="160" height="66" rx="10" />
+                <text className="tooltip-date" x="12" y="18">{formatDate(hoveredDay.date)}</text>
+                <circle className="tricycle" cx="15" cy="35" r="3" />
+                <text x="25" y="38">Tricycle</text>
+                <text className="tooltip-value" x="147" y="38">{hoveredDay.tricycle}</text>
+                <circle className="habal-habal" cx="15" cy="52" r="3" />
+                <text x="25" y="55">Habal-habal</text>
+                <text className="tooltip-value" x="147" y="55">{hoveredDay.habalHabal}</text>
+              </g>
+            </g>
+          )}
         </svg>
       </div>
 
       <div className="analytics-range-band">
         <div className="analytics-range-label">
-          <CalendarDays size={17} />
           <span><small>Selected period</small><strong>{formatDate(analytics.from)} – {formatDate(analytics.to)}</strong></span>
         </div>
         <div className="analytics-legend" aria-label="Graph legend">
-          <span><i className="line" /> Daily ride total</span>
-          <span><i className="point" /> Recorded day</span>
+          <span><i className="line tricycle" /> Tricycle</span>
+          <span><i className="line habal-habal" /> Habal-habal</span>
         </div>
-        <span className="analytics-record-count">{analytics.days} calendar days</span>
+        <span className="analytics-record-count">{animatedDays} calendar days</span>
       </div>
-
-      <section className="analytics-history">
-        <div className="analytics-history-heading">
-          <div>
-            <h4>Daily records</h4>
-            <p>Complete database breakdown for the selected period.</p>
-          </div>
-          <strong>₱{analytics.summary.fareAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })} <small>recorded fares</small></strong>
-        </div>
-        <div className="analytics-history-table" role="table" aria-label="Historical ride records">
-          <div className="analytics-history-row analytics-history-head" role="row">
-            <span role="columnheader">Date</span><span role="columnheader">Total</span><span role="columnheader">Completed</span><span role="columnheader">Active</span><span role="columnheader">Cancelled</span><span role="columnheader">Fare amount</span>
-          </div>
-          {[...analytics.daily].reverse().map((day) => (
-            <div className="analytics-history-row" role="row" key={day.date}>
-              <span role="cell"><strong>{formatDate(day.date)}</strong><small>{new Date(`${day.date}T00:00:00`).toLocaleDateString("en-PH", { weekday: "long" })}</small></span>
-              <span role="cell"><b>{day.total}</b></span>
-              <span role="cell">{day.completed}</span>
-              <span role="cell">{day.active}</span>
-              <span role="cell">{day.cancelled}</span>
-              <span role="cell">₱{day.fareAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
 
 function buildChart(analytics: RideAnalytics) {
-  const highest = Math.max(...analytics.daily.map((day) => day.total), 1);
+  const highest = Math.max(...analytics.daily.flatMap((day) => [day.tricycle, day.habalHabal]), 1);
   const max = Math.max(4, Math.ceil(highest / 4) * 4);
-  const points = analytics.daily.map((day, index) => `${chartX(index, analytics.daily.length)},${chartY(day.total, max)}`).join(" ");
+  const tricyclePoints = analytics.daily.map((day, index) => ({ x: chartX(index, analytics.daily.length), y: chartY(day.tricycle, max) }));
+  const habalHabalPoints = analytics.daily.map((day, index) => ({ x: chartX(index, analytics.daily.length), y: chartY(day.habalHabal, max) }));
+  const tricyclePath = smoothPath(tricyclePoints);
+  const habalHabalPath = smoothPath(habalHabalPoints);
   return {
     max,
-    points,
-    area: `54,198 ${points} 724,198`,
+    tricyclePath,
+    habalHabalPath,
+    tricycleArea: `${tricyclePath} L 724 198 L 54 198 Z`,
+    habalHabalArea: `${habalHabalPath} L 724 198 L 54 198 Z`,
     ticks: Array.from({ length: 5 }, (_, index) => max - index * (max / 4)),
   };
+}
+
+function smoothPath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  return points.slice(1).reduce((path, point, index) => {
+    const previous = points[index];
+    const controlX = (previous.x + point.x) / 2;
+    return `${path} C ${controlX} ${previous.y}, ${controlX} ${point.y}, ${point.x} ${point.y}`;
+  }, `M ${points[0].x} ${points[0].y}`);
+}
+
+function useAnimatedNumber(value: number, duration = 650) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const displayedValueRef = useRef(0);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      displayedValueRef.current = value;
+      setDisplayValue(value);
+      return;
+    }
+    const startValue = displayedValueRef.current;
+    const startedAt = performance.now();
+    let frame = 0;
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const nextValue = Math.round(startValue + (value - startValue) * eased);
+      displayedValueRef.current = nextValue;
+      setDisplayValue(nextValue);
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [duration, value]);
+
+  return displayValue;
 }
 
 function chartX(index: number, length: number) {
@@ -281,6 +454,12 @@ function dateString(value: Date) {
 
 function todayString() {
   return dateString(new Date());
+}
+
+function dateRangeLength(range: DateRange) {
+  const from = new Date(`${range.from}T00:00:00`).getTime();
+  const to = new Date(`${range.to}T00:00:00`).getTime();
+  return Math.floor((to - from) / 86_400_000) + 1;
 }
 
 function formatDate(value: string) {
