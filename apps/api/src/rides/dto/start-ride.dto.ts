@@ -2,16 +2,6 @@ import { IsIn, IsLatitude, IsLongitude, IsOptional, IsString, IsInt, Max, MaxLen
 import { PASSENGER_FARE_TYPES } from '@trisafe/contracts';
 import type { PassengerFareType } from '@trisafe/contracts';
 
-export class StartRideDto {
-  @IsString() vehicleId!: string;
-  @IsString() fromLocationId!: string;
-  @IsString() toLocationId!: string;
-  @IsOptional() @IsInt() @Min(1) passengerCount = 1;
-  @IsOptional() @IsIn(PASSENGER_FARE_TYPES) passengerType: PassengerFareType = 'REGULAR';
-  @IsOptional() @IsLatitude() startLatitude?: number;
-  @IsOptional() @IsLongitude() startLongitude?: number;
-}
-
 export class StartMapRideDto {
   @IsString() @MinLength(1) vehicleId!: string;
   @IsString() @MinLength(1) qrToken!: string;

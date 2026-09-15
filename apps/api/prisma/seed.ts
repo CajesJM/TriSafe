@@ -74,67 +74,6 @@ async function main() {
       },
     }),
   ]);
-  const [market, terminal] = await Promise.all([
-    prisma.location.upsert({
-      where: { id: "loc-trinidad-market" },
-      update: {},
-      create: {
-        id: "loc-trinidad-market",
-        name: "Trinidad Public Market",
-        latitude: 9.8108,
-        longitude: 124.1435,
-      },
-    }),
-    prisma.location.upsert({
-      where: { id: "loc-trinidad-terminal" },
-      update: {},
-      create: {
-        id: "loc-trinidad-terminal",
-        name: "Trinidad Transport Terminal",
-        latitude: 9.817,
-        longitude: 124.1451,
-      },
-    }),
-  ]);
-  const fareRule = {
-    baseFare: 15,
-    distanceKm: 2.1,
-    perKm: 2,
-    minimumFare: 15,
-    version: "LGU-2026-01",
-    effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
-  };
-
-  await Promise.all([
-    prisma.fareRule.upsert({
-      where: { id: "fare-trinidad-market-to-terminal" },
-      update: {
-        ...fareRule,
-        fromLocationId: market.id,
-        toLocationId: terminal.id,
-      },
-      create: {
-        id: "fare-trinidad-market-to-terminal",
-        ...fareRule,
-        fromLocationId: market.id,
-        toLocationId: terminal.id,
-      },
-    }),
-    prisma.fareRule.upsert({
-      where: { id: "fare-trinidad-terminal-to-market" },
-      update: {
-        ...fareRule,
-        fromLocationId: terminal.id,
-        toLocationId: market.id,
-      },
-      create: {
-        id: "fare-trinidad-terminal-to-market",
-        ...fareRule,
-        fromLocationId: terminal.id,
-        toLocationId: market.id,
-      },
-    }),
-  ]);
   await Promise.all([
     prisma.emergencyContact.upsert({
       where: {

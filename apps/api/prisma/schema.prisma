@@ -91,44 +91,43 @@ enum TermsStatus {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  role            UserRole
-  status          UserStatus @default(ACTIVE)
-  fullName        String
-  username        String?   @unique
-  email           String?   @unique
-  phone           String?
-  avatarData      String?   @db.Text
-  passwordHash    String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  roleDefinition  RoleDefinition @relation(fields: [role], references: [key], onDelete: Restrict, onUpdate: Cascade)
-  driverProfile   Driver?
-  address         UserAddress?
-  passengerRides  Ride[]    @relation("PassengerRides")
-  submittedRatings DriverRating[] @relation("PassengerRatings")
-  incidents       Incident[]
-  trustedContacts TrustedContact[]
-  livePresence    LivePresence?
+  id               String           @id @default(cuid())
+  role             UserRole
+  status           UserStatus       @default(ACTIVE)
+  fullName         String
+  username         String?          @unique
+  email            String?          @unique
+  phone            String?
+  avatarData       String?          @db.Text
+  passwordHash     String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  roleDefinition   RoleDefinition   @relation(fields: [role], references: [key], onDelete: Restrict, onUpdate: Cascade)
+  driverProfile    Driver?
+  address          UserAddress?
+  passengerRides   Ride[]           @relation("PassengerRides")
+  submittedRatings DriverRating[]   @relation("PassengerRatings")
+  incidents        Incident[]
+  trustedContacts  TrustedContact[]
 }
 
 model UserAddress {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  provinceCode      String
-  provinceName      String
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  provinceCode     String
+  provinceName     String
   municipalityCode String
   municipalityName String
-  barangayCode      String
-  barangayName      String
-  streetPurok       String
-  postalCode        String
-  externalPlaceId   String
-  latitude          Decimal  @db.Decimal(10, 7)
-  longitude         Decimal  @db.Decimal(10, 7)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barangayCode     String
+  barangayName     String
+  streetPurok      String
+  postalCode       String
+  externalPlaceId  String
+  latitude         Decimal  @db.Decimal(10, 7)
+  longitude        Decimal  @db.Decimal(10, 7)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([provinceCode, municipalityCode, barangayCode])
   @@index([postalCode])
@@ -147,214 +146,174 @@ model RoleDefinition {
 }
 
 model Driver {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  ownerId         String?
-  verification    DriverVerificationStatus @default(PENDING)
-  user            User     @relation(fields: [userId], references: [id])
-  owner           TransportOwner? @relation(fields: [ownerId], references: [id])
-  franchise       Franchise?
-  vehicles        Vehicle[]
-  announcements   AnnouncementRecipient[]
-  address         DriverAddress?
-  violations      DriverViolation[]
-  ratings         DriverRating[]
-  notifications   DriverNotification[]
-  createdAt       DateTime @default(now())
+  id            String                   @id @default(cuid())
+  userId        String                   @unique
+  ownerId       String?
+  verification  DriverVerificationStatus @default(PENDING)
+  user          User                     @relation(fields: [userId], references: [id])
+  owner         TransportOwner?          @relation(fields: [ownerId], references: [id])
+  franchise     Franchise?
+  vehicles      Vehicle[]
+  announcements AnnouncementRecipient[]
+  address       DriverAddress?
+  violations    DriverViolation[]
+  ratings       DriverRating[]
+  notifications DriverNotification[]
+  createdAt     DateTime                 @default(now())
 }
 
 model TransportOwner {
-  id            String   @id @default(cuid())
-  identityKey   String   @unique
-  lastName      String
-  firstName     String
-  middleName    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  drivers       Driver[]
+  id          String   @id @default(cuid())
+  identityKey String   @unique
+  lastName    String
+  firstName   String
+  middleName  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  drivers     Driver[]
 }
 
 model DriverAddress {
-  id                String   @id @default(cuid())
-  driverId          String   @unique
-  provinceCode      String
-  provinceName      String
+  id               String   @id @default(cuid())
+  driverId         String   @unique
+  provinceCode     String
+  provinceName     String
   municipalityCode String
   municipalityName String
-  barangayCode      String
-  barangayName      String
-  purok             String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  driver            Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  barangayCode     String
+  barangayName     String
+  purok            String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  driver           Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
 
   @@index([provinceCode, municipalityCode, barangayCode])
 }
 
 model Franchise {
-  id              String   @id @default(cuid())
-  driverId        String   @unique
-  franchiseNumber String   @unique
+  id              String                   @id @default(cuid())
+  driverId        String                   @unique
+  franchiseNumber String                   @unique
   issuedAt        DateTime
   expiresAt       DateTime
   status          DriverVerificationStatus @default(PENDING)
-  driver          Driver   @relation(fields: [driverId], references: [id])
+  driver          Driver                   @relation(fields: [driverId], references: [id])
 }
 
 model Vehicle {
-  id              String   @id @default(cuid())
-  driverId        String
-  plateNumber     String   @unique
-  vehicleType     String
-  bodyNumber      String?  @unique
-  permitNumber    String?  @unique
-  engineNumber    String?  @unique
-  chassisNumber   String?  @unique
-  makeModel       String?
-  isActive        Boolean  @default(true)
-  driver          Driver   @relation(fields: [driverId], references: [id])
-  qrCode          QrCode?
-  rides           Ride[]
+  id            String  @id @default(cuid())
+  driverId      String
+  plateNumber   String  @unique
+  vehicleType   String
+  bodyNumber    String? @unique
+  permitNumber  String? @unique
+  engineNumber  String? @unique
+  chassisNumber String? @unique
+  makeModel     String?
+  isActive      Boolean @default(true)
+  driver        Driver  @relation(fields: [driverId], references: [id])
+  qrCode        QrCode?
+  rides         Ride[]
 }
 
 model QrCode {
-  id              String   @id @default(cuid())
-  vehicleId       String   @unique
-  token           String   @unique
-  generatedAt     DateTime @default(now())
-  revokedAt       DateTime?
-  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
-}
-
-model Location {
-  id              String   @id @default(cuid())
-  name            String
-  latitude        Decimal  @db.Decimal(10, 7)
-  longitude       Decimal  @db.Decimal(10, 7)
-  active          Boolean  @default(true)
-  fromFares       FareRule[] @relation("FromLocation")
-  toFares         FareRule[] @relation("ToLocation")
-}
-
-model FareRule {
-  id                  String   @id @default(cuid())
-  fromLocationId      String
-  toLocationId        String
-  baseFare            Decimal  @db.Decimal(10, 2)
-  distanceKm          Decimal  @db.Decimal(10, 2)
-  perKm               Decimal  @db.Decimal(10, 2)
-  minimumFare         Decimal  @db.Decimal(10, 2) @default(0)
-  version             String
-  effectiveFrom       DateTime
-  effectiveTo         DateTime?
-  active              Boolean  @default(true)
-  fromLocation        Location @relation("FromLocation", fields: [fromLocationId], references: [id])
-  toLocation          Location @relation("ToLocation", fields: [toLocationId], references: [id])
-  @@index([fromLocationId, toLocationId, active])
+  id          String    @id @default(cuid())
+  vehicleId   String    @unique
+  token       String    @unique
+  generatedAt DateTime  @default(now())
+  revokedAt   DateTime?
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
 }
 
 model VehicleFarePolicy {
-  id                  String   @id @default(cuid())
-  vehicleType         String   @unique
-  baseFare            Decimal  @db.Decimal(10, 2) @default(0)
-  ratePerKm            Decimal  @db.Decimal(10, 2)
-  minimumFare         Decimal  @db.Decimal(10, 2) @default(0)
-  studentDiscountPercent Decimal @db.Decimal(5, 2) @default(20)
-  seniorDiscountPercent  Decimal @db.Decimal(5, 2) @default(20)
-  version             String
-  active              Boolean  @default(true)
-  effectiveFrom       DateTime @default(now())
-  effectiveTo         DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  vehicleType            String    @unique
+  baseFare               Decimal   @default(0) @db.Decimal(10, 2)
+  ratePerKm              Decimal   @db.Decimal(10, 2)
+  minimumFare            Decimal   @default(0) @db.Decimal(10, 2)
+  studentDiscountPercent Decimal   @default(20) @db.Decimal(5, 2)
+  seniorDiscountPercent  Decimal   @default(20) @db.Decimal(5, 2)
+  version                String
+  active                 Boolean   @default(true)
+  effectiveFrom          DateTime  @default(now())
+  effectiveTo            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   @@index([active, effectiveFrom])
 }
 
 model Ride {
-  id              String   @id @default(cuid())
-  passengerId     String
-  vehicleId       String
-  fromLocationId  String?
-  toLocationId    String?
-  fromLocationName String?
-  toLocationName   String?
-  estimatedFare   Decimal  @db.Decimal(10, 2)
-  finalFare       Decimal? @db.Decimal(10, 2)
-  actualDistanceMeters Float @default(0)
-  passengerCount  Int      @default(1)
-  passengerType   String   @default("REGULAR")
-  vehicleType     String   @default("TRICYCLE")
-  fareVersion     String
-  status          RideStatus @default(ACTIVE)
-  startedAt       DateTime @default(now())
-  endedAt         DateTime?
-  startLatitude   Decimal? @db.Decimal(10, 7)
-  startLongitude  Decimal? @db.Decimal(10, 7)
-  destinationLatitude  Decimal? @db.Decimal(10, 7)
-  destinationLongitude Decimal? @db.Decimal(10, 7)
-  endLatitude     Decimal? @db.Decimal(10, 7)
-  endLongitude    Decimal? @db.Decimal(10, 7)
-  passenger       User     @relation("PassengerRides", fields: [passengerId], references: [id])
-  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id])
-  incident        Incident?
-  rating          DriverRating?
-  locationPoints  RideLocationPoint[]
+  id                   String              @id @default(cuid())
+  passengerId          String
+  vehicleId            String
+  fromLocationName     String?
+  toLocationName       String?
+  estimatedFare        Decimal             @db.Decimal(10, 2)
+  finalFare            Decimal?            @db.Decimal(10, 2)
+  actualDistanceMeters Float               @default(0)
+  passengerCount       Int                 @default(1)
+  passengerType        String              @default("REGULAR")
+  vehicleType          String              @default("TRICYCLE")
+  fareVersion          String
+  status               RideStatus          @default(ACTIVE)
+  startedAt            DateTime            @default(now())
+  endedAt              DateTime?
+  startLatitude        Decimal?            @db.Decimal(10, 7)
+  startLongitude       Decimal?            @db.Decimal(10, 7)
+  destinationLatitude  Decimal?            @db.Decimal(10, 7)
+  destinationLongitude Decimal?            @db.Decimal(10, 7)
+  endLatitude          Decimal?            @db.Decimal(10, 7)
+  endLongitude         Decimal?            @db.Decimal(10, 7)
+  passenger            User                @relation("PassengerRides", fields: [passengerId], references: [id])
+  vehicle              Vehicle             @relation(fields: [vehicleId], references: [id])
+  incident             Incident?
+  rating               DriverRating?
+  locationPoints       RideLocationPoint[]
+
   @@index([passengerId, status])
 }
 
 model RideLocationPoint {
-  id          String   @id @default(cuid())
-  rideId      String
-  latitude    Decimal  @db.Decimal(10, 7)
-  longitude   Decimal  @db.Decimal(10, 7)
-  accuracy    Float?
-  recordedAt  DateTime @default(now())
-  ride        Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  rideId     String
+  latitude   Decimal  @db.Decimal(10, 7)
+  longitude  Decimal  @db.Decimal(10, 7)
+  accuracy   Float?
+  recordedAt DateTime @default(now())
+  ride       Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
 
   @@index([rideId, recordedAt])
 }
 
-model LivePresence {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  latitude    Decimal  @db.Decimal(10, 7)
-  longitude   Decimal  @db.Decimal(10, 7)
-  accuracy    Float?
-  heading     Float?
-  speed       Float?
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([updatedAt])
-}
-
 model Incident {
-  id              String   @id @default(cuid())
-  passengerId     String
-  rideId          String?  @unique
-  rawDescription  String
-  aiDraft         String?
-  category        IncidentCategory @default(OTHER)
-  status          IncidentStatus @default(DRAFT)
-  reviewerNotes   String?
-  createdAt       DateTime @default(now())
-  submittedAt     DateTime?
+  id               String             @id @default(cuid())
+  passengerId      String
+  rideId           String?            @unique
+  rawDescription   String
+  aiDraft          String?
+  category         IncidentCategory   @default(OTHER)
+  status           IncidentStatus     @default(DRAFT)
+  reviewerNotes    String?
+  createdAt        DateTime           @default(now())
+  submittedAt      DateTime?
   finalDescription String?
-  evidence        IncidentEvidence[]
-  passenger       User     @relation(fields: [passengerId], references: [id])
-  ride            Ride?    @relation(fields: [rideId], references: [id])
+  evidence         IncidentEvidence[]
+  violations       DriverViolation[]
+  passenger        User               @relation(fields: [passengerId], references: [id])
+  ride             Ride?              @relation(fields: [rideId], references: [id])
+
   @@index([status, createdAt])
 }
 
 model IncidentEvidence {
-  id          String   @id @default(cuid())
-  incidentId  String
-  fileName    String
-  mimeType    String
-  data        String   @db.Text
-  createdAt   DateTime @default(now())
-  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  incidentId String
+  fileName   String
+  mimeType   String
+  data       String   @db.Text
+  createdAt  DateTime @default(now())
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
 
   @@index([incidentId, createdAt])
 }
@@ -375,23 +334,25 @@ model TrustedContact {
 }
 
 model DriverViolation {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   driverId      String
   incidentId    String?
   category      String
-  offenseLevel  OffenseLevel @default(FIRST_OFFENSE)
+  offenseLevel  OffenseLevel    @default(FIRST_OFFENSE)
   description   String
   occurredAt    DateTime
   status        ViolationStatus @default(OPEN)
-  penaltyAmount Decimal?      @db.Decimal(10, 2)
-  penaltyStatus PenaltyStatus @default(NOT_APPLICABLE)
+  penaltyAmount Decimal?        @db.Decimal(10, 2)
+  penaltyStatus PenaltyStatus   @default(NOT_APPLICABLE)
   dueAt         DateTime?
   notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  driver        Driver        @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  driver        Driver          @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  incident      Incident?       @relation(fields: [incidentId], references: [id], onDelete: SetNull)
 
   @@index([driverId, status])
+  @@index([incidentId])
   @@index([status, penaltyStatus, dueAt])
   @@index([occurredAt])
 }
@@ -434,16 +395,17 @@ model EmergencyContact {
   name        String
   phone       String
   description String?
-    active      Boolean @default(true)
-    @@unique([name, phone])
+  active      Boolean @default(true)
+
+  @@unique([name, phone])
 }
 
 model Announcement {
-  id          String   @id @default(cuid())
+  id          String                  @id @default(cuid())
   title       String
   body        String
-  imageData   String?  @db.Text
-  publishedAt DateTime @default(now())
+  imageData   String?                 @db.Text
+  publishedAt DateTime                @default(now())
   expiresAt   DateTime?
   recipients  AnnouncementRecipient[]
 }
@@ -471,6 +433,7 @@ model AnnouncementRecipient {
   readAt         DateTime?
   announcement   Announcement @relation(fields: [announcementId], references: [id])
   driver         Driver       @relation(fields: [driverId], references: [id])
+
   @@id([announcementId, driverId])
 }
 
@@ -489,16 +452,16 @@ model AuditLog {
 }
 
 model WeatherSnapshot {
-  id             String   @id
-  locationName   String
-  latitude       Decimal  @db.Decimal(10, 7)
-  longitude      Decimal  @db.Decimal(10, 7)
-  temperatureC   Decimal  @db.Decimal(5, 2)
-  apparentC      Decimal  @db.Decimal(5, 2)
-  humidity       Int
-  windKmh        Decimal  @db.Decimal(6, 2)
-  weatherCode    Int
-  isDay          Boolean
-  observedAt     DateTime
-  fetchedAt      DateTime @updatedAt
+  id           String   @id
+  locationName String
+  latitude     Decimal  @db.Decimal(10, 7)
+  longitude    Decimal  @db.Decimal(10, 7)
+  temperatureC Decimal  @db.Decimal(5, 2)
+  apparentC    Decimal  @db.Decimal(5, 2)
+  humidity     Int
+  windKmh      Decimal  @db.Decimal(6, 2)
+  weatherCode  Int
+  isDay        Boolean
+  observedAt   DateTime
+  fetchedAt    DateTime @updatedAt
 }

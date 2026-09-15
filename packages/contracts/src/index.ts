@@ -33,11 +33,6 @@ export enum IncidentStatus {
   DISMISSED = 'DISMISSED',
 }
 
-export type FareEstimateRequest = {
-  fromLocationId: string;
-  toLocationId: string;
-};
-
 export type FareEstimate = {
   currency: 'PHP';
   amount: number;

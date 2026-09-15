@@ -27,8 +27,9 @@ export class AdminService {
     today.setHours(0, 0, 0, 0);
     const activityStart = new Date(today);
     activityStart.setDate(activityStart.getDate() - 6);
+    const metricActivityStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
 
-    const [drivers, verifiedDrivers, activeRides, openIncidents, usersByRole, inactiveUsers, ridesByStatus, incidentsByStatus, recentRides, announcements, renewals] = await Promise.all([
+    const [drivers, verifiedDrivers, activeRides, openIncidents, usersByRole, inactiveUsers, ridesByStatus, incidentsByStatus, recentRides, announcements, renewals, recentPassengers, recentVerifiedDrivers, recentOpenIncidents] = await Promise.all([
       this.prisma.driver.count(),
       this.prisma.driver.count({ where: { verification: 'VERIFIED' } }),
       this.prisma.ride.count({ where: { status: 'ACTIVE' } }),
@@ -53,6 +54,24 @@ export class AdminService {
         select: { id: true, expiresAt: true, driver: { select: { user: { select: { fullName: true } } } } },
         orderBy: { expiresAt: 'asc' },
         take: 8,
+      }),
+      this.prisma.user.findMany({
+        where: { role: UserRole.PASSENGER, createdAt: { gte: metricActivityStart } },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.driver.findMany({
+        where: { verification: 'VERIFIED', createdAt: { gte: metricActivityStart } },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.incident.findMany({
+        where: {
+          status: { in: ['SUBMITTED', 'UNDER_REVIEW'] },
+          submittedAt: { gte: metricActivityStart },
+        },
+        select: { submittedAt: true },
+        orderBy: { submittedAt: 'asc' },
       }),
     ]);
 
@@ -96,6 +115,11 @@ export class AdminService {
         dismissed: incidentCount.get('DISMISSED') ?? 0,
       },
       rideActivity,
+      metricActivity: {
+        passengerAccounts: buildMonthlyActivity(metricActivityStart, recentPassengers.map((user) => user.createdAt)),
+        verifiedDrivers: buildMonthlyActivity(metricActivityStart, recentVerifiedDrivers.map((driver) => driver.createdAt)),
+        incidentReports: buildMonthlyActivity(metricActivityStart, recentOpenIncidents.flatMap((incident) => incident.submittedAt ? [incident.submittedAt] : [])),
+      },
       calendarEvents: [
         ...announcements.map((announcement) => ({
           id: `announcement-${announcement.id}`,
@@ -138,6 +162,7 @@ export class AdminService {
         select: {
           startedAt: true,
           status: true,
+          vehicleType: true,
           estimatedFare: true,
           finalFare: true,
         },
@@ -158,6 +183,8 @@ export class AdminService {
       completed: number;
       active: number;
       cancelled: number;
+      tricycle: number;
+      habalHabal: number;
       fareAmount: number;
     }>();
 
@@ -168,12 +195,16 @@ export class AdminService {
         completed: 0,
         active: 0,
         cancelled: 0,
+        tricycle: 0,
+        habalHabal: 0,
         fareAmount: 0,
       };
       record.total += 1;
       if (ride.status === 'COMPLETED') record.completed += 1;
       if (ride.status === 'ACTIVE') record.active += 1;
       if (ride.status === 'CANCELLED') record.cancelled += 1;
+      if (ride.vehicleType === 'TRICYCLE') record.tricycle += 1;
+      if (ride.vehicleType === 'HABAL_HABAL') record.habalHabal += 1;
       record.fareAmount += Number(ride.finalFare ?? ride.estimatedFare ?? 0);
       dailyRecords.set(date, record);
     }
@@ -185,6 +216,8 @@ export class AdminService {
         completed: 0,
         active: 0,
         cancelled: 0,
+        tricycle: 0,
+        habalHabal: 0,
         fareAmount: 0,
       };
       return {
@@ -652,6 +685,22 @@ function manilaDateString(date: Date) {
   }).formatToParts(date);
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${value.year}-${value.month}-${value.day}`;
+}
+
+function buildMonthlyActivity(activityStart: Date, records: Date[]) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(activityStart);
+    date.setMonth(activityStart.getMonth() + index);
+    const dateKey = manilaDateString(date).slice(0, 7);
+    return {
+      date: dateKey,
+      label: date.toLocaleDateString('en-PH', {
+        timeZone: 'Asia/Manila',
+        month: 'short',
+      }),
+      count: records.filter((record) => manilaDateString(record).startsWith(dateKey)).length,
+    };
+  });
 }
 
 function addDateString(value: string, days: number) {

@@ -1,22 +1,18 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
-import 'trisafe_api.dart';
 
 typedef PositionHandler = Future<void> Function(Position position);
 
 class LocationTrackingService {
-  final TriSafeApi api;
   StreamSubscription<Position>? _subscription;
   bool _sending = false;
 
   Position? latestPosition;
   String? permissionMessage;
 
-  LocationTrackingService({required this.api});
-
   Future<bool> start(PositionHandler onPosition) async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      permissionMessage = 'Turn on device location to share live ride updates.';
+      permissionMessage = 'Turn on device location to track your active ride.';
       return false;
     }
 
@@ -27,7 +23,7 @@ class LocationTrackingService {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       permissionMessage =
-          'Location permission is required for tracked distance and the LGU live map.';
+          'Location permission is required for tracked ride distance.';
       return false;
     }
 
@@ -50,14 +46,6 @@ class LocationTrackingService {
     });
     return true;
   }
-
-  Future<void> reportPresence(Position position) => api.updatePresence(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracy: position.accuracy,
-        heading: position.heading,
-        speed: position.speed,
-      );
 
   Future<void> stop() async {
     await _subscription?.cancel();

@@ -174,6 +174,11 @@ export type Dashboard = {
     dismissed: number;
   };
   rideActivity: { date: string; label: string; count: number }[];
+  metricActivity: {
+    passengerAccounts: { date: string; label: string; count: number }[];
+    verifiedDrivers: { date: string; label: string; count: number }[];
+    incidentReports: { date: string; label: string; count: number }[];
+  };
   calendarEvents: CalendarEvent[];
 };
 export type CalendarEvent = {
@@ -204,6 +209,8 @@ export type RideAnalyticsDay = {
   completed: number;
   active: number;
   cancelled: number;
+  tricycle: number;
+  habalHabal: number;
   fareAmount: number;
 };
 export type RideAnalytics = {
@@ -245,6 +252,16 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
           count: 0,
         };
       });
+  const emptyMetricActivity = () => Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - (6 - index));
+    return {
+      date: date.toISOString().slice(0, 7),
+      label: date.toLocaleDateString("en-PH", { month: "short" }),
+      count: 0,
+    };
+  });
   return {
     drivers: Number(value.drivers ?? 0),
     verifiedDrivers: Number(value.verifiedDrivers ?? 0),
@@ -270,6 +287,11 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
       dismissed: 0,
     },
     rideActivity,
+    metricActivity: value.metricActivity ?? {
+      passengerAccounts: emptyMetricActivity(),
+      verifiedDrivers: emptyMetricActivity(),
+      incidentReports: emptyMetricActivity(),
+    },
     calendarEvents: Array.isArray(value.calendarEvents)
       ? value.calendarEvents
       : [],
@@ -385,8 +407,6 @@ export type Incident = {
   reviewerNotes?: string | null;
   ride?: {
     estimatedFare: number | string;
-    fromLocationId: string;
-    toLocationId: string;
     vehicle: {
       plateNumber: string;
       vehicleType: string;
@@ -452,33 +472,6 @@ export type DriverRatingSummary = { driverId: string; fullName: string; username
 export type DriverRating = { id: string; score: number; comment?: string | null; visible: boolean; moderationNotes?: string | null; createdAt: string; driver: { user: { fullName: string }; vehicles: { plateNumber: string; vehicleType: string }[] }; passenger: { fullName: string }; ride: { startedAt: string; fromLocationName?: string | null; toLocationName?: string | null }; };
 export type TermsDocument = { id: string; version: string; title: string; content: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; effectiveFrom?: string | null; publishedAt?: string | null; createdAt: string; updatedAt: string; };
 export type SaveTermsInput = { version: string; title: string; content: string; effectiveFrom?: string; };
-export type LocationOption = { id: string; name: string };
-export type FareRule = {
-  id: string;
-  fromLocationId: string;
-  toLocationId: string;
-  baseFare: number | string;
-  distanceKm: number | string;
-  perKm: number | string;
-  minimumFare: number | string;
-  version: string;
-  effectiveFrom: string;
-  effectiveTo?: string | null;
-  active: boolean;
-  fromLocation: LocationOption;
-  toLocation: LocationOption;
-};
-export type FareRuleInput = {
-  fromLocationId: string;
-  toLocationId: string;
-  baseFare: number;
-  distanceKm: number;
-  perKm: number;
-  minimumFare: number;
-  version: string;
-  effectiveFrom: string;
-  effectiveTo?: string;
-};
 export type VehicleFarePolicy = {
   id: string;
   vehicleType: "TRICYCLE" | "HABAL_HABAL";
@@ -504,20 +497,6 @@ export type VehicleFarePolicyInput = {
   active: boolean;
   effectiveFrom: string;
   effectiveTo?: string;
-};
-export type LivePresence = {
-  id: string;
-  userId: string;
-  role: "PASSENGER" | "DRIVER";
-  fullName: string;
-  latitude: number;
-  longitude: number;
-  accuracy?: number | null;
-  heading?: number | null;
-  speed?: number | null;
-  updatedAt: string;
-  vehicle?: { plateNumber: string; vehicleType: string } | null;
-  activeRide?: { id: string; actualDistanceMeters: number } | null;
 };
 export type RegisterDriverInput = {
   ownerLastName: string;
@@ -653,8 +632,6 @@ export const api = {
   incidents: () => request<Incident[]>("/incidents/admin/all"),
   auditLogs: (limit = 100) =>
     request<AuditLog[]>(`/admin/audit-logs?limit=${limit}`),
-  locations: () => request<LocationOption[]>("/locations"),
-  fareRules: () => request<FareRule[]>("/admin/fare-rules"),
   vehicleFarePolicies: () =>
     request<VehicleFarePolicy[]>("/admin/vehicle-fare-policies"),
   saveVehicleFarePolicy: (body: VehicleFarePolicyInput) =>
@@ -662,7 +639,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  livePresence: () => request<LivePresence[]>("/admin/live-presence"),
   registerDriver: (body: RegisterDriverInput) =>
     request<Driver>("/admin/drivers", {
       method: "POST",
@@ -697,20 +673,6 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  createFareRule: (body: FareRuleInput) =>
-    request<FareRule>("/admin/fare-rules", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-  updateFareRule: (id: string, body: FareRuleInput) =>
-    request<FareRule>(`/admin/fare-rules/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-  deactivateFareRule: (id: string) =>
-    request<FareRule>(`/admin/fare-rules/${id}`, { method: "DELETE" }),
-  activateFareRule: (id: string) =>
-    request<FareRule>(`/admin/fare-rules/${id}/activate`, { method: "POST" }),
   createAnnouncement: (body: AnnouncementInput) =>
     request("/admin/announcements", {
       method: "POST",

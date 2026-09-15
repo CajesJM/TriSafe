@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { RideStatus, UserStatus } from '@prisma/client';
 import { FaresService } from '../fares/fares.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { EndRideDto, StartMapRideDto, StartRideDto } from './dto/start-ride.dto';
+import { EndRideDto, StartMapRideDto } from './dto/start-ride.dto';
 import { AuditService } from '../audit/audit.service';
 import { RecordRideLocationDto } from './dto/record-ride-location.dto';
 import { RideHistoryQueryDto } from './dto/ride-history-query.dto';
@@ -10,75 +10,6 @@ import { RideHistoryQueryDto } from './dto/ride-history-query.dto';
 @Injectable()
 export class RidesService {
   constructor(private readonly prisma: PrismaService, private readonly fares: FaresService, private readonly audit: AuditService) {}
-
-  async preview(dto: StartRideDto) {
-    const vehicle = await this.getEligibleVehicle(dto.vehicleId);
-    const routeRule = await this.fares.findActiveRule(
-      dto.fromLocationId,
-      dto.toLocationId,
-    );
-    const fare = await this.fares.calculateForVehicle(
-      vehicle.vehicleType,
-      Number(routeRule.distanceKm) * 1000,
-      dto.passengerType,
-    );
-    return {
-      vehicleId: vehicle.id,
-      ...fare,
-      driverName: vehicle.driver.user.fullName,
-      plateNumber: vehicle.plateNumber,
-      estimateBasis: 'PLANNED_ROUTE',
-    };
-  }
-
-  async start(passengerId: string, dto: StartRideDto) {
-    const vehicle = await this.getEligibleVehicle(dto.vehicleId);
-    const routeRule = await this.fares.findActiveRule(
-      dto.fromLocationId,
-      dto.toLocationId,
-    );
-    const fare = await this.fares.calculateForVehicle(
-      vehicle.vehicleType,
-      Number(routeRule.distanceKm) * 1000,
-      dto.passengerType,
-    );
-    const active = await this.prisma.ride.findFirst({ where: { passengerId, status: RideStatus.ACTIVE } });
-    if (active) throw new ForbiddenException('Complete your active ride before starting another');
-    const vehicleType = this.fares.normalizeVehicleType(vehicle.vehicleType);
-    const ride = await this.prisma.ride.create({
-      data: {
-        passengerId,
-        vehicleId: vehicle.id,
-        fromLocationId: dto.fromLocationId,
-        toLocationId: dto.toLocationId,
-        estimatedFare: fare.amount,
-        fareVersion: fare.matrixVersion,
-        passengerCount: dto.passengerCount,
-        passengerType: dto.passengerType,
-        vehicleType,
-        startLatitude: dto.startLatitude,
-        startLongitude: dto.startLongitude,
-        locationPoints:
-          dto.startLatitude != null && dto.startLongitude != null
-            ? {
-                create: {
-                  latitude: dto.startLatitude,
-                  longitude: dto.startLongitude,
-                },
-              }
-            : undefined,
-      },
-      include: this.rideInclude(),
-    });
-    if (dto.startLatitude != null && dto.startLongitude != null) {
-      await this.updatePresence(passengerId, {
-        latitude: dto.startLatitude,
-        longitude: dto.startLongitude,
-      });
-    }
-    await this.audit.record({ actorId: passengerId, action: 'RIDE_STARTED', entityType: 'Ride', entityId: ride.id, details: { vehicleId: dto.vehicleId, fromLocationId: dto.fromLocationId, toLocationId: dto.toLocationId } });
-    return this.addLocationNames(ride);
-  }
 
   async startMapRide(passengerId: string, dto: StartMapRideDto) {
     const vehicle = await this.getEligibleVehicle(dto.vehicleId, dto.qrToken);
@@ -136,10 +67,6 @@ export class RidesService {
         },
       },
       include: this.rideInclude(),
-    });
-    await this.updatePresence(passengerId, {
-      latitude: dto.originLatitude,
-      longitude: dto.originLongitude,
     });
     await this.audit.record({
       actorId: passengerId,
@@ -231,7 +158,6 @@ export class RidesService {
         data: { actualDistanceMeters: { increment: acceptedMeters } },
       }),
     ]);
-    await this.updatePresence(passengerId, dto);
     const currentFare = await this.fares.calculateForVehicle(
       updatedRide.vehicleType,
       updatedRide.actualDistanceMeters,
@@ -367,33 +293,6 @@ export class RidesService {
     return ride;
   }
 
-  private async updatePresence(
-    userId: string,
-    dto: Pick<
-      RecordRideLocationDto,
-      'latitude' | 'longitude' | 'accuracy' | 'heading' | 'speed'
-    >,
-  ) {
-    return this.prisma.livePresence.upsert({
-      where: { userId },
-      create: {
-        userId,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        accuracy: dto.accuracy,
-        heading: dto.heading,
-        speed: dto.speed,
-      },
-      update: {
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        accuracy: dto.accuracy,
-        heading: dto.heading,
-        speed: dto.speed,
-      },
-    });
-  }
-
   private haversineMeters(
     latitude1: number,
     longitude1: number,
@@ -450,9 +349,7 @@ export class RidesService {
     };
   }
 
-  private async addLocationNames<T extends {
-    fromLocationId: string | null;
-    toLocationId: string | null;
+  private addLocationNames<T extends {
     fromLocationName?: string | null;
     toLocationName?: string | null;
     vehicle: {
@@ -466,15 +363,6 @@ export class RidesService {
       };
     };
   }>(ride: T) {
-    const [from, to] = await Promise.all([
-      ride.fromLocationId
-        ? this.prisma.location.findUnique({ where: { id: ride.fromLocationId } })
-        : null,
-      ride.toLocationId
-        ? this.prisma.location.findUnique({ where: { id: ride.toLocationId } })
-        : null,
-    ]);
-
     const ratings = ride.vehicle.driver.ratings;
     const ratingCount = ratings.length;
     const averageDriverRating = ratingCount
@@ -487,8 +375,8 @@ export class RidesService {
 
     return {
       ...ride,
-      fromLocationName: ride.fromLocationName ?? from?.name ?? 'Unknown origin',
-      toLocationName: ride.toLocationName ?? to?.name ?? 'Unknown destination',
+      fromLocationName: ride.fromLocationName ?? 'Unknown origin',
+      toLocationName: ride.toLocationName ?? 'Unknown destination',
       operatorName,
       bodyNumber: ride.vehicle.bodyNumber,
       permitNumber: ride.vehicle.permitNumber,

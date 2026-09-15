@@ -230,18 +230,6 @@ class TriSafeApi {
     return DriverProfile.fromJson(await _patch('/drivers/me/profile', body));
   }
 
-  Future<List<LocationOption>> locations() async => (await _get('/locations'))
-      .map<LocationOption>((item) => LocationOption.fromJson(item))
-      .toList();
-  Future<FareEstimate> estimateFare(
-          {required String vehicleId,
-          required String fromLocationId,
-          required String toLocationId}) async =>
-      FareEstimate.fromJson(await _post('/rides/preview', {
-        'vehicleId': vehicleId,
-        'fromLocationId': fromLocationId,
-        'toLocationId': toLocationId,
-      }));
   Future<FareEstimate> estimateDistanceFare({
     required String vehicleType,
     required String passengerType,
@@ -265,21 +253,6 @@ class TriSafeApi {
       FareLocationName.fromJson(await _post('/fare-location-names', {
         'latitude': latitude,
         'longitude': longitude,
-      }));
-  Future<Ride> startRide(
-          {required String vehicleId,
-          required String fromLocationId,
-          required String toLocationId,
-          int passengerCount = 1,
-          double? startLatitude,
-          double? startLongitude}) async =>
-      Ride.fromJson(await _post('/rides', {
-        'vehicleId': vehicleId,
-        'fromLocationId': fromLocationId,
-        'toLocationId': toLocationId,
-        'passengerCount': passengerCount,
-        if (startLatitude != null) 'startLatitude': startLatitude,
-        if (startLongitude != null) 'startLongitude': startLongitude,
       }));
   Future<Ride> startMapRide({
     required String vehicleId,
@@ -313,21 +286,6 @@ class TriSafeApi {
         if (endLatitude != null) 'endLatitude': endLatitude,
         if (endLongitude != null) 'endLongitude': endLongitude,
       }));
-  Future<void> updatePresence(
-      {required double latitude,
-      required double longitude,
-      double? accuracy,
-      double? heading,
-      double? speed}) async {
-    await _post('/presence/me', {
-      'latitude': latitude,
-      'longitude': longitude,
-      if (accuracy != null) 'accuracy': accuracy,
-      if (heading != null) 'heading': heading,
-      if (speed != null) 'speed': speed,
-    });
-  }
-
   Future<RideProgress> recordRideLocation(String rideId,
           {required double latitude,
           required double longitude,

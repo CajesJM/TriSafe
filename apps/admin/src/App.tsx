@@ -5,10 +5,8 @@ import {
   Dashboard,
   Driver,
   DriverStatus,
-  FareRule,
   Incident,
   IncidentReviewInput,
-  LocationOption,
   SessionUser,
   UpdateFranchiseInput,
   AdminUser,
@@ -56,8 +54,6 @@ export function App() {
   const [dashboard, setDashboard] = useState<Dashboard>();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [fareRules, setFareRules] = useState<FareRule[]>([]);
-  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(hasAuthToken());
@@ -87,22 +83,16 @@ export function App() {
         nextDashboard,
         nextDrivers,
         nextIncidents,
-        nextRules,
-        nextLocations,
         nextLogs,
       ] = await Promise.all([
         api.dashboard(),
         api.drivers(),
         api.incidents(),
-        api.fareRules(),
-        api.locations(),
         api.auditLogs(),
       ]);
       setDashboard(nextDashboard);
       setDrivers(nextDrivers);
       setIncidents(nextIncidents);
-      setFareRules(nextRules);
-      setLocations(nextLocations);
       setAuditLogs(nextLogs);
     } catch (requestError) {
       setError(
@@ -204,14 +194,7 @@ export function App() {
     setAuditLogs(nextLogs);
   }
   async function refreshFareData() {
-    const [nextRules, nextLocations, nextLogs] = await Promise.all([
-      api.fareRules(),
-      api.locations(),
-      api.auditLogs(),
-    ]);
-    setFareRules(nextRules);
-    setLocations(nextLocations);
-    setAuditLogs(nextLogs);
+    setAuditLogs(await api.auditLogs());
   }
   async function updateFranchise(input: UpdateFranchiseInput) {
     if (!franchiseDriver) return;
@@ -359,8 +342,6 @@ export function App() {
             )}
             {tab === "fares" && (
               <FareMatrixPanel
-                rules={fareRules}
-                locations={locations}
                 onChanged={refreshFareData}
                 onNotify={showToast}
               />

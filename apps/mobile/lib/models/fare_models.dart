@@ -58,19 +58,3 @@ class FareLocationName {
       : name = json['name'] as String? ?? 'Selected location',
         context = json['context'] as String? ?? 'Bohol, Philippines';
 }
-
-class LocationOption {
-  final String id;
-  final String name;
-  LocationOption.fromJson(Map<String, dynamic> json)
-      : id = json['id'],
-        name = json['name'];
-}
-
-class RidePlan {
-  final LocationOption from;
-  final LocationOption to;
-  final FareEstimate fare;
-
-  const RidePlan({required this.from, required this.to, required this.fare});
-}
