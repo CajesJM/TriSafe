@@ -7,6 +7,8 @@
     "build:api": "npm --workspace apps/api run build",
     "test:api": "npm --workspace apps/api run test",
     "dev:admin": "npm --workspace apps/admin run dev",
+    "dev:mobile": "npm --workspace apps/mobile run start",
+    "dev:mobile:wired": "npm --workspace apps/mobile run android:wired",
     "build:admin": "npm --workspace apps/admin run build",
     "db:generate": "npm --workspace apps/api run prisma:generate",
     "db:migrate": "npm --workspace apps/api run prisma:migrate",

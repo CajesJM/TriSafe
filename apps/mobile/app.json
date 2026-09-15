@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "TriSafe",
+    "slug": "trisafe-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.dev.trisafe_mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.dev.trisafe-mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TriSafe uses the camera to scan official driver QR codes.",
+        "NSLocationWhenInUseUsageDescription": "TriSafe uses your location for fare estimates, ride tracking, and SafeShare."
+      }
+    },
+    "plugins": [
+      ["expo-camera", { "cameraPermission": "Allow TriSafe to scan official driver QR codes." }],
+      ["expo-location", { "locationWhenInUsePermission": "Allow TriSafe to use your location for fare estimates and ride safety." }],
+      ["expo-image-picker", { "photosPermission": "Allow TriSafe to select a profile photo." }],
+      "expo-secure-store"
+    ]
+  }
+}
