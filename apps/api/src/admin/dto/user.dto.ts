@@ -4,7 +4,7 @@ import { IsEmail, IsEnum, IsIn, IsOptional, IsPhoneNumber, IsString, Length, Mat
 import { DriverPresentAddressDto } from '../../drivers/dto/driver-present-address.dto';
 
 const lowercaseText = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim().toLowerCase() : value;
-const usernamePattern = /^(?=.{3,30}$)[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
+const usernamePattern = /^(?=.{3,15}$)[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 
 export class CreateUserDto {
   @IsString()
@@ -14,9 +14,9 @@ export class CreateUserDto {
   fullName!: string;
 
   @Transform(lowercaseText)
-  @ValidateIf((object: CreateUserDto, value) => object.role === UserRole.PASSENGER || value !== undefined)
+  @ValidateIf((object: CreateUserDto, value) => object.role === UserRole.PASSENGER || object.role === UserRole.LGU_ADMIN || value !== undefined)
   @IsString()
-  @Length(3, 30)
+  @Length(3, 15)
   @Matches(usernamePattern, { message: 'username must begin with a letter and may use lowercase letters, numbers, dots, underscores, or hyphens without repeated separators' })
   username?: string;
 
@@ -68,7 +68,7 @@ export class UpdateUserDto {
   @Transform(lowercaseText)
   @IsOptional()
   @IsString()
-  @Length(3, 30)
+  @Length(3, 15)
   @Matches(usernamePattern, { message: 'username must begin with a letter and may use lowercase letters, numbers, dots, underscores, or hyphens without repeated separators' })
   username?: string;
 

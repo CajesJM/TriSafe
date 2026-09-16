@@ -48,6 +48,7 @@ export function UserForm({
   const [role, setRole] = useState<UserRole>(fixedRole ?? user?.role ?? defaultRole);
   const isDriver = role === "DRIVER";
   const isPassenger = role === "PASSENGER";
+  const usesUsername = isPassenger || role === "LGU_ADMIN";
   const usesStructuredName = isDriver || isPassenger;
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [personName, setPersonName] = useState(() =>
@@ -116,13 +117,13 @@ export function UserForm({
     }
     const normalizedUsername = username.trim().toLowerCase();
     if (
-      isPassenger &&
-      !/^(?=.{3,30}$)[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(
+      usesUsername &&
+      !/^(?=.{3,15}$)[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(
         normalizedUsername,
       )
     ) {
       const message =
-        "Username must be 3–30 characters, begin with a letter, and use only lowercase letters, numbers, dots, underscores, or hyphens.";
+        "Username must be 3–15 characters, begin with a letter, and use only lowercase letters, numbers, dots, underscores, or hyphens.";
       setError(message);
       onError(message);
       return;
@@ -168,7 +169,7 @@ export function UserForm({
       if (user)
         await onSave({
           fullName: submittedName,
-          ...(isPassenger ? { username: normalizedUsername } : {}),
+          ...(usesUsername ? { username: normalizedUsername } : {}),
           ...(!isDriver ? { email } : {}),
           phone: `+63${phone}`,
           role: fixedRole ?? role,
@@ -200,7 +201,7 @@ export function UserForm({
       else
         await onSave({
           fullName: submittedName,
-          ...(isPassenger ? { username: normalizedUsername } : {}),
+          ...(usesUsername ? { username: normalizedUsername } : {}),
           email,
           phone: `+63${phone}`,
           role: fixedRole ?? role,
@@ -350,7 +351,7 @@ export function UserForm({
                   />
                 </label>
               )}
-              {isPassenger && (
+              {usesUsername && (
                 <label className="field">
                   <span>
                     Username <em>*</em>
@@ -362,17 +363,17 @@ export function UserForm({
                         event.target.value
                           .toLowerCase()
                           .replace(/[^a-z0-9._-]/g, "")
-                          .slice(0, 30),
+                          .slice(0, 15),
                       )
                     }
-                    placeholder="john.cajes"
+                    placeholder={isPassenger ? "john.cajes" : "admin.username"}
                     autoComplete="username"
                     minLength={3}
-                    maxLength={30}
+                    maxLength={15}
                     required
                   />
                   <small className="field-input-hint">
-                    3–30 characters · start with a letter · no repeated
+                    3–15 characters · start with a letter · no repeated
                     separators.
                   </small>
                 </label>

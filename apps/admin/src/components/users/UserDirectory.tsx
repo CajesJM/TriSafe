@@ -30,7 +30,7 @@ import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
 
 const pageSize = 10;
 type DirectoryUser = AdminUser & { username?: string | null };
-type PassengerStats = { registered: number; active: number; inactive: number };
+type AccountStats = { registered: number; active: number; inactive: number };
 type UserSort = "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC";
 const emptyUserPage: UserPage = { items: [], total: 0, page: 1, pageSize };
 const accountPageCache = new Map<string, UserPage>();
@@ -79,10 +79,8 @@ export function UserDirectory({
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [passengerStats, setPassengerStats] = useState<PassengerStats | null>(
-    null,
-  );
-  const [passengerStatsFailed, setPassengerStatsFailed] = useState(false);
+  const [accountStats, setAccountStats] = useState<AccountStats | null>(null);
+  const [accountStatsFailed, setAccountStatsFailed] = useState(false);
 
   const showToast = useCallback(
     (type: ToastMessage["type"], message: string) => {
@@ -159,14 +157,13 @@ export function UserDirectory({
   }, [search, status, sort, page, reloadKey, managementRole]);
 
   useEffect(() => {
-    if (isAdministrator) return;
     let cancelled = false;
-    setPassengerStatsFailed(false);
+    setAccountStatsFailed(false);
     Promise.all([
-      api.users({ role: "PASSENGER", page: 1, pageSize: 5 }),
-      api.users({ role: "PASSENGER", status: "ACTIVE", page: 1, pageSize: 5 }),
+      api.users({ role: managementRole, page: 1, pageSize: 5 }),
+      api.users({ role: managementRole, status: "ACTIVE", page: 1, pageSize: 5 }),
       api.users({
-        role: "PASSENGER",
+        role: managementRole,
         status: "INACTIVE",
         page: 1,
         pageSize: 5,
@@ -174,7 +171,7 @@ export function UserDirectory({
     ])
       .then(([registered, active, inactive]) => {
         if (!cancelled) {
-          setPassengerStats({
+          setAccountStats({
             registered: registered.total,
             active: active.total,
             inactive: inactive.total,
@@ -183,14 +180,14 @@ export function UserDirectory({
       })
       .catch(() => {
         if (!cancelled) {
-          setPassengerStats(null);
-          setPassengerStatsFailed(true);
+          setAccountStats(null);
+          setAccountStatsFailed(true);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [isAdministrator, reloadKey]);
+  }, [managementRole, reloadKey]);
 
   function reload(message?: string) {
     if (message) showToast("success", message);
@@ -258,22 +255,23 @@ export function UserDirectory({
       className={`card data-card users-workspace ${isAdministrator ? "administrator-workspace" : "passenger-workspace"}`}
     >
       {isAdministrator ? (
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">BPLO ADMINISTRATION</span>
-            <h3>Administrator Management</h3>
-            <p className="section-description">
-              Manage authorized BPLO Administrator accounts, access status, and
-              account details.
-            </p>
+        <div className="administrator-top-grid">
+          <div className="section-heading administrator-hero">
+            <div>
+              <span className="eyebrow">BPLO ADMINISTRATION</span>
+              <h3>Administrator Directory</h3>
+              <p className="section-description">
+                Manage authorized BPLO accounts, access status, and continuity
+                safeguards from one workspace.
+              </p>
+            </div>
           </div>
-          <button
-            className="primary"
-            onClick={() => setCreatingUser(true)}
-            type="button"
-          >
-            <Plus aria-hidden="true" /> Create Administrator
-          </button>
+          <AccountStatusChart
+            stats={accountStats}
+            failed={accountStatsFailed}
+            label="Administrator"
+            titleId="administrator-status-title"
+          />
         </div>
       ) : (
         <div className="passenger-top-grid">
@@ -289,18 +287,13 @@ export function UserDirectory({
               </div>
             </div>
           </div>
-          <PassengerStatusChart
-            stats={passengerStats}
-            failed={passengerStatsFailed}
+          <AccountStatusChart
+            stats={accountStats}
+            failed={accountStatsFailed}
+            label="Passenger"
+            titleId="passenger-status-title"
           />
         </div>
-      )}
-      {isAdministrator && (
-        <ManagementSummary
-          role={managementRole}
-          total={data.total}
-          visible={data.items}
-        />
       )}
       {error && (
         <ErrorMessage
@@ -316,23 +309,62 @@ export function UserDirectory({
             setPage(1);
           }}
           searchLabel="Search name, username, email, or phone"
-          resultCount={isAdministrator ? data.total : undefined}
+          resultCount={undefined}
           additionalFilter={
             isAdministrator ? (
-              <label className="data-filter">
-                <span>Status</span>
-                <select
-                  value={status}
-                  onChange={(event) => {
-                    setStatus(event.target.value);
+              <div className="administrator-table-controls">
+                <label className="data-filter administrator-status-filter">
+                  <span>Status</span>
+                  <select
+                    value={status}
+                    onChange={(event) => {
+                      setStatus(event.target.value);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="">All statuses</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                  </select>
+                </label>
+                <label className="data-filter administrator-sort-filter">
+                  <span>Sort administrators</span>
+                  <select
+                    value={sort}
+                    onChange={(event) => {
+                      setSort(event.target.value as UserSort);
+                      setPage(1);
+                    }}
+                  >
+                    <option value="NEWEST">Sort by: newest</option>
+                    <option value="OLDEST">Sort by: oldest</option>
+                    <option value="NAME_ASC">Name: A–Z</option>
+                    <option value="NAME_DESC">Name: Z–A</option>
+                  </select>
+                  <ArrowUpDown aria-hidden="true" />
+                </label>
+                <button
+                  className="administrator-view-reset"
+                  type="button"
+                  title="Reset search, status, and sorting"
+                  aria-label="Reset administrator table view"
+                  onClick={() => {
+                    setSearch("");
+                    setStatus("");
+                    setSort("NEWEST");
                     setPage(1);
                   }}
                 >
-                  <option value="">All statuses</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </label>
+                  <SlidersHorizontal aria-hidden="true" />
+                </button>
+                <button
+                  className="primary administrator-toolbar-add"
+                  onClick={() => setCreatingUser(true)}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" /> Add administrator
+                </button>
+              </div>
             ) : (
               <div className="passenger-table-controls">
                 <label className="data-filter passenger-status-filter">
@@ -415,7 +447,7 @@ export function UserDirectory({
           <UserTable
             users={data.items}
             startNumber={(page - 1) * pageSize + 1}
-            showUsername={!isAdministrator}
+            showUsername
             roleLabel={isAdministrator ? "Administrator" : "Passenger"}
             onEdit={setEditingUser}
             onToggleStatus={toggleStatus}
@@ -436,7 +468,7 @@ export function UserDirectory({
           key={toast.id}
           toast={toast}
           onDismiss={dismissToast}
-          variant={isAdministrator ? "default" : "dashboard"}
+          variant="dashboard"
         />
       )}
       {confirmation && (
@@ -445,7 +477,7 @@ export function UserDirectory({
           message={confirmation.message}
           confirmLabel={confirmation.confirmLabel}
           tone={confirmation.tone}
-          showIcon={isAdministrator}
+          showIcon={false}
           onConfirm={confirmation.action}
           onCancel={() => setConfirmation(null)}
           onError={(message) => showToast("error", message)}
@@ -505,12 +537,12 @@ function UserTable({
         <span>Actions</span>
       </div>
       {users.map((user, index) => {
-        const passengerActionGroups: ActionMenuGroup[] = [
+        const accountActionGroups: ActionMenuGroup[] = [
           {
             label: "Account",
             items: [
               {
-                label: "Edit passenger",
+                label: `Edit ${roleLabel.toLowerCase()}`,
                 icon: <FilePenLine />,
                 onSelect: () => onEdit(user),
               },
@@ -529,7 +561,7 @@ function UserTable({
             label: "Danger zone",
             items: [
               {
-                label: "Delete passenger account",
+                label: `Delete ${roleLabel.toLowerCase()} account`,
                 icon: <Trash2 />,
                 onSelect: () => onDelete(user),
                 tone: "danger",
@@ -569,7 +601,6 @@ function UserTable({
             {showUsername && (
               <span className="username-cell">
                 <b>{user.username ? `@${user.username}` : "Not assigned"}</b>
-                <small>Passenger username</small>
               </span>
             )}
             <span className="contact-cell">
@@ -604,37 +635,11 @@ function UserTable({
               </span>
             )}
             <span className="row-menu">
-              {showUsername ? (
-                <ActionMenu
-                  iconOnly
-                  label={`Actions for ${displayPersonName(user.fullName)}`}
-                  groups={passengerActionGroups}
-                />
-              ) : (
-                <>
-                  <button
-                    className="row-action"
-                    onClick={() => onEdit(user)}
-                    type="button"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="row-action"
-                    onClick={() => void onToggleStatus(user)}
-                    type="button"
-                  >
-                    {user.status === "ACTIVE" ? "Deactivate" : "Activate"}
-                  </button>
-                  <button
-                    className="row-action danger-action"
-                    onClick={() => void onDelete(user)}
-                    type="button"
-                  >
-                    Delete
-                  </button>
-                </>
-              )}
+              <ActionMenu
+                iconOnly
+                label={`Actions for ${displayPersonName(user.fullName)}`}
+                groups={accountActionGroups}
+              />
             </span>
           </div>
         );
@@ -643,54 +648,16 @@ function UserTable({
   );
 }
 
-function ManagementSummary({
-  role,
-  total,
-  visible,
-}: {
-  role: "PASSENGER" | "LGU_ADMIN";
-  total: number;
-  visible: DirectoryUser[];
-}) {
-  const activeOnPage = visible.filter(
-    (user) => user.status === "ACTIVE",
-  ).length;
-  const inactiveOnPage = visible.filter(
-    (user) => user.status === "INACTIVE",
-  ).length;
-  const label = role === "LGU_ADMIN" ? "Administrator" : "Passenger";
-  return (
-    <div
-      className="management-summary"
-      aria-label={`${label} management summary`}
-    >
-      <div>
-        <span>Registered {label.toLowerCase()}s</span>
-        <strong>{total}</strong>
-      </div>
-      <div>
-        <span>Active on this page</span>
-        <strong>{activeOnPage}</strong>
-      </div>
-      <div>
-        <span>Inactive on this page</span>
-        <strong>{inactiveOnPage}</strong>
-      </div>
-      <p>
-        {role === "LGU_ADMIN"
-          ? "Administrator access is protected by continuity safeguards."
-          : "Passenger records are kept separate from driver and Administrator records."}
-      </p>
-    </div>
-  );
-}
-
-function PassengerStatusChart({
+function AccountStatusChart({
   stats,
   failed,
+  label,
+  titleId,
 }: {
-  stats: PassengerStats | null;
+  stats: AccountStats | null;
   failed: boolean;
+  label: "Passenger" | "Administrator";
+  titleId: string;
 }) {
   const registered = stats?.registered ?? 0;
   const active = stats?.active ?? 0;
@@ -721,12 +688,12 @@ function PassengerStatusChart({
   return (
     <section
       className="passenger-status-chart"
-      aria-labelledby="passenger-status-title"
+      aria-labelledby={titleId}
     >
       <div className="passenger-chart-heading">
         <div>
           <span className="eyebrow">ACCOUNT STATUS</span>
-          <h4 id="passenger-status-title">Passenger overview</h4>
+          <h4 id={titleId}>{label} overview</h4>
         </div>
         <strong>{stats ? registered : "—"}</strong>
       </div>
@@ -740,7 +707,7 @@ function PassengerStatusChart({
             <span
               className="passenger-chart-track"
               role="img"
-              aria-label={`${row.label}: ${row.value} passengers, ${row.percent}% of registered passengers`}
+              aria-label={`${row.label}: ${row.value} ${label.toLowerCase()} accounts, ${row.percent}% of registered ${label.toLowerCase()}s`}
             >
               <span style={{ width: `${row.percent}%` }} />
             </span>

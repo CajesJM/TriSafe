@@ -178,7 +178,7 @@ export function PageHeader({
 
   return (
     <header
-      className={`page-header${tab === "overview" || tab === "passengers" ? " page-header-dashboard" : ""}`}
+      className={`page-header${tab === "overview" || tab === "passengers" || tab === "administrators" ? " page-header-dashboard" : ""}`}
     >
       <div className="topbar">
         <button
@@ -351,7 +351,7 @@ export function PageHeader({
           </button>
         </div>
       </div>
-      {tab !== "overview" && tab !== "passengers" && (
+      {tab !== "overview" && tab !== "passengers" && tab !== "administrators" && (
         <div className="page-title-row">
           <div>
             <p className="eyebrow">TRINIDAD BPLO · TRANSPORT SAFETY</p>

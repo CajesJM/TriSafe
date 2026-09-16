@@ -24,7 +24,12 @@ type Props = {
 };
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
-export function AdminProfilePanel({ open, onClose, onSaved, embedded = false }: Props) {
+export function AdminProfilePanel({
+  open,
+  onClose,
+  onSaved,
+  embedded = false,
+}: Props) {
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [form, setForm] = useState({
     fullName: "",
@@ -168,19 +173,23 @@ export function AdminProfilePanel({ open, onClose, onSaved, embedded = false }: 
         avatarData: form.avatarData,
         email: form.email.trim(),
         phone: `+63${form.phone}`,
-        ...(editingDetails ? { address: {
-          provinceCode: form.provinceCode,
-          provinceName: form.provinceName,
-          municipalityCode: form.municipalityCode,
-          municipalityName: form.municipalityName,
-          barangayCode: form.barangayCode,
-          barangayName: form.barangayName,
-          streetPurok: form.streetPurok,
-          postalCode: form.postalCode,
-          streetPlaceId: form.streetPlaceId,
-          addressLatitude: form.addressLatitude,
-          addressLongitude: form.addressLongitude,
-        } } : {}),
+        ...(editingDetails
+          ? {
+              address: {
+                provinceCode: form.provinceCode,
+                provinceName: form.provinceName,
+                municipalityCode: form.municipalityCode,
+                municipalityName: form.municipalityName,
+                barangayCode: form.barangayCode,
+                barangayName: form.barangayName,
+                streetPurok: form.streetPurok,
+                postalCode: form.postalCode,
+                streetPlaceId: form.streetPlaceId,
+                addressLatitude: form.addressLatitude,
+                addressLongitude: form.addressLongitude,
+              },
+            }
+          : {}),
       });
       setProfile(next);
       setForm({
@@ -239,7 +248,7 @@ export function AdminProfilePanel({ open, onClose, onSaved, embedded = false }: 
               <p className="eyebrow">ACCOUNT SETTINGS</p>
               <h2 id="profile-title">Administrator profile</h2>
               <p>
-                Keep the LGU account details used for audit records and portal
+                Keep the BPLO account details used for audit records and portal
                 access up to date.
               </p>
             </div>
@@ -269,7 +278,7 @@ export function AdminProfilePanel({ open, onClose, onSaved, embedded = false }: 
                     {currentAvatar ? (
                       <img src={currentAvatar} alt="Profile preview" />
                     ) : (
-                      <span>{initials(form.fullName || "LGU")}</span>
+                      <span>{initials(form.fullName || "BPLO")}</span>
                     )}
                     <span className="avatar-camera-icon">
                       <Camera size={15} />
@@ -377,8 +386,9 @@ export function AdminProfilePanel({ open, onClose, onSaved, embedded = false }: 
                     onChange={(event) =>
                       change("username", event.target.value.replace(/\s/g, ""))
                     }
-                    placeholder="lguadmin"
                     minLength={3}
+                    maxLength={15}
+                    placeholder="bploadmin"
                     required
                   />
                   <small>

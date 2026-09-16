@@ -12,7 +12,7 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   @MinLength(3)
-  @MaxLength(30)
+  @MaxLength(15)
   @Matches(/^[a-zA-Z0-9._-]+$/, { message: 'Username may only contain letters, numbers, dots, underscores, and hyphens' })
   username?: string;
 

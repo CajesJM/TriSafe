@@ -1,0 +1,380 @@
+.administrator-workspace {
+  border-color: #dce4ea;
+  background:
+    radial-gradient(circle at 0% 100%, rgba(68, 116, 173, 0.07), transparent 30%),
+    #fbfcfd;
+  box-shadow: 0 16px 42px rgba(20, 37, 55, 0.06);
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+.administrator-workspace .administrator-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(310px, 0.85fr);
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.administrator-workspace .administrator-hero {
+  position: relative;
+  min-height: 0;
+  box-sizing: border-box;
+  align-items: center;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid #d9e5e1;
+  border-radius: 16px;
+  padding: 15px 18px;
+  background:
+    linear-gradient(90deg, rgba(249, 253, 251, 0.98) 0%, rgba(249, 253, 251, 0.94) 45%, rgba(249, 253, 251, 0.5) 68%, rgba(249, 253, 251, 0.08) 100%),
+    url("/images/dashboard/manager-hero.webp") right center / auto 100% no-repeat,
+    linear-gradient(125deg, #f5faf7, #e9f4ef);
+}
+
+.administrator-workspace .administrator-hero .eyebrow,
+.administrator-workspace .passenger-chart-heading .eyebrow {
+  color: #27653d;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.administrator-workspace .administrator-hero h3 {
+  margin-top: 3px;
+  color: #172033;
+  font-size: 23px;
+  font-weight: 780;
+  letter-spacing: -0.04em;
+}
+
+.administrator-workspace .administrator-hero .section-description {
+  max-width: 500px;
+  margin-top: 5px;
+  color: #667085;
+  font-size: 10px;
+}
+
+.administrator-workspace .passenger-status-chart {
+  min-height: 138px;
+  box-sizing: border-box;
+  border: 1px solid #dce4ea;
+  border-radius: 16px;
+  padding: 11px 15px;
+  background: linear-gradient(145deg, #f8fbff, #eef4f7);
+  box-shadow: 0 9px 24px rgba(20, 42, 62, 0.05);
+}
+
+.administrator-workspace .passenger-chart-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.administrator-workspace .passenger-chart-heading h4 {
+  margin: 2px 0 0;
+  color: #172033;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.administrator-workspace .passenger-chart-heading > strong {
+  color: #172033;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.administrator-workspace .passenger-chart-bars {
+  display: grid;
+  gap: 6px;
+}
+
+.administrator-workspace .passenger-chart-row {
+  display: grid;
+  grid-template-columns: 76px minmax(80px, 1fr) 50px;
+  align-items: center;
+  gap: 8px;
+}
+
+.administrator-workspace .passenger-chart-row > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px;
+  color: #536171;
+  font-size: 9px;
+}
+
+.administrator-workspace .passenger-chart-row b {
+  color: #172033;
+  font-size: 10px;
+}
+
+.administrator-workspace .passenger-chart-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(71, 84, 103, 0.11);
+}
+
+.administrator-workspace .passenger-chart-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #3978d4;
+}
+
+.administrator-workspace .passenger-chart-row.active .passenger-chart-track > span {
+  background: #35a85c;
+}
+
+.administrator-workspace .passenger-chart-row.inactive .passenger-chart-track > span {
+  background: #d88a2b;
+}
+
+.administrator-workspace .passenger-chart-row small {
+  color: #667085;
+  font-size: 8px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.administrator-workspace .data-toolbar {
+  margin: 14px 0 10px;
+  border: 1px solid #e0e7e3;
+  border-radius: 13px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 5px 16px rgba(22, 46, 36, 0.035);
+}
+
+.administrator-workspace .data-search,
+.administrator-workspace .data-filter select {
+  border-color: #dfe4e8;
+  color: #344054;
+  background: #ffffff;
+}
+
+.administrator-workspace .data-search input::placeholder {
+  color: #98a2b3;
+}
+
+.administrator-workspace .data-search:focus-within {
+  border-color: rgba(71, 84, 103, 0.32);
+  box-shadow: 0 0 0 2px rgba(71, 84, 103, 0.06);
+}
+
+.administrator-workspace .data-search input:focus-visible {
+  outline: none !important;
+}
+
+.administrator-workspace .administrator-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.administrator-workspace .administrator-table-controls .data-filter {
+  position: relative;
+}
+
+.administrator-workspace .administrator-table-controls .data-filter > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.administrator-workspace .administrator-status-filter select {
+  min-width: 116px;
+}
+
+.administrator-workspace .administrator-sort-filter select {
+  min-width: 146px;
+  appearance: none;
+  padding-right: 34px;
+}
+
+.administrator-workspace .administrator-sort-filter > svg {
+  position: absolute;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  color: #475467;
+}
+
+.administrator-workspace .administrator-view-reset {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 39px;
+  place-items: center;
+  border: 1px solid #dfe4e8;
+  border-radius: 9px;
+  color: #344054;
+  background: #ffffff;
+}
+
+.administrator-workspace .administrator-view-reset:hover {
+  border-color: #cbd5cf;
+  background: #f6f9f7;
+}
+
+.administrator-workspace .administrator-view-reset svg {
+  width: 16px;
+  height: 16px;
+}
+
+.administrator-workspace .administrator-toolbar-add {
+  display: inline-flex;
+  min-height: 39px;
+  align-items: center;
+  gap: 6px;
+  margin-left: 2px;
+  border-radius: 9px;
+  padding: 0 14px;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.administrator-workspace .administrator-toolbar-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+.administrator-workspace .account-user-head {
+  min-height: 34px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 10px;
+  color: #5d6b64;
+  background: #f0f5f2;
+}
+
+.administrator-workspace .account-user-head.account-user-with-username,
+.administrator-workspace .account-user-row.account-user-with-username {
+  grid-template-columns:
+    42px minmax(185px, 1fr) minmax(130px, 0.68fr)
+    minmax(195px, 1.05fr) minmax(92px, 0.46fr) minmax(125px, 0.58fr)
+    64px;
+  min-width: 960px;
+}
+
+.administrator-workspace .account-user-row {
+  min-height: 66px;
+  margin-top: 6px;
+  border: 1px solid #eaecf0;
+  border-radius: 11px;
+  padding: 9px 10px;
+  background: #ffffff;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.administrator-workspace .account-user-row:hover {
+  border-color: #d5e5cf;
+  background: #fbfdfb;
+  box-shadow: 0 8px 20px rgba(23, 32, 51, 0.045);
+}
+
+.administrator-workspace .account-user-row .avatar {
+  flex-basis: 40px;
+  height: 40px;
+  border: 2px solid #ffffff;
+  color: #245f27;
+  background: #e9f5e5;
+  box-shadow: 0 0 0 1px #dce8d8;
+}
+
+.administrator-workspace .account-user-row .identity-cell b {
+  color: #172033;
+  font-size: 11px;
+}
+
+.administrator-workspace .account-user-row .username-cell b {
+  color: var(--black);
+}
+
+.administrator-workspace .date-created-cell {
+  display: grid;
+  gap: 2px;
+}
+
+.administrator-workspace .date-created-cell b {
+  color: #344054;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.administrator-workspace .date-created-cell small {
+  color: #859087;
+  font-size: 8px;
+}
+
+.administrator-workspace .account-user-row .status {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.administrator-workspace .row-menu {
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+.administrator-workspace .row-action {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 0 9px;
+  font-size: 9px;
+}
+
+.administrator-workspace .pagination {
+  margin-top: 14px;
+  border-top: 1px solid #eaecf0;
+  padding-top: 12px;
+}
+
+@media (max-width: 980px) {
+  .administrator-workspace .administrator-top-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .administrator-workspace .administrator-hero {
+    min-height: 138px;
+  }
+
+  .administrator-workspace .data-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .administrator-workspace .administrator-table-controls {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .administrator-workspace .administrator-toolbar-add {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .administrator-workspace .administrator-table-controls {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .administrator-workspace .account-user-row {
+    transition: none;
+  }
+}

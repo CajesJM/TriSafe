@@ -921,6 +921,12 @@ export class AdminService {
       (dto.fullName !== undefined ||
         dto.username !== undefined ||
         dto.role === UserRole.PASSENGER);
+    const editsUsernameIdentity =
+      (effectiveRole === UserRole.PASSENGER ||
+        effectiveRole === UserRole.LGU_ADMIN) &&
+      (dto.fullName !== undefined ||
+        dto.username !== undefined ||
+        dto.role !== undefined);
     if (
       editsPassengerIdentity &&
       !canonicalPersonNamePattern.test(
@@ -930,9 +936,9 @@ export class AdminService {
       throw new BadRequestException(
         "Passenger names must use Last Name, First Name M. format.",
       );
-    if (editsPassengerIdentity && !(dto.username ?? current.username))
+    if (editsUsernameIdentity && !(dto.username ?? current.username))
       throw new BadRequestException(
-        "A username is required for passenger accounts.",
+        "A username is required for passenger and administrator accounts.",
       );
     if (actorId === id && dto.status === UserStatus.INACTIVE)
       throw new ForbiddenException("You cannot deactivate your own account.");

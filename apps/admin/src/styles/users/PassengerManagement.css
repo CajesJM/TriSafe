@@ -347,7 +347,7 @@
 }
 
 .passenger-workspace .account-user-row .username-cell b {
-  color: #337418;
+  color: var(--black);
 }
 
 .passenger-workspace .date-created-cell {
