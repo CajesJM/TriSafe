@@ -6,6 +6,8 @@ import {
   BellRing,
   CarFront,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Cloud,
   CloudDrizzle,
   CloudLightning,
@@ -14,11 +16,9 @@ import {
   Clock3,
   CloudSun,
   Droplets,
-  FileClock,
   MapPin,
-  Megaphone,
   Moon,
-  RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   Sun,
   UsersRound,
@@ -50,6 +50,8 @@ const defaultWeatherLocation = {
   locationName: "Trinidad, Bohol",
 };
 
+const DRIVER_PAGE_SIZE = 5;
+
 export function DashboardHome({
   dashboard,
   drivers,
@@ -58,16 +60,26 @@ export function DashboardHome({
   onRegister,
   onNavigate,
 }: Props) {
-  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [weather, setWeather] = useState<WeatherSnapshot>();
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState(false);
   const [weatherUsesDevice, setWeatherUsesDevice] = useState(false);
+  const [driverPage, setDriverPage] = useState(1);
   const verifiedPercent = dashboard.drivers
     ? Math.round((dashboard.verifiedDrivers / dashboard.drivers) * 100)
     : 0;
   const administratorName = user?.fullName?.trim() || "Administrator";
   const generatedAt = new Date(dashboard.generatedAt);
+  const driverPageCount = Math.max(
+    1,
+    Math.ceil(drivers.length / DRIVER_PAGE_SIZE),
+  );
+  const driverPageStart = (driverPage - 1) * DRIVER_PAGE_SIZE;
+  const visibleDrivers = drivers.slice(
+    driverPageStart,
+    driverPageStart + DRIVER_PAGE_SIZE,
+  );
   const operationalSummary =
     dashboard.openIncidents > 0
       ? `${dashboard.openIncidents} ${dashboard.openIncidents === 1 ? "report requires" : "reports require"} review${dashboard.activeRides > 0 ? ` while ${dashboard.activeRides} ${dashboard.activeRides === 1 ? "ride is" : "rides are"} active` : ""}.`
@@ -76,12 +88,13 @@ export function DashboardHome({
         : "Transport records are clear and no incident reports are waiting for review.";
 
   useEffect(() => {
-    const clock = window.setInterval(
-      () => setCurrentHour(new Date().getHours()),
-      60 * 1000,
-    );
+    const clock = window.setInterval(() => setCurrentTime(new Date()), 1000);
     return () => window.clearInterval(clock);
   }, []);
+
+  useEffect(() => {
+    setDriverPage((current) => Math.min(current, driverPageCount));
+  }, [driverPageCount]);
 
   useEffect(() => {
     let active = true;
@@ -155,7 +168,8 @@ export function DashboardHome({
               </time>
             </div>
             <h1 id="dashboard-greeting">
-              {timeGreeting(currentHour)}, <span>{administratorName}</span>
+              {timeGreeting(currentTime.getHours())},{" "}
+              <span>{administratorName}</span>
             </h1>
             <p>{operationalSummary}</p>
             <div
@@ -165,12 +179,15 @@ export function DashboardHome({
               <span className="operations-pulse-online">
                 <i aria-hidden="true" /> System operational
               </span>
-              <span>
-                <Clock3 aria-hidden="true" /> Updated{" "}
-                {generatedAt.toLocaleTimeString("en-PH", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+              <span aria-label="Current local time">
+                <Clock3 aria-hidden="true" />
+                <time dateTime={currentTime.toISOString()}>
+                  {currentTime.toLocaleTimeString("en-PH", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })}
+                </time>
               </span>
               <span>
                 <ShieldCheck aria-hidden="true" /> {verifiedPercent}% of drivers
@@ -236,63 +253,68 @@ export function DashboardHome({
             eyebrow="RIDE OUTCOMES"
             title="Service health"
             action={
-              <strong className="panel-total-modern">
-                {dashboard.rides.total}
-              </strong>
+              <div className="outcome-summary">
+                <strong>{dashboard.rides.completed}</strong>
+                <span>completed rides</span>
+              </div>
             }
           />
           <OutcomeRow
             icon={<CheckCircle2 />}
             label="Completed rides"
+            description="Successfully ended trip records"
             value={dashboard.rides.completed}
-            total={dashboard.rides.total}
+            total={dashboard.rides.completed}
+            tone="completed"
           />
           <OutcomeRow
-            icon={<RefreshCw />}
-            label="Active rides"
-            value={dashboard.rides.active}
-            total={dashboard.rides.total}
+            icon={<ShieldAlert />}
+            label="Rides with reported incidents"
+            description="Submitted, under review, or resolved"
+            value={dashboard.rides.reported}
+            total={dashboard.rides.completed}
+            tone="incident"
           />
           <OutcomeRow
-            icon={<AlertTriangle />}
-            label="Cancelled rides"
-            value={dashboard.rides.cancelled}
-            total={dashboard.rides.total}
+            icon={<ShieldCheck />}
+            label="Incident-free completed rides"
+            description="Completed without a valid incident report"
+            value={dashboard.rides.incidentFree}
+            total={dashboard.rides.completed}
+            tone="safe"
           />
-          <div className="outcome-footnote">
-            <FileClock size={14} /> Updated from completed ride records
-          </div>
         </article>
         <article className="dashboard-card priority-card">
           <PanelHeading
             eyebrow="PRIORITY ACTIONS"
             title="LGU work queue"
-            detail="Go directly to records that need attention."
+            action={
+              <p className="priority-guidance">
+                Go directly to records that need attention.
+              </p>
+            }
           />
           <ActionItem
-            icon={<ShieldCheck />}
+            icon={<Banknote />}
+            label="Maintain fare matrix"
+            detail="Official distance rates"
+            tone="fare"
+            onClick={() => onNavigate("fares")}
+          />
+          <ActionItem
+            icon={<ShieldAlert />}
             label="Review incident reports"
-            detail={`${dashboard.openIncidents} open`}
+            detail="Assess passenger reports and evidence"
             urgent={dashboard.openIncidents > 0}
+            tone="incident"
             onClick={() => onNavigate("incidents")}
           />
           <ActionItem
             icon={<CarFront />}
             label="Register approved driver"
             detail="Create account and QR"
+            tone="driver"
             onClick={onRegister}
-          />
-          <ActionItem
-            icon={<Banknote />}
-            label="Maintain fare matrix"
-            detail="Official distance rates"
-            onClick={() => onNavigate("fares")}
-          />
-          <ActionItem
-            icon={<Megaphone />}
-            label="Send driver announcement"
-            detail="Renewal and safety updates"
-            onClick={() => onNavigate("announcements")}
           />
         </article>
       </section>
@@ -320,17 +342,25 @@ export function DashboardHome({
         {drivers.length === 0 ? (
           <p className="inline-empty">No drivers have been registered.</p>
         ) : (
-          <div className="responsive-table">
+          <div className="responsive-table registry-table">
             <div className="data-row driver-summary-head data-head">
               <span>Driver</span>
               <span>Vehicle</span>
               <span>Franchise</span>
               <span>Status</span>
             </div>
-            {drivers.slice(0, 5).map((driver) => (
+            {visibleDrivers.map((driver) => (
               <div className="data-row driver-summary-row" key={driver.id}>
                 <div className="identity-cell">
-                  <span className="avatar">{initials(driver.fullName)}</span>
+                  <span
+                    className={`avatar registry-avatar ${driver.avatarData ? "has-photo" : ""}`}
+                  >
+                    {driver.avatarData ? (
+                      <img src={driver.avatarData} alt="" />
+                    ) : (
+                      initials(driver.fullName)
+                    )}
+                  </span>
                   <span>
                     <b>{driver.fullName}</b>
                     <small>{driver.username ?? "Record incomplete"}</small>
@@ -355,6 +385,41 @@ export function DashboardHome({
                 </span>
               </div>
             ))}
+          </div>
+        )}
+        {drivers.length > 0 && (
+          <div
+            className="registry-pagination"
+            aria-label="Driver registry pagination"
+          >
+            <p>
+              Showing <b>{driverPageStart + 1}</b>–
+              <b>
+                {Math.min(driverPageStart + DRIVER_PAGE_SIZE, drivers.length)}
+              </b>{" "}
+              of <b>{drivers.length}</b> drivers
+            </p>
+            <div>
+              <button
+                type="button"
+                aria-label="Previous driver page"
+                disabled={driverPage === 1}
+                onClick={() => setDriverPage((current) => current - 1)}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </button>
+              <span>
+                Page <b>{driverPage}</b> of {driverPageCount}
+              </span>
+              <button
+                type="button"
+                aria-label="Next driver page"
+                disabled={driverPage === driverPageCount}
+                onClick={() => setDriverPage((current) => current + 1)}
+              >
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </div>
           </div>
         )}
       </section>
@@ -793,26 +858,32 @@ function ActionItem({
   label,
   detail,
   urgent,
+  tone,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   detail: string;
   urgent?: boolean;
+  tone: "incident" | "driver" | "fare";
   onClick: () => void;
 }) {
   return (
     <button
-      className={`action-item-modern ${urgent ? "urgent" : ""}`}
+      className={`action-item-modern action-item-modern--${tone} ${urgent ? "urgent" : ""}`}
       onClick={onClick}
       type="button"
     >
-      <span>{icon}</span>
-      <div>
+      <span className="action-item-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div className="action-item-copy">
         <b>{label}</b>
         <small>{detail}</small>
       </div>
-      <ArrowUpRight size={16} />
+      <span className="action-item-arrow" aria-hidden="true">
+        <ArrowUpRight size={15} />
+      </span>
     </button>
   );
 }
@@ -844,26 +915,46 @@ function LegendRow({
 function OutcomeRow({
   icon,
   label,
+  description,
   value,
   total,
+  tone,
 }: {
   icon: ReactNode;
   label: string;
+  description: string;
   value: number;
   total: number;
+  tone: "completed" | "incident" | "safe";
 }) {
-  const percent = total ? Math.round((value / total) * 100) : 0;
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const safeTotal = Number.isFinite(total) ? total : 0;
+  const percent = safeTotal
+    ? Math.min(100, Math.max(0, Math.round((safeValue / safeTotal) * 100)))
+    : 0;
   return (
-    <div className="outcome-row">
-      <div>
-        <span>{icon}</span>
-        <b>{label}</b>
-        <strong>{value}</strong>
+    <div className={`outcome-row outcome-row--${tone}`}>
+      <div className="outcome-row-heading">
+        <span className="outcome-icon" aria-hidden="true">
+          {icon}
+        </span>
+        <div className="outcome-copy">
+          <b>{label}</b>
+          <span>{description}</span>
+        </div>
+        <strong>{safeValue}</strong>
       </div>
-      <div className="outcome-track">
+      <div
+        className="outcome-track"
+        role="progressbar"
+        aria-label={`${label}: ${percent}% of completed rides`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
         <i style={{ width: `${percent}%` }} />
       </div>
-      <small>{percent}%</small>
+      <small className="outcome-percent">{percent}% of completed rides</small>
     </div>
   );
 }

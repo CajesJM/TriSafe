@@ -166,6 +166,9 @@ export type Dashboard = {
     active: number;
     completed: number;
     cancelled: number;
+    reported: number;
+    incidentFree: number;
+    incidentFreeRate: number;
   };
   incidents: {
     submitted: number;
@@ -262,6 +265,20 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
       count: 0,
     };
   });
+  const completedRides = Number(value.rides?.completed ?? 0);
+  const reportedRides = Number(
+    value.rides?.reported ?? value.openIncidents ?? 0,
+  );
+  const incidentFreeRides = Number(
+    value.rides?.incidentFree ??
+      Math.max(0, completedRides - reportedRides),
+  );
+  const incidentFreeRate = Number(
+    value.rides?.incidentFreeRate ??
+      (completedRides
+        ? Math.round((incidentFreeRides / completedRides) * 100)
+        : 0),
+  );
   return {
     drivers: Number(value.drivers ?? 0),
     verifiedDrivers: Number(value.verifiedDrivers ?? 0),
@@ -274,11 +291,14 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
       drivers: Number(value.drivers ?? 0),
       administrators: 0,
     },
-    rides: value.rides ?? {
-      total: Number(value.activeRides ?? 0),
-      active: Number(value.activeRides ?? 0),
-      completed: 0,
-      cancelled: 0,
+    rides: {
+      total: Number(value.rides?.total ?? value.activeRides ?? 0),
+      active: Number(value.rides?.active ?? value.activeRides ?? 0),
+      completed: completedRides,
+      cancelled: Number(value.rides?.cancelled ?? 0),
+      reported: reportedRides,
+      incidentFree: incidentFreeRides,
+      incidentFreeRate,
     },
     incidents: value.incidents ?? {
       submitted: Number(value.openIncidents ?? 0),

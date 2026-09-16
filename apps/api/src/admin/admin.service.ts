@@ -29,7 +29,7 @@ export class AdminService {
     activityStart.setDate(activityStart.getDate() - 6);
     const metricActivityStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
 
-    const [drivers, verifiedDrivers, activeRides, openIncidents, usersByRole, inactiveUsers, ridesByStatus, incidentsByStatus, recentRides, announcements, renewals, recentPassengers, recentVerifiedDrivers, recentOpenIncidents] = await Promise.all([
+    const [drivers, verifiedDrivers, activeRides, openIncidents, usersByRole, inactiveUsers, ridesByStatus, incidentsByStatus, completedReportedRideCount, recentRides, announcements, renewals, recentPassengers, recentVerifiedDrivers, recentOpenIncidents] = await Promise.all([
       this.prisma.driver.count(),
       this.prisma.driver.count({ where: { verification: 'VERIFIED' } }),
       this.prisma.ride.count({ where: { status: 'ACTIVE' } }),
@@ -38,6 +38,13 @@ export class AdminService {
       this.prisma.user.count({ where: { status: UserStatus.INACTIVE } }),
       this.prisma.ride.groupBy({ by: ['status'], _count: { _all: true } }),
       this.prisma.incident.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.incident.count({
+        where: {
+          rideId: { not: null },
+          status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'RESOLVED'] },
+          ride: { is: { status: 'COMPLETED' } },
+        },
+      }),
       this.prisma.ride.findMany({
         where: { startedAt: { gte: activityStart } },
         select: { startedAt: true },
@@ -78,6 +85,11 @@ export class AdminService {
     const roleCount = new Map(usersByRole.map((entry) => [entry.role, entry._count._all]));
     const rideCount = new Map(ridesByStatus.map((entry) => [entry.status, entry._count._all]));
     const incidentCount = new Map(incidentsByStatus.map((entry) => [entry.status, entry._count._all]));
+    const completedRideCount = rideCount.get('COMPLETED') ?? 0;
+    const incidentFreeRideCount = Math.max(0, completedRideCount - completedReportedRideCount);
+    const incidentFreeRate = completedRideCount
+      ? Math.round((incidentFreeRideCount / completedRideCount) * 100)
+      : 0;
     const rideActivity = Array.from({ length: 7 }, (_, index) => {
       const date = new Date(activityStart);
       date.setDate(activityStart.getDate() + index);
@@ -105,8 +117,11 @@ export class AdminService {
       rides: {
         total: ridesByStatus.reduce((total, entry) => total + entry._count._all, 0),
         active: rideCount.get('ACTIVE') ?? 0,
-        completed: rideCount.get('COMPLETED') ?? 0,
+        completed: completedRideCount,
         cancelled: rideCount.get('CANCELLED') ?? 0,
+        reported: completedReportedRideCount,
+        incidentFree: incidentFreeRideCount,
+        incidentFreeRate,
       },
       incidents: {
         submitted: incidentCount.get('SUBMITTED') ?? 0,
