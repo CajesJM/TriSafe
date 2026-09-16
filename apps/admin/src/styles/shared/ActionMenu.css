@@ -32,6 +32,7 @@
   color: var(--charcoal);
   background: var(--off-white);
   box-shadow: 0 20px 55px rgba(15, 15, 15, 0.2);
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   animation: action-menu-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .action-menu-group + .action-menu-group {
@@ -62,9 +63,15 @@
   font-weight: 750;
   text-align: left;
   cursor: pointer;
+  font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   transition:
     color 0.16s ease,
     background 0.16s ease;
+}
+.action-menu-popover-no-icons .action-menu-group > button {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 34px;
+  padding: 8px 10px;
 }
 .action-menu-group > button:hover:not(:disabled),
 .action-menu-group > button:focus-visible {

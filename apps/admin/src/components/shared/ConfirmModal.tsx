@@ -7,6 +7,7 @@ export function ConfirmModal({
   message,
   confirmLabel,
   tone = "danger",
+  showIcon = true,
   onConfirm,
   onCancel,
   onError,
@@ -15,6 +16,7 @@ export function ConfirmModal({
   message: string;
   confirmLabel: string;
   tone?: "danger" | "warning";
+  showIcon?: boolean;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
   onError?: (message: string) => void;
@@ -57,7 +59,7 @@ export function ConfirmModal({
       }}
     >
       <section
-        className={`confirm-modal ${tone}`}
+        className={`confirm-modal ${tone}${showIcon ? "" : " no-icon"}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -66,7 +68,7 @@ export function ConfirmModal({
         <button className="confirm-modal-close" type="button" onClick={onCancel} disabled={working} aria-label="Close confirmation">
           <X size={17} />
         </button>
-        <span className="confirm-modal-icon"><Icon size={22} /></span>
+        {showIcon && <span className="confirm-modal-icon"><Icon size={22} /></span>}
         <div className="confirm-modal-copy">
           <p className="eyebrow">PLEASE CONFIRM</p>
           <h3 id={titleId}>{title}</h3>

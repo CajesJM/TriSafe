@@ -19,10 +19,12 @@ export function ActionMenu({
   label,
   groups,
   iconOnly = false,
+  showIcons = true,
 }: {
   label: string;
   groups: ActionMenuGroup[];
   iconOnly?: boolean;
+  showIcons?: boolean;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -103,7 +105,7 @@ export function ActionMenu({
         createPortal(
           <div
             ref={menuRef}
-            className="action-menu-popover"
+            className={`action-menu-popover${showIcons ? "" : " action-menu-popover-no-icons"}`}
             style={position}
             role="menu"
             aria-label={label}
@@ -125,7 +127,7 @@ export function ActionMenu({
                         item.onSelect();
                       }}
                     >
-                      <i aria-hidden="true">{item.icon}</i>
+                      {showIcons && <i aria-hidden="true">{item.icon}</i>}
                       <span>{item.label}</span>
                     </button>
                   ))}

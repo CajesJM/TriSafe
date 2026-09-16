@@ -445,6 +445,7 @@ export function UserDirectory({
           message={confirmation.message}
           confirmLabel={confirmation.confirmLabel}
           tone={confirmation.tone}
+          showIcon={isAdministrator}
           onConfirm={confirmation.action}
           onCancel={() => setConfirmation(null)}
           onError={(message) => showToast("error", message)}
