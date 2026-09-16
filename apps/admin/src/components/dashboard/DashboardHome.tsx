@@ -8,19 +8,11 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Cloud,
-  CloudDrizzle,
-  CloudLightning,
-  CloudMoon,
-  CloudRain,
   Clock3,
-  CloudSun,
   Droplets,
   MapPin,
-  Moon,
   ShieldAlert,
   ShieldCheck,
-  Sun,
   UsersRound,
 } from "lucide-react";
 import {
@@ -194,6 +186,9 @@ export function DashboardHome({
                 verified
               </span>
             </div>
+          </div>
+          <div className="dashboard-command-art" aria-hidden="true">
+            <img src="/images/dashboard/trisafe-greeting-hero.webp" alt="" />
           </div>
         </section>
         <WeatherCard
@@ -453,12 +448,10 @@ function WeatherCard({
       ? {
           label: "Weather unavailable",
           tone: "neutral",
-          icon: <Cloud aria-hidden="true" />,
         }
       : {
           label: "Local weather",
           tone: "neutral",
-          icon: <CloudSun aria-hidden="true" />,
         };
 
   return (
@@ -466,48 +459,129 @@ function WeatherCard({
       className={`metric-card-modern metric-card-weather weather-stat-card weather-${condition.tone}`}
       aria-label={`${condition.label} in ${locationName}`}
     >
-      <div className="weather-scene" aria-hidden="true">
-        <span className="weather-orb" />
-        <span className="weather-cloud weather-cloud-a" />
-        <span className="weather-cloud weather-cloud-b" />
-        <span className="weather-cloud weather-cloud-c" />
-        <span className="weather-rainfall" />
-        <span className="weather-fog-bands" />
-        <span className="weather-lightning" />
+      <div className="weather-card-clouds" aria-hidden="true">
+        <span />
+        <span />
       </div>
-      <div className="metric-card-topline">
-        <div className="metric-card-title">
-          <span className="metric-icon-modern">{condition.icon}</span>
-          <p>{condition.label}</p>
-        </div>
+      <div className="weather-location-row">
+        <MapPin aria-hidden="true" />
+        <span>{locationName}</span>
       </div>
       {loading ? (
         <div className="weather-stat-state">Getting local conditions…</div>
       ) : error || !weather ? (
-        <div className="weather-stat-content">
-          <div className="metric-value-block">
+        <div className="weather-display">
+          <WeatherConditionVisual tone={condition.tone} />
+          <div className="weather-temperature-block">
             <strong>—</strong>
-            <small>{locationName}</small>
+            <small>Weather data unavailable</small>
           </div>
-          <span className="weather-stat-state">Temporarily unavailable</span>
+          <div className="weather-condition-copy">
+            <b>Temporarily unavailable</b>
+            <span>Try again shortly</span>
+          </div>
         </div>
       ) : (
-        <div className="weather-stat-content">
-          <div className="metric-value-block">
+        <div className="weather-display">
+          <WeatherConditionVisual tone={condition.tone} />
+          <div className="weather-temperature-block">
             <strong>{Number(weather.temperatureC).toFixed(0)}°</strong>
             <small>
-              <MapPin aria-hidden="true" size={11} /> {locationName}
+              <Droplets aria-hidden="true" /> {weather.humidity}%
             </small>
           </div>
-          <div className="weather-stat-summary">
-            <b>Feels {Number(weather.apparentC).toFixed(0)}°</b>
-            <span>
-              <Droplets aria-hidden="true" /> {weather.humidity}%
-            </span>
+          <div className="weather-condition-copy">
+            <b>Feels like {Number(weather.apparentC).toFixed(0)}°</b>
+            <span>{condition.label}</span>
+            <small>Wind {Number(weather.windKmh).toFixed(0)} km/h</small>
           </div>
         </div>
       )}
     </article>
+  );
+}
+
+function WeatherConditionVisual({ tone }: { tone: string }) {
+  const sunny = tone === "sunny";
+  const night = tone === "night" || tone === "night-cloudy";
+  const cloudy = !sunny && tone !== "night";
+  const rain = ["drizzle", "rain", "heavy-rain", "storm"].includes(tone);
+  const storm = tone === "storm";
+  const fog = tone === "fog";
+
+  return (
+    <svg
+      className={`weather-condition-art weather-condition-art-${tone}`}
+      viewBox="0 0 96 78"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="weather-cloud-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f9fdff" />
+          <stop offset="1" stopColor="#8fc9ec" />
+        </linearGradient>
+        <linearGradient id="weather-rain-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#65b9eb" />
+          <stop offset="1" stopColor="#247bbd" />
+        </linearGradient>
+      </defs>
+
+      {!night && (sunny || tone === "partly-cloudy") && (
+        <g className="weather-art-sun">
+          <circle cx={sunny ? 48 : 31} cy={sunny ? 37 : 27} r="13" />
+          {Array.from({ length: 8 }, (_, index) => {
+            const angle = (index * Math.PI) / 4;
+            const centerX = sunny ? 48 : 31;
+            const centerY = sunny ? 37 : 27;
+            return (
+              <line
+                key={index}
+                x1={centerX + Math.cos(angle) * 18}
+                y1={centerY + Math.sin(angle) * 18}
+                x2={centerX + Math.cos(angle) * 23}
+                y2={centerY + Math.sin(angle) * 23}
+              />
+            );
+          })}
+        </g>
+      )}
+
+      {night && (
+        <path
+          className="weather-art-moon"
+          d="M51 13c-12 3-18 17-11 28 5 9 17 12 26 7-5 8-16 12-26 8-14-5-20-21-13-34 5-9 15-13 24-9Z"
+        />
+      )}
+
+      {cloudy && (
+        <path
+          className="weather-art-cloud"
+          d="M24 59h45c10 0 17-6 17-14 0-8-7-14-16-14-2 0-4 0-6 1-4-10-13-16-24-14-9 1-16 8-17 17-8 0-14 5-14 12 0 7 6 12 15 12Z"
+        />
+      )}
+
+      {rain && !storm && (
+        <g className="weather-art-rain">
+          <line x1="30" y1="63" x2="26" y2="72" />
+          <line x1="46" y1="63" x2="42" y2="74" />
+          <line x1="62" y1="63" x2="58" y2="72" />
+        </g>
+      )}
+
+      {storm && (
+        <path
+          className="weather-art-lightning"
+          d="M50 59h12l-8 9h7L44 78l5-12h-7Z"
+        />
+      )}
+
+      {fog && (
+        <g className="weather-art-fog">
+          <line x1="22" y1="64" x2="75" y2="64" />
+          <line x1="29" y1="72" x2="68" y2="72" />
+        </g>
+      )}
+    </svg>
   );
 }
 
@@ -1094,66 +1168,54 @@ async function resolveDeviceLocationName(latitude: number, longitude: number) {
 function weatherPresentation(code: number, isDay: boolean) {
   if (code === 0) {
     return isDay
-      ? { label: "Sunny", tone: "sunny", icon: <Sun aria-hidden="true" /> }
+      ? { label: "Sunny", tone: "sunny" }
       : {
           label: "Clear night",
           tone: "night",
-          icon: <Moon aria-hidden="true" />,
         };
   }
   if (code === 1 || code === 2) {
     return {
       label: "Partly cloudy",
       tone: isDay ? "partly-cloudy" : "night-cloudy",
-      icon: isDay ? (
-        <CloudSun aria-hidden="true" />
-      ) : (
-        <CloudMoon aria-hidden="true" />
-      ),
     };
   }
   if (code === 3) {
     return {
       label: "Cloudy",
       tone: "overcast",
-      icon: <Cloud aria-hidden="true" />,
     };
   }
   if (code === 45 || code === 48) {
-    return { label: "Foggy", tone: "fog", icon: <Cloud aria-hidden="true" /> };
+    return { label: "Foggy", tone: "fog" };
   }
   if (code >= 51 && code <= 57) {
     return {
       label: "Light rain",
       tone: "drizzle",
-      icon: <CloudDrizzle aria-hidden="true" />,
     };
   }
   if ((code >= 61 && code <= 67) || (code >= 71 && code <= 77)) {
     return {
       label: code === 65 || code === 67 || code >= 71 ? "Heavy rain" : "Rainy",
       tone: code === 65 || code === 67 || code >= 71 ? "heavy-rain" : "rain",
-      icon: <CloudRain aria-hidden="true" />,
     };
   }
   if (code >= 80 && code <= 86) {
     return {
       label: code === 82 || code >= 85 ? "Heavy showers" : "Rain showers",
       tone: code === 82 || code >= 85 ? "heavy-rain" : "rain",
-      icon: <CloudRain aria-hidden="true" />,
     };
   }
   if (code >= 95 && code <= 99) {
     return {
       label: "Stormy",
       tone: "storm",
-      icon: <CloudLightning aria-hidden="true" />,
     };
   }
   return {
     label: "Variable skies",
     tone: "partly-cloudy",
-    icon: <CloudSun aria-hidden="true" />,
   };
 }
 function timeGreeting(hour: number) {

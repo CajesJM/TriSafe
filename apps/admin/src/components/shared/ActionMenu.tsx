@@ -18,9 +18,11 @@ export type ActionMenuGroup = {
 export function ActionMenu({
   label,
   groups,
+  iconOnly = false,
 }: {
   label: string;
   groups: ActionMenuGroup[];
+  iconOnly?: boolean;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -87,14 +89,15 @@ export function ActionMenu({
     <>
       <button
         ref={buttonRef}
-        className="row-action action-menu-trigger"
+        className={`row-action action-menu-trigger${iconOnly ? " action-menu-trigger-icon-only" : ""}`}
         type="button"
         onClick={toggleMenu}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
       >
-        <MoreHorizontal aria-hidden="true" /> More
+        <MoreHorizontal aria-hidden="true" />
+        {!iconOnly && <span>More</span>}
       </button>
       {open &&
         createPortal(

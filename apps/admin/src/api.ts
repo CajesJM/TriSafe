@@ -270,23 +270,23 @@ function normalizeDashboard(value: DashboardResponse): Dashboard {
           count: 0,
         };
       });
-  const emptyMetricActivity = () => Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(1);
-    date.setMonth(date.getMonth() - (6 - index));
-    return {
-      date: date.toISOString().slice(0, 7),
-      label: date.toLocaleDateString("en-PH", { month: "short" }),
-      count: 0,
-    };
-  });
+  const emptyMetricActivity = () =>
+    Array.from({ length: 7 }, (_, index) => {
+      const date = new Date();
+      date.setDate(1);
+      date.setMonth(date.getMonth() - (6 - index));
+      return {
+        date: date.toISOString().slice(0, 7),
+        label: date.toLocaleDateString("en-PH", { month: "short" }),
+        count: 0,
+      };
+    });
   const completedRides = Number(value.rides?.completed ?? 0);
   const reportedRides = Number(
     value.rides?.reported ?? value.openIncidents ?? 0,
   );
   const incidentFreeRides = Number(
-    value.rides?.incidentFree ??
-      Math.max(0, completedRides - reportedRides),
+    value.rides?.incidentFree ?? Math.max(0, completedRides - reportedRides),
   );
   const incidentFreeRate = Number(
     value.rides?.incidentFreeRate ??
@@ -414,7 +414,12 @@ export type Driver = {
   phone?: string;
   accountStatus?: UserStatus;
   verification: DriverStatus;
-  owner?: { id: string; lastName: string; firstName: string; middleName?: string | null } | null;
+  owner?: {
+    id: string;
+    lastName: string;
+    firstName: string;
+    middleName?: string | null;
+  } | null;
   address?: DriverPresentAddressInput | null;
   franchise?: {
     franchiseNumber: string;
@@ -482,9 +487,17 @@ export type Announcement = {
   recipientCount: number;
   readCount: number;
 };
-export type ViolationStatus = "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "DISMISSED";
+export type ViolationStatus =
+  | "OPEN"
+  | "ACKNOWLEDGED"
+  | "RESOLVED"
+  | "DISMISSED";
 export type PenaltyStatus = "NOT_APPLICABLE" | "PENDING" | "PAID" | "WAIVED";
-export type OffenseLevel = "FIRST_OFFENSE" | "SECOND_OFFENSE" | "THIRD_OFFENSE" | "GRAVE_OFFENSE";
+export type OffenseLevel =
+  | "FIRST_OFFENSE"
+  | "SECOND_OFFENSE"
+  | "THIRD_OFFENSE"
+  | "GRAVE_OFFENSE";
 export type DriverViolation = {
   id: string;
   driverId: string;
@@ -499,14 +512,72 @@ export type DriverViolation = {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
-  driver: { user: { fullName: string; username?: string | null; phone?: string | null }; vehicles: { plateNumber: string; vehicleType: string }[] };
+  driver: {
+    user: { fullName: string; username?: string | null; phone?: string | null };
+    vehicles: { plateNumber: string; vehicleType: string }[];
+  };
 };
-export type CreateViolationInput = { driverId: string; category: string; offenseLevel: OffenseLevel; description: string; occurredAt: string; penaltyAmount?: number; dueAt?: string; notes?: string; };
-export type UpdateViolationInput = { offenseLevel?: OffenseLevel; status?: ViolationStatus; penaltyStatus?: PenaltyStatus; penaltyAmount?: number | null; dueAt?: string | null; notes?: string | null; };
-export type DriverRatingSummary = { driverId: string; fullName: string; username?: string | null; vehicle: { plateNumber: string; vehicleType: string } | null; average: number | null; ratingCount: number; };
-export type DriverRating = { id: string; score: number; comment?: string | null; visible: boolean; moderationNotes?: string | null; createdAt: string; driver: { user: { fullName: string }; vehicles: { plateNumber: string; vehicleType: string }[] }; passenger: { fullName: string }; ride: { startedAt: string; fromLocationName?: string | null; toLocationName?: string | null }; };
-export type TermsDocument = { id: string; version: string; title: string; content: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED"; effectiveFrom?: string | null; publishedAt?: string | null; createdAt: string; updatedAt: string; };
-export type SaveTermsInput = { version: string; title: string; content: string; effectiveFrom?: string; };
+export type CreateViolationInput = {
+  driverId: string;
+  category: string;
+  offenseLevel: OffenseLevel;
+  description: string;
+  occurredAt: string;
+  penaltyAmount?: number;
+  dueAt?: string;
+  notes?: string;
+};
+export type UpdateViolationInput = {
+  offenseLevel?: OffenseLevel;
+  status?: ViolationStatus;
+  penaltyStatus?: PenaltyStatus;
+  penaltyAmount?: number | null;
+  dueAt?: string | null;
+  notes?: string | null;
+};
+export type DriverRatingSummary = {
+  driverId: string;
+  fullName: string;
+  username?: string | null;
+  vehicle: { plateNumber: string; vehicleType: string } | null;
+  average: number | null;
+  ratingCount: number;
+};
+export type DriverRating = {
+  id: string;
+  score: number;
+  comment?: string | null;
+  visible: boolean;
+  moderationNotes?: string | null;
+  createdAt: string;
+  driver: {
+    user: { fullName: string };
+    vehicles: { plateNumber: string; vehicleType: string }[];
+  };
+  passenger: { fullName: string };
+  ride: {
+    startedAt: string;
+    fromLocationName?: string | null;
+    toLocationName?: string | null;
+  };
+};
+export type TermsDocument = {
+  id: string;
+  version: string;
+  title: string;
+  content: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  effectiveFrom?: string | null;
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+export type SaveTermsInput = {
+  version: string;
+  title: string;
+  content: string;
+  effectiveFrom?: string;
+};
 export type VehicleFarePolicy = {
   id: string;
   vehicleType: "TRICYCLE" | "HABAL_HABAL";
@@ -627,6 +698,7 @@ export const api = {
       search?: string;
       role?: string;
       status?: string;
+      sort?: "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC";
       page?: number;
       pageSize?: number;
     } = {},
@@ -635,6 +707,7 @@ export const api = {
     if (options.search) params.set("search", options.search);
     if (options.role) params.set("role", options.role);
     if (options.status) params.set("status", options.status);
+    if (options.sort) params.set("sort", options.sort);
     if (options.page) params.set("page", String(options.page));
     if (options.pageSize) params.set("pageSize", String(options.pageSize));
     return request<UserPage>(`/admin/users?${params.toString()}`);
@@ -684,7 +757,9 @@ export const api = {
       body: JSON.stringify(body),
     }),
   boholMunicipalities: () =>
-    request<PhilippineLocationOption[]>("/admin/locations/bohol/municipalities"),
+    request<PhilippineLocationOption[]>(
+      "/admin/locations/bohol/municipalities",
+    ),
   boholBarangays: (municipalityCode: string) =>
     request<PhilippineLocationOption[]>(
       `/admin/locations/bohol/municipalities/${encodeURIComponent(municipalityCode)}/barangays`,
@@ -702,7 +777,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  updateDriverStatus: (driverId: string, status: DriverStatus, reason?: string) =>
+  updateDriverStatus: (
+    driverId: string,
+    status: DriverStatus,
+    reason?: string,
+  ) =>
     request<Driver>(`/admin/drivers/${driverId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status, ...(reason ? { reason } : {}) }),
@@ -719,13 +798,38 @@ export const api = {
     }),
   announcements: () => request<Announcement[]>("/admin/announcements"),
   violations: () => request<DriverViolation[]>("/admin/violations"),
-  createViolation: (body: CreateViolationInput) => request<DriverViolation>("/admin/violations", { method: "POST", body: JSON.stringify(body) }),
-  updateViolation: (id: string, body: UpdateViolationInput) => request<DriverViolation>(`/admin/violations/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  ratingSummaries: () => request<DriverRatingSummary[]>("/ratings/admin/summary"),
+  createViolation: (body: CreateViolationInput) =>
+    request<DriverViolation>("/admin/violations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateViolation: (id: string, body: UpdateViolationInput) =>
+    request<DriverViolation>(`/admin/violations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  ratingSummaries: () =>
+    request<DriverRatingSummary[]>("/ratings/admin/summary"),
   ratings: () => request<DriverRating[]>("/ratings/admin/all"),
-  moderateRating: (id: string, body: { visible: boolean; moderationNotes?: string }) => request<DriverRating>(`/ratings/admin/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  moderateRating: (
+    id: string,
+    body: { visible: boolean; moderationNotes?: string },
+  ) =>
+    request<DriverRating>(`/ratings/admin/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   terms: () => request<TermsDocument[]>("/terms/admin"),
-  createTerms: (body: SaveTermsInput) => request<TermsDocument>("/terms/admin", { method: "POST", body: JSON.stringify(body) }),
-  updateTerms: (id: string, body: SaveTermsInput) => request<TermsDocument>(`/terms/admin/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-  publishTerms: (id: string) => request<TermsDocument>(`/terms/admin/${id}/publish`, { method: "POST" }),
+  createTerms: (body: SaveTermsInput) =>
+    request<TermsDocument>("/terms/admin", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateTerms: (id: string, body: SaveTermsInput) =>
+    request<TermsDocument>(`/terms/admin/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  publishTerms: (id: string) =>
+    request<TermsDocument>(`/terms/admin/${id}/publish`, { method: "POST" }),
 };

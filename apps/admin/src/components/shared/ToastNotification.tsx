@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
 
@@ -11,11 +17,15 @@ export type ToastMessage = {
 export function ToastNotification({
   toast,
   onDismiss,
+  variant = "default",
 }: {
   toast: ToastMessage;
   onDismiss: () => void;
+  variant?: "default" | "dashboard";
 }) {
   const [closing, setClosing] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStart = useRef<number | null>(null);
   const manualDismissTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -35,11 +45,70 @@ export function ToastNotification({
     manualDismissTimer.current = window.setTimeout(onDismiss, 420);
   }, [closing, onDismiss]);
 
-  const Icon = toast.type === "success"
-    ? CheckCircle2
-    : toast.type === "error"
-      ? CircleAlert
-      : Info;
+  const Icon =
+    toast.type === "success"
+      ? CheckCircle2
+      : toast.type === "error"
+        ? CircleAlert
+        : Info;
+
+  function beginSwipe(event: ReactPointerEvent<HTMLDivElement>) {
+    dragStart.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function continueSwipe(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragStart.current !== null)
+      setDragOffset(event.clientX - dragStart.current);
+  }
+
+  function finishSwipe() {
+    if (Math.abs(dragOffset) >= 80) onDismiss();
+    else setDragOffset(0);
+    dragStart.current = null;
+  }
+
+  if (variant === "dashboard") {
+    const tone = toast.type === "info" ? "warning" : toast.type;
+    return createPortal(
+      <div className="analytics-toast-region" aria-live="polite">
+        <div className="analytics-toast-entry">
+          <div
+            className={`analytics-toast analytics-toast-${tone}`}
+            onPointerCancel={finishSwipe}
+            onPointerDown={beginSwipe}
+            onPointerMove={continueSwipe}
+            onPointerUp={finishSwipe}
+            role={toast.type === "error" ? "alert" : "status"}
+            style={{ transform: `translateX(${dragOffset}px)` }}
+          >
+            <span className="analytics-toast-icon">
+              <Icon aria-hidden="true" />
+            </span>
+            <div>
+              <strong>
+                {toast.type === "success"
+                  ? "Success"
+                  : toast.type === "error"
+                    ? "Unable to continue"
+                    : "Information"}
+              </strong>
+              <p>{toast.message}</p>
+            </div>
+            <button
+              aria-label="Dismiss notification"
+              onClick={onDismiss}
+              onPointerDown={(event) => event.stopPropagation()}
+              type="button"
+            >
+              <X aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div
@@ -47,12 +116,24 @@ export function ToastNotification({
       role={toast.type === "error" ? "alert" : "status"}
       aria-live={toast.type === "error" ? "assertive" : "polite"}
     >
-      <span className="app-toast-icon"><Icon size={18} /></span>
+      <span className="app-toast-icon">
+        <Icon size={18} />
+      </span>
       <div>
-        <strong>{toast.type === "success" ? "Success" : toast.type === "error" ? "Action unsuccessful" : "Information"}</strong>
+        <strong>
+          {toast.type === "success"
+            ? "Success"
+            : toast.type === "error"
+              ? "Action unsuccessful"
+              : "Information"}
+        </strong>
         <p>{toast.message}</p>
       </div>
-      <button type="button" onClick={dismissNow} aria-label="Dismiss notification">
+      <button
+        type="button"
+        onClick={dismissNow}
+        aria-label="Dismiss notification"
+      >
         <X size={15} />
       </button>
       <i aria-hidden="true" />

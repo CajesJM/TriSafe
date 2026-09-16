@@ -8,6 +8,17 @@
   width: 15px;
   height: 15px;
 }
+.action-menu-trigger-icon-only {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+.action-menu-trigger-icon-only svg {
+  width: 17px;
+  height: 17px;
+}
 .action-menu-popover {
   position: fixed;
   z-index: 11000;
