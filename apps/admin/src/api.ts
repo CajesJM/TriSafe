@@ -1,3 +1,5 @@
+import type { Tab } from "./types/admin";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 const TOKEN_KEY = "trisafe.accessToken";
 const USER_KEY = "trisafe.adminUser";
@@ -12,6 +14,19 @@ export type SessionUser = {
   username?: string | null;
   phone?: string | null;
   avatarData?: string | null;
+};
+
+export type GlobalSearchResult = {
+  id: string;
+  kind: string;
+  title: string;
+  subtitle: string;
+  tab: Tab;
+};
+
+export type GlobalSearchResponse = {
+  query: string;
+  items: GlobalSearchResult[];
 };
 
 export type StoredBoholAddress = {
@@ -575,6 +590,10 @@ export const api = {
     }),
   dashboard: () =>
     request<DashboardResponse>("/admin/dashboard").then(normalizeDashboard),
+  globalSearch: (query: string) =>
+    request<GlobalSearchResponse>(
+      `/admin/global-search?q=${encodeURIComponent(query)}`,
+    ),
   rideAnalytics: (range?: { from: string; to: string }) => {
     const params = new URLSearchParams();
     if (range) {

@@ -15,6 +15,7 @@ import { CreateViolationDto, UpdateViolationDto } from './dto/violation.dto';
 export class AdminController {
   constructor(private readonly service: AdminService) {}
   @Get('dashboard') dashboard() { return this.service.dashboard(); }
+  @Get('global-search') globalSearch(@Query('q') query = '') { return this.service.globalSearch(query); }
   @Get('ride-analytics') rideAnalytics(@Query() query: RideAnalyticsQueryDto) { return this.service.rideAnalytics(query); }
   @Get('weather') weather(@Query('latitude') latitude?: string, @Query('longitude') longitude?: string, @Query('locationName') locationName?: string) {
     return this.service.weather(latitude, longitude, locationName);

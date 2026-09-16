@@ -1634,3 +1634,14 @@
     transform: none;
   }
 }
+html.trisafe-dashboard-view,
+body.trisafe-dashboard-view {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html.trisafe-dashboard-view::-webkit-scrollbar,
+body.trisafe-dashboard-view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

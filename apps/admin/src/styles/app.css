@@ -26,3 +26,5 @@
 @import './violations/ViolationManagement.css';
 @import './ratings/RatingManagement.css';
 @import './dashboard/DashboardSaas.css';
+@import './users/PassengerManagement.css';
+@import './layout/HeaderTools.css';

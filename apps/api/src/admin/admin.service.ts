@@ -156,6 +156,178 @@ export class AdminService {
     };
   }
 
+  async globalSearch(rawQuery: string) {
+    const query = rawQuery.trim().slice(0, 100);
+    if (query.length < 2) return { query, items: [] };
+
+    const text = {
+      contains: query,
+      mode: Prisma.QueryMode.insensitive,
+    };
+    const [users, drivers, incidents, violations, ratings, announcements, terms, fares, auditLogs] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          role: { in: [UserRole.PASSENGER, UserRole.LGU_ADMIN] },
+          OR: [{ fullName: text }, { username: text }, { email: text }, { phone: text }],
+        },
+        select: { id: true, role: true, fullName: true, username: true, email: true, status: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.driver.findMany({
+        where: {
+          OR: [
+            { user: { is: { OR: [{ fullName: text }, { username: text }, { phone: text }] } } },
+            { franchise: { is: { franchiseNumber: text } } },
+            { vehicles: { some: { OR: [{ plateNumber: text }, { bodyNumber: text }, { permitNumber: text }] } } },
+          ],
+        },
+        select: {
+          id: true,
+          verification: true,
+          user: { select: { fullName: true, username: true } },
+          franchise: { select: { franchiseNumber: true } },
+          vehicles: { select: { plateNumber: true, vehicleType: true }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.incident.findMany({
+        where: {
+          OR: [
+            { rawDescription: text },
+            { finalDescription: text },
+            { reviewerNotes: text },
+            { passenger: { is: { fullName: text } } },
+            { ride: { is: { vehicle: { is: { plateNumber: text } } } } },
+          ],
+        },
+        select: { id: true, category: true, status: true, passenger: { select: { fullName: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.driverViolation.findMany({
+        where: {
+          OR: [
+            { category: text },
+            { description: text },
+            { notes: text },
+            { driver: { is: { user: { is: { fullName: text } } } } },
+          ],
+        },
+        select: { id: true, category: true, status: true, driver: { select: { user: { select: { fullName: true } } } } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.driverRating.findMany({
+        where: {
+          OR: [
+            { comment: text },
+            { moderationNotes: text },
+            { driver: { is: { user: { is: { fullName: text } } } } },
+            { passenger: { is: { fullName: text } } },
+          ],
+        },
+        select: { id: true, score: true, driver: { select: { user: { select: { fullName: true } } } }, passenger: { select: { fullName: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.announcement.findMany({
+        where: { OR: [{ title: text }, { body: text }] },
+        select: { id: true, title: true, publishedAt: true },
+        orderBy: { publishedAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.termsDocument.findMany({
+        where: { OR: [{ title: text }, { version: text }, { content: text }] },
+        select: { id: true, title: true, version: true, status: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.vehicleFarePolicy.findMany({
+        where: { OR: [{ vehicleType: text }, { version: text }] },
+        select: { id: true, vehicleType: true, version: true, active: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.auditLog.findMany({
+        where: { OR: [{ action: text }, { entityType: text }, { entityId: text }] },
+        select: { id: true, action: true, entityType: true, entityId: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+    ]);
+
+    return {
+      query,
+      items: [
+        ...users.map((user) => ({
+          id: user.id,
+          kind: user.role === UserRole.PASSENGER ? 'Passenger' : 'Administrator',
+          title: user.fullName,
+          subtitle: user.username ? `@${user.username} · ${user.status.toLowerCase()}` : `${user.email ?? 'No email'} · ${user.status.toLowerCase()}`,
+          tab: user.role === UserRole.PASSENGER ? 'passengers' : 'administrators',
+        })),
+        ...drivers.map((driver) => ({
+          id: driver.id,
+          kind: 'Driver',
+          title: driver.user.fullName,
+          subtitle: `${driver.vehicles[0]?.plateNumber ?? 'No vehicle'} · ${driver.franchise?.franchiseNumber ?? 'No franchise'} · ${driver.verification.toLowerCase()}`,
+          tab: 'drivers',
+        })),
+        ...incidents.map((incident) => ({
+          id: incident.id,
+          kind: 'Incident report',
+          title: `${incident.category.replaceAll('_', ' ')} report`,
+          subtitle: `${incident.passenger.fullName} · ${incident.status.toLowerCase().replaceAll('_', ' ')}`,
+          tab: 'incidents',
+        })),
+        ...violations.map((violation) => ({
+          id: violation.id,
+          kind: 'Violation',
+          title: violation.category,
+          subtitle: `${violation.driver.user.fullName} · ${violation.status.toLowerCase()}`,
+          tab: 'violations',
+        })),
+        ...ratings.map((rating) => ({
+          id: rating.id,
+          kind: 'Driver rating',
+          title: `${rating.driver.user.fullName} · ${rating.score}/5`,
+          subtitle: `Submitted by ${rating.passenger.fullName}`,
+          tab: 'ratings',
+        })),
+        ...announcements.map((announcement) => ({
+          id: announcement.id,
+          kind: 'Announcement',
+          title: announcement.title,
+          subtitle: `Published ${announcement.publishedAt.toLocaleDateString('en-PH')}`,
+          tab: 'announcements',
+        })),
+        ...terms.map((document) => ({
+          id: document.id,
+          kind: 'Terms document',
+          title: document.title,
+          subtitle: `Version ${document.version} · ${document.status.toLowerCase()}`,
+          tab: 'terms',
+        })),
+        ...fares.map((fare) => ({
+          id: fare.id,
+          kind: 'Fare policy',
+          title: fare.vehicleType.replaceAll('_', '-').toLowerCase(),
+          subtitle: `Version ${fare.version} · ${fare.active ? 'active' : 'inactive'}`,
+          tab: 'fares',
+        })),
+        ...auditLogs.map((log) => ({
+          id: log.id,
+          kind: 'Audit record',
+          title: log.action.replaceAll('_', ' ').toLowerCase(),
+          subtitle: `${log.entityType}${log.entityId ? ` · ${log.entityId}` : ''}`,
+          tab: 'audit',
+        })),
+      ].slice(0, 30),
+    };
+  }
+
   async rideAnalytics(query: RideAnalyticsQueryDto) {
     const to = query.to ?? manilaDateString(new Date());
     const from = query.from ?? addDateString(to, -6);

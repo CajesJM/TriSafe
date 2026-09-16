@@ -17,6 +17,7 @@ import {
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm } from "./UserForm";
 import { displayPersonName } from "../../utils/personName";
+import { Plus, ShieldCheck, UserCheck, UsersRound, UserX } from "lucide-react";
 
 const pageSize = 10;
 type DirectoryUser = AdminUser & { username?: string | null };
@@ -199,16 +200,16 @@ export function UserDirectory({
     <section className={`card data-card users-workspace ${isAdministrator ? "administrator-workspace" : "passenger-workspace"}`}>
       <div className="section-heading">
         <div>
-          <span className="eyebrow">{isAdministrator ? "BPLO ADMINISTRATION" : "PASSENGER ACCOUNTS"}</span>
-          <h3>{isAdministrator ? "Administrator Management" : "Passenger Management"}</h3>
+          <span className="eyebrow">{isAdministrator ? "BPLO ADMINISTRATION" : "ACCOUNT DIRECTORY"}</span>
+          <h3>{isAdministrator ? "Administrator Management" : "Passenger directory"}</h3>
           <p className="section-description">
             {isAdministrator
               ? "Manage authorized BPLO Administrator accounts, access status, and account details."
-              : "Manage Passenger registration, account details, search, status, and secure account access."}
+              : "Review passenger identities, contact details, and account access from one workspace."}
           </p>
         </div>
         <button className="primary" onClick={() => setCreatingUser(true)} type="button">
-          ＋ Create {isAdministrator ? "Administrator" : "passenger"}
+          <Plus aria-hidden="true" /> Create {isAdministrator ? "Administrator" : "passenger"}
         </button>
       </div>
       <ManagementSummary role={managementRole} total={data.total} visible={data.items} />
@@ -431,6 +432,28 @@ function ManagementSummary({
   const activeOnPage = visible.filter((user) => user.status === "ACTIVE").length;
   const inactiveOnPage = visible.filter((user) => user.status === "INACTIVE").length;
   const label = role === "LGU_ADMIN" ? "Administrator" : "Passenger";
+  if (role === "PASSENGER") {
+    return (
+      <div className="management-summary passenger-summary" aria-label="Passenger management summary">
+        <div className="passenger-summary-metric total">
+          <span className="passenger-summary-icon"><UsersRound aria-hidden="true" /></span>
+          <div><span>Registered passengers</span><strong>{total}</strong><small>All passenger accounts</small></div>
+        </div>
+        <div className="passenger-summary-metric active">
+          <span className="passenger-summary-icon"><UserCheck aria-hidden="true" /></span>
+          <div><span>Active on this page</span><strong>{activeOnPage}</strong><small>Can access TriSafe</small></div>
+        </div>
+        <div className="passenger-summary-metric inactive">
+          <span className="passenger-summary-icon"><UserX aria-hidden="true" /></span>
+          <div><span>Inactive on this page</span><strong>{inactiveOnPage}</strong><small>Access currently disabled</small></div>
+        </div>
+        <div className="passenger-summary-note">
+          <ShieldCheck aria-hidden="true" />
+          <p>Passenger records remain separate from driver and Administrator accounts.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="management-summary" aria-label={`${label} management summary`}>
       <div><span>Registered {label.toLowerCase()}s</span><strong>{total}</strong></div>

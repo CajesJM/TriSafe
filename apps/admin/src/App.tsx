@@ -124,6 +124,16 @@ export function App() {
     return () =>
       window.removeEventListener("trisafe-auth-expired", expireSession);
   }, []);
+  useEffect(() => {
+    const dashboardClass = "trisafe-dashboard-view";
+    const isDashboard = authenticated && tab === "overview";
+    document.documentElement.classList.toggle(dashboardClass, isDashboard);
+    document.body.classList.toggle(dashboardClass, isDashboard);
+    return () => {
+      document.documentElement.classList.remove(dashboardClass);
+      document.body.classList.remove(dashboardClass);
+    };
+  }, [authenticated, tab]);
 
   if (!authenticated)
     return (
@@ -259,6 +269,7 @@ export function App() {
           openIncidents={dashboard?.openIncidents ?? 0}
           onMenu={() => setSidebarOpen(true)}
           onProfile={() => setProfileOpen(true)}
+          onNavigate={changeTab}
         />
         <AdminProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={(user) => { setSessionUser(user); updateSessionUser(user); }} />
         {toast && <ToastNotification key={toast.id} toast={toast} onDismiss={() => setToast(null)} />}
