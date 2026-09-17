@@ -40,7 +40,9 @@ export function DriverRegistrationFileModal({
     () => createDriverRegistrationFileData(driver),
     [driver],
   );
-  const selectedFormat = driverFileFormats.find((item) => item.value === format)!;
+  const selectedFormat = driverFileFormats.find(
+    (item) => item.value === format,
+  )!;
 
   useEffect(() => {
     if (!formatMenuOpen) return;
@@ -131,6 +133,14 @@ export function DriverRegistrationFileModal({
               <dd>{driver.phone ?? "Not recorded"}</dd>
             </div>
           </dl>
+          <button
+            className="driver-record-print"
+            type="button"
+            onClick={preview}
+            disabled={downloading}
+          >
+            <Printer aria-hidden="true" /> Print / Preview
+          </button>
           <div className="driver-record-download-control" ref={formatControl}>
             <div className="driver-record-download-split">
               <button
@@ -155,7 +165,11 @@ export function DriverRegistrationFileModal({
               </button>
             </div>
             {formatMenuOpen && (
-              <div className="driver-record-format-menu" role="menu" aria-label="File type">
+              <div
+                className="driver-record-format-menu"
+                role="menu"
+                aria-label="File type"
+              >
                 <span>Download as</span>
                 {driverFileFormats.map((item) => (
                   <button
@@ -169,21 +183,16 @@ export function DriverRegistrationFileModal({
                       setFormatMenuOpen(false);
                     }}
                   >
-                    <span><strong>{item.label}</strong><small>{item.extension}</small></span>
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small>{item.extension}</small>
+                    </span>
                     {item.value === format && <Check aria-hidden="true" />}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <button
-            className="driver-record-print"
-            type="button"
-            onClick={preview}
-            disabled={downloading}
-          >
-            <Printer aria-hidden="true" /> Print / Preview
-          </button>
           <div className="driver-record-current-view">
             <FileText aria-hidden="true" />
             <div>

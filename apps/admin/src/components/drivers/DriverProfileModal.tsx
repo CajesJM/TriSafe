@@ -1,20 +1,17 @@
-import {
-  useEffect,
-  useId,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
   BadgeCheck,
+  CalendarDays,
   CarFront,
-  Edit3,
   FileText,
-  QrCode,
+  FileWarning,
+  Gauge,
   Route,
+  ShieldCheck,
   Star,
+  UserRound,
   X,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -25,15 +22,11 @@ export function DriverProfileModal({
   driver,
   onClose,
   onEditFranchise,
-  onViewQr,
-  onEditAccount,
   onViewRegistrationFile,
 }: {
   driver: Driver;
   onClose: () => void;
   onEditFranchise: () => void;
-  onViewQr: () => void;
-  onEditAccount: () => void;
   onViewRegistrationFile: () => void;
 }) {
   const titleId = useId();
@@ -41,12 +34,14 @@ export function DriverProfileModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const vehicle = driver.vehicles[0];
+  const accountStatus = driver.accountStatus ?? "ACTIVE";
   const operationalStatus = driver.franchise?.status ?? driver.verification;
-  const franchiseRenewal = franchiseRenewalLabel(driver.franchise?.expiresAt);
+  const renewal = franchiseRenewalInfo(driver.franchise?.expiresAt);
+  const restricted =
+    accountStatus !== "ACTIVE" || operationalStatus !== "VERIFIED";
   const qrState = vehicle?.qrCode?.token
-    ? operationalStatus === "VERIFIED" &&
-      (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
-      ? "Active and eligible"
+    ? !restricted
+      ? "Issued · eligible"
       : "Issued · ride blocked"
     : "Not issued";
 
@@ -56,9 +51,7 @@ export function DriverProfileModal({
     setError("");
     api
       .driverOperationalProfile(driver.id)
-      .then((result) => {
-        if (active) setProfile(result);
-      })
+      .then((result) => active && setProfile(result))
       .catch((requestError: unknown) => {
         if (active)
           setError(
@@ -67,9 +60,7 @@ export function DriverProfileModal({
               : "Unable to load driver activity.",
           );
       })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
@@ -94,110 +85,420 @@ export function DriverProfileModal({
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section
-        className="driver-profile-modal driver-operations-profile"
+        className="driver-profile-modal driver-operations-profile driver-op-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
       >
-        <div className="driver-profile-cover" aria-hidden="true">
-          <span>TRISAFE · DRIVER OPERATIONS</span>
-        </div>
-        <header className="driver-profile-header">
-          <div className="driver-profile-identity">
-            <span className="driver-profile-avatar">
+        <header className="driver-op-hero">
+          <div className="driver-op-brandline">
+            TRISAFE <i /> DRIVER OPERATIONS
+          </div>
+          <button
+            className="driver-op-close"
+            type="button"
+            onClick={onClose}
+            aria-label="Close driver profile"
+          >
+            <X />
+          </button>
+          <div className="driver-op-identity">
+            <span className="driver-op-avatar">
               {driver.avatarData ? (
-                <img src={driver.avatarData} alt="Driver profile" />
+                <img
+                  src={driver.avatarData}
+                  alt={`${displayPersonName(driver.fullName)} profile`}
+                />
               ) : (
                 initials(driver.fullName)
               )}
             </span>
-            <div className="driver-profile-intro">
-              <p className="eyebrow">DRIVER OPERATIONAL PROFILE</p>
-              <h3 id={titleId}>{displayPersonName(driver.fullName)}</h3>
-              <small>
-                @{driver.username ?? "not-assigned"} · {vehicleTypeLabel(vehicle?.vehicleType)} driver
-              </small>
-              <span className="driver-profile-record-id">
-                {driver.id} · {vehicle?.plateNumber ?? "Vehicle not assigned"}
+            <div>
+              <span className="driver-op-kicker">
+                DRIVER OPERATIONAL PROFILE
               </span>
+              <h2 id={titleId}>{displayPersonName(driver.fullName)}</h2>
+              <p>
+                @{driver.username ?? "not-assigned"} <i />{" "}
+                {vehicleTypeLabel(vehicle?.vehicleType)} driver
+              </p>
+              <strong>
+                {driver.id} <i />{" "}
+                {vehicle?.plateNumber ?? "Vehicle not assigned"}
+              </strong>
             </div>
           </div>
-          <div className="driver-profile-header-actions">
-            <span className={`status ${operationalStatus.toLowerCase()}`}>
-              {operationalStatus}
+          <div className="driver-op-hero-state">
+            <div>
+              <StatusPill value={operationalStatus} icon={<AlertTriangle />} />
+              <StatusPill value={accountStatus} icon={<ShieldCheck />} />
+            </div>
+            <p>
+              {renewal.detail}
+              <br />
+              {restricted
+                ? "Rides currently blocked"
+                : "Eligible for verified rides"}
+            </p>
+          </div>
+          <div
+            className="driver-op-community"
+            aria-label="TriSafe safe transport"
+          >
+            <span>
+              Safer rides
+              <br />
+              Stronger communities
             </span>
-            <button type="button" onClick={onClose} aria-label="Close driver profile">
-              <X size={18} />
-            </button>
+            <ShieldCheck />
+            <strong>TriSafe</strong>
           </div>
         </header>
 
-        <section className="driver-profile-summary driver-profile-metrics" aria-label="Driver performance summary">
-          <MetricCard icon={<Route />} label="Total rides" value={metricValue(metrics?.totalRides, loading)} note="Lifetime registered trips" />
-          <MetricCard icon={<BadgeCheck />} label="Completion rate" value={loading ? "—" : `${completionRate}%`} note={`${metrics?.completedRides ?? 0} completed rides`} tone="green" />
-          <MetricCard icon={<Star />} label="Average rating" value={loading ? "—" : metrics?.averageRating?.toFixed(1) ?? "No rating"} note={`${metrics?.ratingCount ?? 0} passenger reviews`} tone="blue" />
-          <MetricCard icon={<AlertTriangle />} label="Safety records" value={metricValue(metrics?.incidentCount, loading)} note={`${metrics?.violationCount ?? 0} recorded violations`} tone={(metrics?.incidentCount ?? 0) > 0 ? "amber" : "green"} />
+        {restricted && (
+          <div className="driver-op-alert" role="status">
+            <AlertTriangle />
+            <strong>Operational restrictions applied.</strong>
+            <span>{restrictionMessage(accountStatus, operationalStatus)}</span>
+            <button type="button" onClick={onEditFranchise}>
+              Review franchise <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        )}
+
+        <section
+          className="driver-op-summary"
+          aria-label="Current driver status"
+        >
+          <SummaryCard
+            icon={<UserRound />}
+            label="Account access"
+            value={titleCase(accountStatus)}
+            note={
+              accountStatus === "ACTIVE"
+                ? "Driver can sign in."
+                : "Driver cannot log in."
+            }
+            tone={accountStatus === "ACTIVE" ? "positive" : "danger"}
+            status
+          />
+          <SummaryCard
+            icon={<FileWarning />}
+            label="Transport eligibility"
+            value={titleCase(operationalStatus)}
+            note={
+              operationalStatus === "VERIFIED"
+                ? "Franchise is active."
+                : "Franchise is not active."
+            }
+            tone={operationalStatus === "VERIFIED" ? "positive" : "danger"}
+            status
+          />
+          <SummaryCard
+            icon={<CarFront />}
+            label="Registered vehicle"
+            value={
+              vehicle?.bodyNumber ??
+              vehicle?.permitNumber ??
+              vehicle?.plateNumber ??
+              "Not assigned"
+            }
+            note={vehicleTypeLabel(vehicle?.vehicleType)}
+            tone="positive"
+          />
+          <SummaryCard
+            icon={<CalendarDays />}
+            label="Franchise renewal"
+            value={renewal.label}
+            note={renewal.shortDetail}
+            tone={renewal.tone}
+            status
+          />
         </section>
 
-        {error && <div className="driver-profile-load-error" role="alert">{error}</div>}
-
-        <div className="driver-profile-grid driver-operational-grid">
-          <ProfilePanel icon={<Activity />} title="Ride performance" subtitle="Lifetime trip outcome">
-            <div className="driver-performance-overview">
-              <div className="driver-performance-ring" style={{ "--progress": `${completionRate}%` } as CSSProperties}>
-                <strong>{loading ? "—" : `${completionRate}%`}</strong>
-                <span>completed</span>
-              </div>
-              <div className="driver-performance-breakdown">
-                <PerformanceRow label="Total rides" value={metrics?.totalRides ?? 0} total={metrics?.totalRides ?? 0} tone="total" />
-                <PerformanceRow label="Completed" value={metrics?.completedRides ?? 0} total={metrics?.totalRides ?? 0} tone="completed" />
-                <PerformanceRow label="Cancelled" value={metrics?.cancelledRides ?? 0} total={metrics?.totalRides ?? 0} tone="cancelled" />
-                <PerformanceRow label="Violations" value={metrics?.violationCount ?? 0} total={metrics?.totalRides ?? 0} tone="violation" />
-              </div>
-            </div>
-          </ProfilePanel>
-
-          <ProfilePanel icon={<CarFront />} title="Transport readiness" subtitle="Current operating credentials">
-            <div className="driver-readiness-list">
-              <CompactField label="Account access" value={driver.accountStatus ?? "ACTIVE"} status />
-              <CompactField label="Transport status" value={operationalStatus} status />
-              <CompactField label="Franchise renewal" value={franchiseRenewal} />
-              <CompactField label="BPLO QR" value={qrState} />
-            </div>
-          </ProfilePanel>
-
-        </div>
-
-        <footer className="driver-profile-footer">
-          <p><QrCode size={15} /> Operational data is loaded from the live TriSafe registry.</p>
-          <div>
-            <button className="secondary" type="button" onClick={onEditAccount}><Edit3 size={15} /> Edit account</button>
-            <button className="secondary" type="button" onClick={onEditFranchise}>Manage franchise</button>
-            <button className="secondary" type="button" onClick={onViewRegistrationFile}><FileText size={15} /> Registration file</button>
-            <button className="primary" type="button" onClick={onViewQr} disabled={!vehicle?.qrCode?.token}>View QR code</button>
+        {error && (
+          <div className="driver-profile-load-error" role="alert">
+            {error}
           </div>
-        </footer>
+        )}
+
+        <main className="driver-op-content">
+          <section className="driver-op-panel driver-op-trip-panel">
+            <PanelHeading
+              icon={<Activity />}
+              title="Trip Activity & Reputation"
+              subtitle="Lifetime performance on TriSafe"
+            />
+            <div className="driver-op-metric-grid">
+              <MetricCard
+                icon={<Route />}
+                label="Total rides"
+                value={metricValue(metrics?.totalRides, loading)}
+                note="Lifetime registered trips"
+              />
+              <MetricCard
+                icon={<BadgeCheck />}
+                label="Completion rate"
+                value={loading ? "—" : `${completionRate}%`}
+                note={`${metrics?.completedRides ?? 0} completed rides`}
+                tone="green"
+              />
+              <MetricCard
+                icon={<Star />}
+                label="Average rating"
+                value={
+                  loading
+                    ? "—"
+                    : (metrics?.averageRating?.toFixed(1) ?? "No rating")
+                }
+                note={`${metrics?.ratingCount ?? 0} passenger reviews`}
+                tone="blue"
+              />
+            </div>
+            <div className="driver-op-outcomes">
+              <strong>Trip outcomes</strong>
+              <PerformanceRow
+                label="Total rides"
+                value={metrics?.totalRides ?? 0}
+                total={metrics?.totalRides ?? 0}
+                tone="total"
+              />
+              <PerformanceRow
+                label="Completed"
+                value={metrics?.completedRides ?? 0}
+                total={metrics?.totalRides ?? 0}
+                tone="completed"
+              />
+              <PerformanceRow
+                label="Cancelled"
+                value={metrics?.cancelledRides ?? 0}
+                total={metrics?.totalRides ?? 0}
+                tone="cancelled"
+              />
+              <PerformanceRow
+                label="Violations"
+                value={metrics?.violationCount ?? 0}
+                total={metrics?.totalRides ?? 0}
+                tone="violation"
+              />
+            </div>
+            <div
+              className={`driver-op-safety ${(metrics?.violationCount ?? 0) > 0 ? "attention" : "clear"}`}
+            >
+              <span>
+                <AlertTriangle />
+              </span>
+              <div>
+                <strong>Safety & Compliance</strong>
+                <small>Driver safety record and regulatory compliance</small>
+              </div>
+              <p>
+                Recorded violations <b>{metrics?.violationCount ?? 0}</b>
+              </p>
+              <em>
+                {(metrics?.violationCount ?? 0) > 0
+                  ? "Needs attention"
+                  : "Clear record"}
+              </em>
+            </div>
+          </section>
+
+          <section className="driver-op-panel driver-op-readiness-panel">
+            <PanelHeading
+              icon={<Gauge />}
+              title="Operational Readiness"
+              subtitle="Current status and eligibility details"
+            />
+            <div className="driver-op-readiness-list">
+              <ReadinessRow
+                label="Account access"
+                value={accountStatus}
+                status
+              />
+              <ReadinessRow
+                label="Transport status"
+                value={operationalStatus}
+                status
+              />
+              <ReadinessRow
+                label="Franchise renewal"
+                value={renewal.detail}
+                danger={renewal.tone === "danger"}
+              />
+              <ReadinessRow label="BPLO QR" value={qrState} />
+              <ReadinessRow
+                label="Registry created"
+                value={formatDate(driver.createdAt)}
+              />
+            </div>
+            <div
+              className={`driver-op-next ${restricted ? "warning" : "ready"}`}
+            >
+              <span>{restricted ? <AlertTriangle /> : <BadgeCheck />}</span>
+              <div>
+                <strong>
+                  {restricted
+                    ? "Recommended next actions"
+                    : "Ready for verified rides"}
+                </strong>
+                <small>
+                  {restricted
+                    ? "Resolve the items below to restore ride access."
+                    : "Account, franchise, and transport access are in good standing."}
+                </small>
+              </div>
+              <div className="driver-op-next-actions">
+                <button type="button" onClick={onEditFranchise}>
+                  <FileText /> Review franchise
+                </button>
+                <button type="button" onClick={onViewRegistrationFile}>
+                  <ShieldCheck /> Registration record
+                </button>
+              </div>
+            </div>
+          </section>
+        </main>
       </section>
     </div>,
     document.body,
   );
 }
 
-function MetricCard({ icon, label, value, note, tone = "neutral" }: { icon: ReactNode; label: string; value: string; note: string; tone?: string }) {
-  return <div className={`driver-profile-metric ${tone}`}><span>{icon}</span><div><small>{label}</small><strong>{value}</strong><p>{note}</p></div></div>;
+function StatusPill({ value, icon }: { value: string; icon: ReactNode }) {
+  const negative = value !== "ACTIVE" && value !== "VERIFIED";
+  return (
+    <span
+      className={`driver-op-status-pill ${negative ? "negative" : "positive"}`}
+    >
+      {icon}
+      {titleCase(value)}
+    </span>
+  );
 }
 
-function ProfilePanel({ icon, title, subtitle, className = "", children }: { icon: ReactNode; title: string; subtitle: string; className?: string; children: ReactNode }) {
-  return <section className={`driver-profile-section driver-operational-panel ${className}`}><header><span>{icon}</span><div><h4>{title}</h4><small>{subtitle}</small></div></header><div>{children}</div></section>;
+function SummaryCard({
+  icon,
+  label,
+  value,
+  note,
+  tone,
+  status = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  note: string;
+  tone: string;
+  status?: boolean;
+}) {
+  return (
+    <article className={`driver-op-summary-card ${tone}`}>
+      <span>{icon}</span>
+      <div>
+        <small>{label}</small>
+        {status ? <b>{value}</b> : <strong>{value}</strong>}
+        <p>{note}</p>
+      </div>
+    </article>
+  );
 }
 
-function PerformanceRow({ label, value, total, tone }: { label: string; value: number; total: number; tone: string }) {
-  const percent = total ? Math.min(100, Math.round((value / total) * 100)) : value ? 100 : 0;
-  return <div className="driver-performance-row"><div><span>{label}</span><strong>{value}</strong></div><i><b className={tone} style={{ width: `${percent}%` }} /></i><small>{percent}%</small></div>;
+function PanelHeading({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <header className="driver-op-panel-heading">
+      <span>{icon}</span>
+      <div>
+        <h3>{title}</h3>
+        <p>{subtitle}</p>
+      </div>
+    </header>
+  );
 }
 
-function CompactField({ label, value, status = false }: { label: string; value: string; status?: boolean }) {
-  return <div><span>{label}</span>{status ? <b className={`status ${value.toLowerCase()}`}>{titleCase(value)}</b> : <strong>{value}</strong>}</div>;
+function MetricCard({
+  icon,
+  label,
+  value,
+  note,
+  tone = "neutral",
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  note: string;
+  tone?: string;
+}) {
+  return (
+    <article className={`driver-profile-metric ${tone}`}>
+      <span>{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <p>{note}</p>
+      </div>
+    </article>
+  );
+}
+
+function PerformanceRow({
+  label,
+  value,
+  total,
+  tone,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone: string;
+}) {
+  const percent = total
+    ? Math.min(100, Math.round((value / total) * 100))
+    : value
+      ? 100
+      : 0;
+  return (
+    <div className="driver-performance-row">
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <i>
+        <b className={tone} style={{ width: `${percent}%` }} />
+      </i>
+      <small>{percent}%</small>
+    </div>
+  );
+}
+
+function ReadinessRow({
+  label,
+  value,
+  status = false,
+  danger = false,
+}: {
+  label: string;
+  value: string;
+  status?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <div>
+      <span>{label}</span>
+      {status ? (
+        <b className={`status ${value.toLowerCase()}`}>{titleCase(value)}</b>
+      ) : (
+        <strong className={danger ? "danger" : ""}>{value}</strong>
+      )}
+    </div>
+  );
 }
 
 function metricValue(value: number | undefined, loading: boolean) {
@@ -205,35 +506,86 @@ function metricValue(value: number | undefined, loading: boolean) {
 }
 
 function vehicleTypeLabel(value?: string) {
-  return value === "HABAL_HABAL" ? "Habal-habal" : value === "TRICYCLE" ? "Tricycle" : "Registered";
+  return value === "HABAL_HABAL"
+    ? "Habal-habal"
+    : value === "TRICYCLE"
+      ? "Tricycle"
+      : "Registered vehicle";
 }
 
 function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function titleCase(value: string) {
-  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatDate(value?: string) {
-  return value ? new Date(value).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" }) : "Not recorded";
+  return value
+    ? new Date(value).toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "Not recorded";
 }
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
-}
-
-function franchiseRenewalLabel(value?: string) {
-  if (!value) return "Expiry date not recorded";
+function franchiseRenewalInfo(value?: string) {
+  if (!value)
+    return {
+      label: "Not recorded",
+      detail: "Expiry date not recorded",
+      shortDetail: "No renewal date",
+      tone: "neutral",
+    };
   const target = new Date(value);
   const today = new Date();
   target.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
-  if (days < 0) return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
-  if (days === 0) return "Expires today";
-  if (days === 1) return "Expires tomorrow";
-  if (days <= 90) return `Expires in ${days} days`;
-  return `Valid until ${formatDate(value)}`;
+  if (days < 0)
+    return {
+      label: "Overdue",
+      detail: `Franchise renewal overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`,
+      shortDetail: `${Math.abs(days)} days late`,
+      tone: "danger",
+    };
+  if (days === 0)
+    return {
+      label: "Due today",
+      detail: "Franchise expires today",
+      shortDetail: "Renew today",
+      tone: "danger",
+    };
+  if (days <= 90)
+    return {
+      label: "Due soon",
+      detail: `Franchise expires in ${days} day${days === 1 ? "" : "s"}`,
+      shortDetail: `${days} days remaining`,
+      tone: "warning",
+    };
+  return {
+    label: "Current",
+    detail: `Valid until ${formatDate(value)}`,
+    shortDetail: formatDate(value),
+    tone: "positive",
+  };
+}
+
+function restrictionMessage(accountStatus: string, operationalStatus: string) {
+  if (accountStatus !== "ACTIVE" && operationalStatus !== "VERIFIED")
+    return "This driver cannot sign in or accept rides until account and franchise restrictions are resolved.";
+  if (accountStatus !== "ACTIVE")
+    return "This driver cannot sign in until account access is restored.";
+  return "This driver cannot accept rides until franchise eligibility is restored.";
 }

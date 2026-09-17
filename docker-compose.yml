@@ -7,7 +7,7 @@ services:
       POSTGRES_DB: trisafe
       POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     ports:
-      - "55432:5432"
+      - "5433:5432"
     volumes:
       - trisafe-postgres:/var/lib/postgresql/data
 

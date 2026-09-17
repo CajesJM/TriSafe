@@ -121,7 +121,10 @@
 }
 .franchise-modal-summary {
   display: grid;
-  grid-template-columns: 52px minmax(150px, 0.8fr) minmax(190px, 1fr) minmax(190px, 1fr);
+  grid-template-columns: 52px minmax(150px, 0.8fr) minmax(190px, 1fr) minmax(
+      190px,
+      1fr
+    );
   align-items: center;
   border: 1px solid #cfe2cb;
   border-radius: 12px;
@@ -285,6 +288,8 @@
   box-shadow: none !important;
 }
 .driver-receipt-modal {
+  grid-template-columns: 285px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   width: min(1180px, calc(100vw - 44px));
   height: min(920px, calc(100dvh - 44px));
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
@@ -294,6 +299,8 @@
   font-family: inherit;
 }
 .driver-receipt-modal .dashboard-modal-header {
+  grid-column: 2;
+  grid-row: 1;
   padding: 20px 26px 17px;
 }
 .driver-receipt-modal .dashboard-modal-header h2 {
@@ -305,18 +312,18 @@
   font-weight: 500;
 }
 .driver-receipt-modal .dashboard-modal-body {
+  display: contents;
   overflow: hidden;
   padding: 0;
 }
 .driver-record-layout {
-  display: grid;
-  grid-template-columns: 285px minmax(0, 1fr);
-  height: 100%;
-  min-height: 0;
+  display: contents;
 }
 .driver-record-sidebar {
   position: relative;
   display: flex;
+  grid-column: 1;
+  grid-row: 1 / 3;
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
@@ -447,6 +454,7 @@
 .driver-record-download-control {
   position: relative;
   z-index: 4;
+  margin-top: 10px;
 }
 .driver-record-download-split {
   display: grid;
@@ -631,7 +639,10 @@
   line-height: 1.35;
 }
 .driver-record-workspace {
+  grid-column: 2;
+  grid-row: 2;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 32px 34px;
   background: #f6f8f7;
@@ -870,10 +881,6 @@
   font-size: 8px;
   line-height: 1.5;
 }
-.suspension-error {
-  margin-top: 13px;
-  border-radius: 9px;
-}
 .suspension-form {
   display: grid;
   gap: 15px;
@@ -924,6 +931,464 @@
 .danger-confirm-button:disabled {
   opacity: 0.58;
   cursor: wait;
+}
+
+.suspend-driver-modal {
+  grid-template-columns: 285px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(980px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  font-family: Inter, system-ui, sans-serif;
+}
+.suspend-driver-modal .dashboard-modal-header {
+  grid-column: 2;
+  grid-row: 1;
+  gap: 8px;
+  padding: 24px 28px 20px;
+}
+.suspend-driver-modal .dashboard-modal-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.suspend-driver-modal .dashboard-modal-header .eyebrow {
+  color: #b4232d;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.suspend-driver-modal .dashboard-modal-header h2 {
+  font-size: 25px;
+  line-height: 1.15;
+}
+.suspend-driver-modal .dashboard-modal-header p {
+  max-width: 610px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.suspend-driver-modal .dashboard-modal-body {
+  display: contents;
+  padding: 0;
+}
+.suspend-driver-modal .dashboard-modal-footer {
+  grid-column: 2;
+  grid-row: 3;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 17px 28px;
+  background: #fff;
+}
+.suspend-driver-modal .dashboard-modal-footer .secondary,
+.suspend-driver-modal .dashboard-modal-footer .danger-confirm-button {
+  min-height: 43px;
+  padding-inline: 24px;
+  font-size: 11px;
+}
+.suspend-driver-modal .dashboard-modal-footer .danger-confirm-button {
+  min-width: 174px;
+  background: #bd2631;
+}
+.suspend-driver-modal
+  .dashboard-modal-footer
+  .danger-confirm-button:hover:not(:disabled) {
+  background: #9f1f28;
+}
+.suspension-info-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+.suspension-info-control > button {
+  display: grid;
+  width: 33px;
+  height: 33px;
+  place-items: center;
+  border: 1px solid #efc8cc;
+  border-radius: 10px;
+  color: #a9232d;
+  background: #fff7f7;
+  cursor: pointer;
+}
+.suspension-info-control > button:hover,
+.suspension-info-control > button[aria-expanded="true"] {
+  border-color: #dc8991;
+  background: #ffeded;
+}
+.suspension-info-control svg {
+  width: 17px;
+  height: 17px;
+}
+.suspension-info-popover {
+  position: absolute;
+  z-index: 15;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 315px;
+  border: 1px solid #efc8cc;
+  border-radius: 12px;
+  padding: 13px 15px;
+  color: #5c2b30;
+  background: #fffafa;
+  box-shadow: 0 18px 45px rgba(66, 24, 28, 0.16);
+  animation: franchise-info-in 180ms ease-out both;
+}
+.suspension-info-popover.closing {
+  animation: franchise-info-out 160ms ease-in both;
+}
+.suspension-info-popover strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #9d202a;
+  font-size: 10px;
+}
+.suspension-info-popover p {
+  margin: 0;
+  color: #76575a;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.suspension-layout {
+  display: contents;
+}
+.suspension-context {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  grid-column: 1;
+  grid-row: 1 / 4;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 25px 28px;
+  border-right: 1px solid #f0dfe1;
+  background: linear-gradient(165deg, #fffafa 0%, #fff3f4 100%);
+}
+.suspension-context > :not(.suspension-hero) {
+  position: relative;
+  z-index: 2;
+}
+.suspension-emblem {
+  position: relative;
+  display: grid;
+  width: 142px;
+  height: 142px;
+  margin: -10px auto 3px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(203, 47, 59, 0.055);
+}
+.suspension-emblem::before {
+  content: "";
+  position: absolute;
+  width: 102px;
+  height: 102px;
+  border-radius: inherit;
+  background: rgba(203, 47, 59, 0.09);
+}
+.suspension-emblem span {
+  z-index: 1;
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border-radius: 50%;
+  color: #b7222d;
+  background: #efafb4;
+}
+.suspension-emblem svg {
+  width: 38px;
+  height: 38px;
+  stroke-width: 2.5;
+}
+.suspension-context h3 {
+  margin: 10px 0 8px;
+  color: #152033;
+  font-size: 21px;
+  line-height: 1.18;
+}
+.suspension-context > p {
+  margin: 0;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.suspension-driver-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 21px;
+  border-top: 1px solid #ecdadd;
+  padding-top: 17px;
+}
+.suspension-driver-avatar {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  color: #788391;
+  background: #e7eaee;
+}
+.suspension-driver-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.suspension-driver-avatar svg {
+  width: 27px;
+  height: 27px;
+}
+.suspension-driver-card div {
+  display: grid;
+  gap: 3px;
+}
+.suspension-driver-card strong {
+  color: #172033;
+  font-size: 12px;
+}
+.suspension-driver-card small {
+  color: #697386;
+  font-size: 10px;
+}
+.suspension-driver-facts {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 0;
+}
+.suspension-driver-facts > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 9px;
+}
+.suspension-driver-facts dt {
+  display: contents;
+}
+.suspension-driver-facts dt svg {
+  grid-row: 1 / 3;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: #657083;
+}
+.suspension-driver-facts dt span {
+  color: #7d8490;
+  font-size: 9px;
+}
+.suspension-driver-facts dd {
+  grid-column: 2;
+  margin: 1px 0 0;
+  overflow-wrap: anywhere;
+  color: #182033;
+  font-size: 10px;
+  font-weight: 700;
+}
+.suspension-hero {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 58%;
+  overflow: hidden;
+  background: radial-gradient(
+    circle at 50% 100%,
+    rgba(34, 139, 73, 0.12),
+    transparent 66%
+  );
+  pointer-events: none;
+}
+.suspension-hero::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #fff5f6 0%,
+    rgba(255, 245, 246, 0.94) 22%,
+    rgba(255, 245, 246, 0.58) 48%,
+    rgba(255, 245, 246, 0.08) 76%
+  );
+}
+.suspension-hero img {
+  position: absolute;
+  right: -6%;
+  bottom: -24px;
+  width: 112%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  opacity: 0.88;
+  filter: drop-shadow(0 12px 15px rgba(26, 72, 40, 0.15));
+}
+.suspension-action-area {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 25px 28px 28px;
+  border-top: 1px solid #eceff0;
+  background: #fff;
+}
+.suspension-warning {
+  gap: 14px;
+  border-color: #efb4ba;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: linear-gradient(100deg, #fff8f8, #fff2f3);
+}
+.suspension-warning > svg {
+  flex-basis: 25px;
+  width: 25px;
+  height: 25px;
+  margin-top: 1px;
+}
+.suspension-warning strong {
+  font-size: 12px;
+}
+.suspension-warning span {
+  font-size: 10px;
+}
+.suspension-form {
+  gap: 16px;
+  margin-top: 20px;
+}
+.suspension-form .field > span,
+.suspension-reasons legend {
+  color: #273142;
+  font-size: 11px;
+  font-weight: 750;
+}
+.suspension-form .field > span em {
+  color: #b4232d;
+  font-style: normal;
+}
+.suspension-form textarea {
+  min-height: 126px;
+  border-color: #d7dce2;
+  border-radius: 11px;
+  padding: 13px 15px;
+  color: #202939;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.suspend-driver-modal .suspension-form textarea:focus,
+.suspend-driver-modal .suspension-form textarea:focus-visible {
+  border-color: rgba(44, 143, 72, 0.34) !important;
+  outline: 1px solid rgba(44, 143, 72, 0.22) !important;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px rgba(44, 143, 72, 0.06) !important;
+}
+.suspension-form .field-input-hint {
+  justify-self: end;
+  color: #7c8594;
+  font-size: 9px;
+}
+.suspension-reasons {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.suspension-reasons legend span {
+  color: #7b8492;
+  font-weight: 500;
+}
+.suspension-reasons > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+.suspension-reasons button {
+  min-height: 32px;
+  border: 1px solid #d8dde3;
+  border-radius: 999px;
+  padding: 6px 12px;
+  color: #344054;
+  background: #fff;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+.suspension-reasons button:hover,
+.suspension-reasons button.selected {
+  border-color: #d16b73;
+  color: #a6212b;
+  background: #fff2f3;
+}
+.suspension-acknowledgement {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  border: 0;
+  border-radius: 0;
+  margin-top: 8px;
+  padding: 0;
+  color: #485467;
+  background: transparent;
+  font-size: 10px;
+}
+.suspension-acknowledgement input {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 760px) {
+  .suspend-driver-modal {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .suspend-driver-modal .dashboard-modal-header {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 20px 18px;
+  }
+  .suspend-driver-modal .dashboard-modal-body {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    overflow-y: auto;
+  }
+  .suspend-driver-modal .dashboard-modal-footer {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .suspension-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .suspension-context {
+    grid-column: auto;
+    grid-row: auto;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #f0dfe1;
+  }
+  .suspension-hero {
+    height: 52%;
+  }
+  .suspension-emblem {
+    width: 104px;
+    height: 104px;
+  }
+  .suspension-emblem::before {
+    width: 78px;
+    height: 78px;
+  }
+  .suspension-info-popover {
+    position: fixed;
+    top: 78px;
+    right: 16px;
+    width: min(315px, calc(100vw - 32px));
+  }
+  .suspension-action-area {
+    grid-column: auto;
+    grid-row: auto;
+    overflow: visible;
+    padding: 20px 18px;
+  }
 }
 
 .driver-file-notice {
@@ -1142,7 +1607,7 @@
 }
 
 @media (max-width: 900px) {
-  .driver-record-layout {
+  .driver-receipt-modal {
     grid-template-columns: 230px minmax(0, 1fr);
   }
   .driver-record-sidebar {
@@ -1158,9 +1623,18 @@
 
 @media (max-width: 700px) {
   .driver-receipt-modal {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     height: calc(100dvh - 18px);
   }
+  .driver-receipt-modal .dashboard-modal-header {
+    grid-column: 1;
+    grid-row: 1;
+  }
   .driver-receipt-modal .dashboard-modal-body {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
     overflow-y: auto;
   }
   .driver-record-layout {
@@ -1168,6 +1642,9 @@
     height: auto;
   }
   .driver-record-sidebar {
+    display: flex;
+    grid-column: auto;
+    grid-row: auto;
     overflow: visible;
     border-right: 0;
     border-bottom: 1px solid #dce6df;
@@ -1176,6 +1653,8 @@
     display: none;
   }
   .driver-record-workspace {
+    grid-column: auto;
+    grid-row: auto;
     overflow: visible;
   }
   .driver-record-workspace-heading {

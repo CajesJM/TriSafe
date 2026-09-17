@@ -85,6 +85,7 @@ export function DriverList({
   const [changing, setChanging] = useState("");
   const [error, setError] = useState("");
   const [suspendingDriver, setSuspendingDriver] = useState<Driver | null>(null);
+  const [verifyingDriver, setVerifyingDriver] = useState<Driver | null>(null);
   const [accountStatusDriver, setAccountStatusDriver] = useState<Driver | null>(
     null,
   );
@@ -94,38 +95,34 @@ export function DriverList({
     driver: Driver;
     rideCount: number;
   } | null>(null);
-  const filtered = useMemo(
-    () => {
-      const matches = drivers.filter((driver) => {
-        const text =
-          `${driver.fullName} ${driver.username ?? ""} ${driver.phone ?? ""} ${driver.owner ? `${driver.owner.lastName} ${driver.owner.firstName} ${driver.owner.middleName ?? ""}` : ""} ${driver.franchise?.franchiseNumber ?? ""} ${driver.vehicles.map((vehicle) => `${vehicle.plateNumber} ${vehicle.bodyNumber ?? ""} ${vehicle.permitNumber ?? ""} ${vehicle.engineNumber ?? ""} ${vehicle.chassisNumber ?? ""}`).join(" ")}`.toLowerCase();
-        const currentStatus = driver.franchise?.status ?? driver.verification;
-        const matchesVehicleType = driver.vehicles.some(
-          (vehicle) =>
-            normalizeVehicleType(vehicle.vehicleType) === vehicleType,
-        );
-        return (
-          (!search || text.includes(search.toLowerCase())) &&
-          (!vehicleType || matchesVehicleType) &&
-          (!status || currentStatus === status)
-        );
-      });
-      return matches.sort((left, right) => {
-        if (sort === "OLDEST")
-          return Date.parse(left.createdAt) - Date.parse(right.createdAt);
-        if (sort === "NAME_ASC")
-          return left.fullName.localeCompare(right.fullName, "en-PH", {
-            sensitivity: "base",
-          });
-        if (sort === "NAME_DESC")
-          return right.fullName.localeCompare(left.fullName, "en-PH", {
-            sensitivity: "base",
-          });
-        return Date.parse(right.createdAt) - Date.parse(left.createdAt);
-      });
-    },
-    [drivers, search, sort, status, vehicleType],
-  );
+  const filtered = useMemo(() => {
+    const matches = drivers.filter((driver) => {
+      const text =
+        `${driver.fullName} ${driver.username ?? ""} ${driver.phone ?? ""} ${driver.owner ? `${driver.owner.lastName} ${driver.owner.firstName} ${driver.owner.middleName ?? ""}` : ""} ${driver.franchise?.franchiseNumber ?? ""} ${driver.vehicles.map((vehicle) => `${vehicle.plateNumber} ${vehicle.bodyNumber ?? ""} ${vehicle.permitNumber ?? ""} ${vehicle.engineNumber ?? ""} ${vehicle.chassisNumber ?? ""}`).join(" ")}`.toLowerCase();
+      const currentStatus = driver.franchise?.status ?? driver.verification;
+      const matchesVehicleType = driver.vehicles.some(
+        (vehicle) => normalizeVehicleType(vehicle.vehicleType) === vehicleType,
+      );
+      return (
+        (!search || text.includes(search.toLowerCase())) &&
+        (!vehicleType || matchesVehicleType) &&
+        (!status || currentStatus === status)
+      );
+    });
+    return matches.sort((left, right) => {
+      if (sort === "OLDEST")
+        return Date.parse(left.createdAt) - Date.parse(right.createdAt);
+      if (sort === "NAME_ASC")
+        return left.fullName.localeCompare(right.fullName, "en-PH", {
+          sensitivity: "base",
+        });
+      if (sort === "NAME_DESC")
+        return right.fullName.localeCompare(left.fullName, "en-PH", {
+          sensitivity: "base",
+        });
+      return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+    });
+  }, [drivers, search, sort, status, vehicleType]);
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   const selectedDriver = drivers.find(
     (driver) => driver.id === selectedDriverId,
@@ -289,9 +286,7 @@ export function DriverList({
               onChangeAccountStatus={() => setAccountStatusDriver(driver)}
               onDelete={() => setDeletingDriver(driver)}
               onSuspend={() => setSuspendingDriver(driver)}
-              onUpdateStatus={(nextStatus) =>
-                changeStatus(driver, nextStatus).catch(() => undefined)
-              }
+              onVerify={() => setVerifyingDriver(driver)}
               key={driver.id}
             />
           ))}
@@ -313,14 +308,6 @@ export function DriverList({
             onCloseProfile();
             onUpdateFranchise(selectedDriver);
           }}
-          onViewQr={() => {
-            onCloseProfile();
-            onViewQr(selectedDriver);
-          }}
-          onEditAccount={() => {
-            onCloseProfile();
-            onEditAccount(selectedDriver);
-          }}
           onViewRegistrationFile={() => {
             onCloseProfile();
             setFileDriver(selectedDriver);
@@ -336,6 +323,18 @@ export function DriverList({
             await changeStatus(suspendingDriver, "SUSPENDED", reason);
             setSuspendingDriver(null);
           }}
+        />
+      )}
+      {verifyingDriver && (
+        <ConfirmModal
+          title={`Verify ${displayPersonName(verifyingDriver.fullName)} for transport again?`}
+          message="This removes the driver's suspension and marks the franchise and transport status as verified. Ride eligibility will also require an active account and a valid franchise expiration date."
+          confirmLabel="Verify transport"
+          tone="success"
+          showIcon={false}
+          onCancel={() => setVerifyingDriver(null)}
+          onError={onError}
+          onConfirm={() => changeStatus(verifyingDriver, "VERIFIED")}
         />
       )}
       {accountStatusDriver && (
@@ -433,7 +432,7 @@ function DriverRow({
   onChangeAccountStatus,
   onDelete,
   onSuspend,
-  onUpdateStatus,
+  onVerify,
 }: {
   driver: Driver;
   number: number;
@@ -446,7 +445,7 @@ function DriverRow({
   onChangeAccountStatus: () => void;
   onDelete: () => void;
   onSuspend: () => void;
-  onUpdateStatus: (status: DriverStatus) => Promise<void>;
+  onVerify: () => void;
 }) {
   const vehicle = driver.vehicles[0];
   const status = (driver.franchise?.status ??
@@ -523,7 +522,7 @@ function DriverRow({
               {
                 label: changing ? "Updating…" : "Verify transport",
                 icon: <BadgeCheck />,
-                onSelect: () => void onUpdateStatus("VERIFIED"),
+                onSelect: onVerify,
                 disabled: changing,
               },
             ]
