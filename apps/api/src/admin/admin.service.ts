@@ -1116,7 +1116,7 @@ export class AdminService {
     }
   }
 
-  async deleteUser(actorId: string, id: string) {
+  async deleteUser(actorId: string, id: string, confirmation?: string) {
     if (actorId === id)
       throw new ForbiddenException("You cannot delete your own account.");
     const user = await this.prisma.user.findUnique({
@@ -1135,22 +1135,77 @@ export class AdminService {
       this.prisma.ride.count({ where: { passengerId: id } }),
       this.prisma.incident.count({ where: { passengerId: id } }),
     ]);
-    if (user.driverProfile || rides > 0 || incidents > 0)
+    if (user.driverProfile)
       throw new ConflictException(
-        "This account has linked operational records and cannot be deleted. Mark it inactive instead.",
+        "Driver accounts must be deleted from the Registered Drivers tab.",
       );
-    await this.prisma.user.delete({ where: { id } });
+    if (rides > 0 && confirmation !== "DELETE")
+      throw new BadRequestException(
+        "Type DELETE to confirm removal of this passenger and their ride history.",
+      );
+    if (rides === 0 && incidents > 0)
+      throw new ConflictException(
+        "This account has submitted incident reports and cannot be deleted. Mark it inactive instead.",
+      );
+    await this.prisma.$transaction(async (tx) => {
+      if (rides > 0) {
+        const rideRecords = await tx.ride.findMany({
+          where: { passengerId: id },
+          select: { id: true },
+        });
+        const rideIds = rideRecords.map((ride) => ride.id);
+        await tx.driverRating.deleteMany({
+          where: {
+            OR: [
+              { passengerId: id },
+              ...(rideIds.length ? [{ rideId: { in: rideIds } }] : []),
+            ],
+          },
+        });
+        await tx.incident.deleteMany({ where: { passengerId: id } });
+        if (rideIds.length) {
+          await tx.incident.updateMany({
+            where: { rideId: { in: rideIds } },
+            data: { rideId: null },
+          });
+          await tx.ride.deleteMany({ where: { id: { in: rideIds } } });
+        }
+      }
+      await tx.user.delete({ where: { id } });
+    });
     await this.audit.record({
       actorId,
       action: "USER_DELETED",
       entityType: "User",
       entityId: id,
-      details: { email: user.email, role: user.role },
+      details: {
+        email: user.email,
+        role: user.role,
+        deletedRideCount: rides,
+        deletedIncidentCount: rides > 0 ? incidents : 0,
+      },
     });
-    return { deleted: true };
+    return { deleted: true, deletedRideCount: rides };
   }
 
-  async deleteDriver(actorId: string, driverId: string) {
+  async userDeletionImpact(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException("User account not found");
+    const [rideCount, incidentCount] = await Promise.all([
+      this.prisma.ride.count({ where: { passengerId: id } }),
+      this.prisma.incident.count({ where: { passengerId: id } }),
+    ]);
+    return { rideCount, incidentCount };
+  }
+
+  async deleteDriver(
+    actorId: string,
+    driverId: string,
+    confirmation?: string,
+  ) {
     const driver = await this.prisma.driver.findUnique({
       where: { id: driverId },
       include: { user: true, owner: true, vehicles: { select: { id: true } } },
@@ -1159,12 +1214,32 @@ export class AdminService {
     const rideCount = await this.prisma.ride.count({
       where: { vehicle: { driverId } },
     });
-    if (rideCount > 0) {
-      throw new ConflictException(
-        "This driver has ride history and cannot be permanently deleted. Deactivate the account and suspend transport instead.",
+    if (rideCount > 0 && confirmation !== "DELETE")
+      throw new BadRequestException(
+        'Type DELETE to confirm removal of this driver and their ride history.',
       );
-    }
     await this.prisma.$transaction(async (tx) => {
+      const rides = await tx.ride.findMany({
+        where: { vehicle: { driverId } },
+        select: { id: true },
+      });
+      const rideIds = rides.map(({ id }) => id);
+      await tx.driverRating.deleteMany({
+        where: {
+          OR: [
+            { driverId },
+            ...(rideIds.length ? [{ rideId: { in: rideIds } }] : []),
+          ],
+        },
+      });
+      await tx.driverViolation.deleteMany({ where: { driverId } });
+      if (rideIds.length) {
+        await tx.incident.updateMany({
+          where: { rideId: { in: rideIds } },
+          data: { rideId: null },
+        });
+        await tx.ride.deleteMany({ where: { id: { in: rideIds } } });
+      }
       await tx.announcementRecipient.deleteMany({ where: { driverId } });
       await tx.qrCode.deleteMany({ where: { vehicle: { driverId } } });
       await tx.franchise.deleteMany({ where: { driverId } });
@@ -1189,10 +1264,23 @@ export class AdminService {
         userId: driver.userId,
         fullName: driver.user.fullName,
         vehicleCount: driver.vehicles.length,
+        deletedRideCount: rideCount,
         ownerRemoved: Boolean(driver.ownerId),
       },
     });
-    return { deleted: true };
+    return { deleted: true, deletedRideCount: rideCount };
+  }
+
+  async driverDeletionImpact(driverId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { id: driverId },
+      select: { id: true },
+    });
+    if (!driver) throw new NotFoundException("Driver record not found.");
+    const rideCount = await this.prisma.ride.count({
+      where: { vehicle: { driverId } },
+    });
+    return { rideCount };
   }
 
   roles() {

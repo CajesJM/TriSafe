@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { DriverNotificationPriority, DriverNotificationType, DriverVerificationStatus, Prisma } from "@prisma/client";
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDriverDto } from "./dto/register-driver.dto";
 import { UpdateDriverContactDto } from "./dto/update-driver-contact.dto";
@@ -162,6 +162,7 @@ export class DriversService {
           dto.driverLastName,
           dto.driverFirstName,
         );
+        const driverId = await this.allocateDriverId(tx);
         const user = await tx.user.create({
           data: {
             fullName,
@@ -176,6 +177,7 @@ export class DriversService {
         });
         const driver = await tx.driver.create({
           data: {
+            id: driverId,
             userId: user.id,
             ownerId: owner.id,
             verification: DriverVerificationStatus.VERIFIED,
@@ -776,6 +778,24 @@ export class DriversService {
     return candidate;
   }
 
+  private async allocateDriverId(tx: Prisma.TransactionClient) {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const suffix = Array.from({ length: 5 }, () =>
+        alphabet[randomInt(alphabet.length)],
+      ).join("");
+      const candidate = `TRIDRIVER-${suffix}`;
+      const existing = await tx.driver.findUnique({
+        where: { id: candidate },
+        select: { id: true },
+      });
+      if (!existing) return candidate;
+    }
+    throw new ConflictException(
+      "Unable to allocate a unique driver ID. Please try again.",
+    );
+  }
+
   private toAdminDriver(
     driver: Prisma.DriverGetPayload<{
       include: {
@@ -790,6 +810,7 @@ export class DriversService {
     return {
       id: driver.id,
       userId: driver.user.id,
+      createdAt: driver.createdAt,
       fullName: driver.user.fullName,
       username: driver.user.username,
       avatarData: driver.user.avatarData,
@@ -822,8 +843,6 @@ export class DriversService {
       return "This LGU-issued QR has no active franchise record. Do not continue the ride.";
     if (!input.recordComplete)
       return "This LGU-issued record is incomplete. The LGU must add the owner, address, and required vehicle numbers before rides can continue.";
-    if (input.transportStatus === "PENDING")
-      return "This driver is still pending LGU transport approval. Do not continue the ride.";
     if (input.transportStatus === "SUSPENDED")
       return "This driver is suspended by the LGU. Do not continue the ride.";
     if (input.transportStatus === "EXPIRED")
