@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Driver, DriverStatus, UserStatus } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
@@ -13,15 +13,14 @@ import { DriverRegistrationFileModal } from "./DriverRegistrationFileModal";
 import type { DriverFileFormat } from "../../utils/driverRegistrationFile";
 import { downloadVehicleQrPoster } from "../../utils/vehicleQrPoster";
 import {
+  ArrowUpDown,
   BadgeCheck,
-  CalendarClock,
-  CircleCheckBig,
   Download,
   FilePenLine,
   FileText,
-  KeyRound,
   QrCode,
   ShieldAlert,
+  SlidersHorizontal,
   UserCheck,
   UserRound,
   UserX,
@@ -29,10 +28,10 @@ import {
 } from "lucide-react";
 
 const pageSize = 8;
+type DriverSort = "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC";
 const statusOptions = [
   { value: "", label: "All statuses" },
   { value: "VERIFIED", label: "Verified" },
-  { value: "PENDING", label: "Pending" },
   { value: "SUSPENDED", label: "Suspended" },
   { value: "EXPIRED", label: "Expired" },
 ];
@@ -52,7 +51,8 @@ type Props = {
     reason?: string,
   ) => Promise<void>;
   onUpdateAccountStatus: (driver: Driver, status: UserStatus) => Promise<void>;
-  onDeleteDriver: (driver: Driver) => Promise<void>;
+  onCheckDeleteDriver: (driver: Driver) => Promise<number>;
+  onDeleteDriver: (driver: Driver, confirmation?: string) => Promise<void>;
   selectedDriverId: string | null;
   onViewProfile: (driverId: string) => void;
   onCloseProfile: () => void;
@@ -68,6 +68,7 @@ export function DriverList({
   onUpdateFranchise,
   onUpdateStatus,
   onUpdateAccountStatus,
+  onCheckDeleteDriver,
   onDeleteDriver,
   selectedDriverId,
   onViewProfile,
@@ -79,6 +80,7 @@ export function DriverList({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [vehicleType, setVehicleType] = useState("");
+  const [sort, setSort] = useState<DriverSort>("NEWEST");
   const [page, setPage] = useState(1);
   const [changing, setChanging] = useState("");
   const [error, setError] = useState("");
@@ -88,9 +90,13 @@ export function DriverList({
   );
   const [fileDriver, setFileDriver] = useState<Driver | null>(null);
   const [deletingDriver, setDeletingDriver] = useState<Driver | null>(null);
+  const [rideDeletionVerification, setRideDeletionVerification] = useState<{
+    driver: Driver;
+    rideCount: number;
+  } | null>(null);
   const filtered = useMemo(
-    () =>
-      drivers.filter((driver) => {
+    () => {
+      const matches = drivers.filter((driver) => {
         const text =
           `${driver.fullName} ${driver.username ?? ""} ${driver.phone ?? ""} ${driver.owner ? `${driver.owner.lastName} ${driver.owner.firstName} ${driver.owner.middleName ?? ""}` : ""} ${driver.franchise?.franchiseNumber ?? ""} ${driver.vehicles.map((vehicle) => `${vehicle.plateNumber} ${vehicle.bodyNumber ?? ""} ${vehicle.permitNumber ?? ""} ${vehicle.engineNumber ?? ""} ${vehicle.chassisNumber ?? ""}`).join(" ")}`.toLowerCase();
         const currentStatus = driver.franchise?.status ?? driver.verification;
@@ -103,8 +109,22 @@ export function DriverList({
           (!vehicleType || matchesVehicleType) &&
           (!status || currentStatus === status)
         );
-      }),
-    [drivers, search, status, vehicleType],
+      });
+      return matches.sort((left, right) => {
+        if (sort === "OLDEST")
+          return Date.parse(left.createdAt) - Date.parse(right.createdAt);
+        if (sort === "NAME_ASC")
+          return left.fullName.localeCompare(right.fullName, "en-PH", {
+            sensitivity: "base",
+          });
+        if (sort === "NAME_DESC")
+          return right.fullName.localeCompare(left.fullName, "en-PH", {
+            sensitivity: "base",
+          });
+        return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+      });
+    },
+    [drivers, search, sort, status, vehicleType],
   );
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   const selectedDriver = drivers.find(
@@ -134,22 +154,20 @@ export function DriverList({
   }
 
   return (
-    <section className="card data-card">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">LGU TRANSPORT REGISTRY</span>
-          <h3>Registered driver management</h3>
-          <p className="section-description">
-            Manage the live driver registry: driver access, owner or operator,
-            vehicle identity, franchise eligibility, and LGU-issued QR codes.
-          </p>
+    <section className="card data-card driver-directory-workspace">
+      <div className="driver-directory-top-grid">
+        <div className="section-heading driver-directory-hero">
+          <div>
+            <span className="eyebrow">DRIVER MANAGEMENT</span>
+            <h3>Registered Driver Directory</h3>
+            <p className="section-description">
+              Review driver identities, transport credentials, vehicle records,
+              and account access from one workspace.
+            </p>
+          </div>
         </div>
-        <button className="primary" onClick={onRegister} type="button">
-          ＋ Register driver
-        </button>
+        <DriverTransportOverview drivers={drivers} />
       </div>
-      <DriverRegistrySummary drivers={drivers} />
-      <DriverStatusGuide />
       {error && (
         <div className="error" role="alert">
           {error}
@@ -162,32 +180,80 @@ export function DriverList({
           setPage(1);
         }}
         searchLabel="Search driver, owner, unit, plate, engine, or franchise"
-        filter={status}
-        onFilter={(value) => {
-          setStatus(value);
-          setPage(1);
-        }}
-        filterLabel="Transport status"
-        options={statusOptions}
         additionalFilter={
-          <label className="data-filter">
-            <span>Vehicle type</span>
-            <select
-              value={vehicleType}
-              onChange={(event) => {
-                setVehicleType(event.target.value);
+          <div className="driver-table-controls">
+            <label className="data-filter driver-vehicle-filter">
+              <span>Vehicle type</span>
+              <select
+                value={vehicleType}
+                onChange={(event) => {
+                  setVehicleType(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {vehicleTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="data-filter driver-status-filter">
+              <span>Transport status</span>
+              <select
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value);
+                  setPage(1);
+                }}
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="data-filter driver-sort-filter">
+              <span>Sort drivers</span>
+              <select
+                value={sort}
+                onChange={(event) => {
+                  setSort(event.target.value as DriverSort);
+                  setPage(1);
+                }}
+              >
+                <option value="NEWEST">Sort by: newest</option>
+                <option value="OLDEST">Sort by: oldest</option>
+                <option value="NAME_ASC">Name: A–Z</option>
+                <option value="NAME_DESC">Name: Z–A</option>
+              </select>
+              <ArrowUpDown aria-hidden="true" />
+            </label>
+            <button
+              className="driver-view-reset"
+              type="button"
+              title="Reset search, vehicle, status, and sorting"
+              aria-label="Reset driver table view"
+              onClick={() => {
+                setSearch("");
+                setVehicleType("");
+                setStatus("");
+                setSort("NEWEST");
                 setPage(1);
               }}
             >
-              {vehicleTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SlidersHorizontal aria-hidden="true" />
+            </button>
+            <button
+              className="primary driver-toolbar-register"
+              onClick={onRegister}
+              type="button"
+            >
+              ＋ Register driver
+            </button>
+          </div>
         }
-        resultCount={filtered.length}
       />
       {visible.length === 0 ? (
         <EmptyState
@@ -195,7 +261,7 @@ export function DriverList({
           text={
             drivers.length
               ? "Try changing your search or status filter."
-              : "Register an LGU-approved driver to begin the transport registry."
+              : "Register an BPLO-approved driver to begin the transport registry."
           }
         />
       ) : (
@@ -283,9 +349,10 @@ export function DriverList({
           }
           tone={
             (accountStatusDriver.accountStatus ?? "ACTIVE") === "ACTIVE"
-              ? "danger"
-              : "warning"
+              ? "warning"
+              : "success"
           }
+          showIcon={false}
           onCancel={() => setAccountStatusDriver(null)}
           onError={onError}
           onConfirm={() =>
@@ -301,14 +368,40 @@ export function DriverList({
       {deletingDriver && (
         <ConfirmModal
           title={`Delete ${displayPersonName(deletingDriver.fullName)}'s driver account?`}
-          message="This permanently removes the driver account, private photo, QR code, vehicle, franchise, address, and unused owner record. Drivers with ride history cannot be deleted; deactivate their account instead."
+          message="This permanently removes the driver account, private photo, QR code, vehicle, franchise, address, and unused owner record. TriSafe will check for linked ride records before continuing."
           confirmLabel="Delete driver account"
           tone="danger"
+          showIcon={false}
           onCancel={() => setDeletingDriver(null)}
           onError={onError}
           onConfirm={async () => {
+            const rideCount = await onCheckDeleteDriver(deletingDriver);
+            if (rideCount > 0) {
+              setRideDeletionVerification({
+                driver: deletingDriver,
+                rideCount,
+              });
+              setDeletingDriver(null);
+              return;
+            }
             await onDeleteDriver(deletingDriver);
             setDeletingDriver(null);
+          }}
+        />
+      )}
+      {rideDeletionVerification && (
+        <ConfirmModal
+          title={`Delete ${displayPersonName(rideDeletionVerification.driver.fullName)} and all ride history?`}
+          message={`This driver has ${rideDeletionVerification.rideCount} ride ${rideDeletionVerification.rideCount === 1 ? "record" : "records"}. Continuing permanently deletes the account, ride history, ratings, violations, vehicle, QR code, and registry details. Passenger accounts and submitted incident reports will remain.`}
+          confirmLabel="Delete account and rides"
+          confirmationText="DELETE"
+          tone="danger"
+          showIcon={false}
+          onCancel={() => setRideDeletionVerification(null)}
+          onError={onError}
+          onConfirm={async () => {
+            await onDeleteDriver(rideDeletionVerification.driver, "DELETE");
+            setRideDeletionVerification(null);
           }}
         />
       )}
@@ -354,7 +447,9 @@ function DriverRow({
   const vehicle = driver.vehicles[0];
   const status = (driver.franchise?.status ??
     driver.verification) as DriverStatus;
-  const franchiseTimeline = describeFranchiseTimeline(driver.franchise?.expiresAt);
+  const franchiseTimeline = describeFranchiseTimeline(
+    driver.franchise?.expiresAt,
+  );
   const qrIdentity = describeQrIdentity(driver, status);
   const actionGroups: ActionMenuGroup[] = [
     {
@@ -379,8 +474,8 @@ function DriverRow({
           onSelect: onChangeAccountStatus,
           tone:
             (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
-              ? "danger"
-              : "default",
+              ? "warning"
+              : "success",
         },
       ],
     },
@@ -419,7 +514,7 @@ function DriverRow({
               },
             ]
           : []),
-        ...(status === "PENDING" || status === "SUSPENDED"
+        ...(status === "SUSPENDED"
           ? [
               {
                 label: changing ? "Updating…" : "Verify transport",
@@ -522,161 +617,91 @@ function DriverRow({
   );
 }
 
-function DriverRegistrySummary({ drivers }: { drivers: Driver[] }) {
-  const summary = useMemo(() => {
-    const total = drivers.length;
-    const activeAccounts = drivers.filter(
-      (driver) => (driver.accountStatus ?? "ACTIVE") === "ACTIVE",
-    ).length;
-    const verified = drivers.filter(
-      (driver) => (driver.franchise?.status ?? driver.verification) === "VERIFIED",
-    ).length;
-    const issuedQr = drivers.filter((driver) =>
-      driver.vehicles.some((vehicle) => Boolean(vehicle.qrCode?.token)),
-    ).length;
-    const renewalDue = drivers.filter((driver) => {
-      const expiresAt = driver.franchise?.expiresAt;
-      if (!expiresAt) return false;
-      const days = daysUntil(expiresAt);
-      return days >= 0 && days <= 30;
-    }).length;
-    return { total, activeAccounts, verified, issuedQr, renewalDue };
-  }, [drivers]);
+function DriverTransportOverview({ drivers }: { drivers: Driver[] }) {
+  const total = drivers.length;
+  const renewalDue = drivers.filter((driver) => {
+    const expiresAt = driver.franchise?.expiresAt;
+    if (!expiresAt) return false;
+    const days = daysUntil(expiresAt);
+    return days >= 0 && days <= 90;
+  }).length;
+  const percentage = (value: number) =>
+    total > 0 ? Math.round((value / total) * 100) : 0;
+  const rows = [
+    {
+      label: "Registered",
+      value: total,
+      percent: total > 0 ? 100 : 0,
+      tone: "registered",
+    },
+    {
+      label: "Tricycle",
+      value: drivers.filter((driver) =>
+        driver.vehicles.some(
+          (vehicle) => normalizeVehicleType(vehicle.vehicleType) === "TRICYCLE",
+        ),
+      ).length,
+      tone: "tricycle",
+    },
+    {
+      label: "Habal-habal",
+      value: drivers.filter((driver) =>
+        driver.vehicles.some(
+          (vehicle) =>
+            normalizeVehicleType(vehicle.vehicleType) === "HABAL_HABAL",
+        ),
+      ).length,
+      tone: "habal-habal",
+    },
+    {
+      label: "Verified",
+      value: drivers.filter(
+        (driver) =>
+          (driver.franchise?.status ?? driver.verification) === "VERIFIED",
+      ).length,
+      tone: "verified",
+    },
+    {
+      label: "Renewal due",
+      value: renewalDue,
+      tone: "renewal-due",
+    },
+  ].map((row) => ({
+    ...row,
+    percent: "percent" in row ? row.percent : percentage(row.value),
+  }));
 
   return (
-    <section className="driver-registry-summary" aria-label="Driver registry overview">
-      <div className="driver-registry-summary-lead">
-        <span>Live registry overview</span>
-        <strong>{summary.total}</strong>
-        <small>registered driver{summary.total === 1 ? "" : "s"}</small>
-      </div>
-      <RegistryMetric
-        icon={<KeyRound />}
-        label="Active accounts"
-        value={summary.activeAccounts}
-        detail="Can sign in to TriSafe"
-      />
-      <RegistryMetric
-        icon={<CircleCheckBig />}
-        label="Verified transport"
-        value={summary.verified}
-        detail="Eligible for passenger rides"
-      />
-      <RegistryMetric
-        icon={<QrCode />}
-        label="LGU QR issued"
-        value={summary.issuedQr}
-        detail="Vehicle QR identities generated"
-      />
-      <RegistryMetric
-        icon={<CalendarClock />}
-        label="Renewal due"
-        value={summary.renewalDue}
-        detail="Franchises expiring within 30 days"
-        emphasis={summary.renewalDue > 0}
-      />
-    </section>
-  );
-}
-
-function RegistryMetric({
-  icon,
-  label,
-  value,
-  detail,
-  emphasis = false,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-  detail: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <div className={`driver-registry-metric${emphasis ? " needs-attention" : ""}`}>
-      <span className="driver-registry-metric-icon" aria-hidden="true">
-        {icon}
-      </span>
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <small>{detail}</small>
-      </div>
-    </div>
-  );
-}
-
-function DriverStatusGuide() {
-  return (
-    <aside className="driver-status-guide" aria-label="Driver status guide">
-      <strong>
-        <span aria-hidden="true">i</span> Two separate controls
-      </strong>
-      <div className="driver-guide-group" aria-label="Account access statuses">
-        <small>Account</small>
-        <StatusHelpBadge
-          status="active"
-          label="Active"
-          help="The driver can sign in to their TriSafe account."
-        />
-        <StatusHelpBadge
-          status="inactive"
-          label="Inactive"
-          help="The driver cannot sign in until an administrator reactivates the account."
-        />
-      </div>
-      <div
-        className="driver-guide-group"
-        aria-label="Transport eligibility statuses"
-      >
-        <small>Transport</small>
-        <StatusHelpBadge
-          status="verified"
-          label="Verified"
-          help="The franchise is valid and the driver is eligible for QR verification and rides."
-        />
-        <StatusHelpBadge
-          status="pending"
-          label="Pending"
-          help="The driver is waiting for LGU transport verification."
-        />
-        <StatusHelpBadge
-          status="suspended"
-          label="Suspended"
-          help="The LGU has temporarily blocked this driver from transport activity."
-        />
-        <StatusHelpBadge
-          status="expired"
-          label="Expired"
-          help="The franchise expiration date has passed, so the driver is not eligible for rides."
-        />
-      </div>
-      <p>
-        Hover over or focus a status for an explanation. Account controls
-        sign-in; transport controls QR and ride eligibility.
-      </p>
-    </aside>
-  );
-}
-
-function StatusHelpBadge({
-  status,
-  label,
-  help,
-}: {
-  status: string;
-  label: string;
-  help: string;
-}) {
-  return (
-    <span
-      className={`status ${status} status-help-badge`}
-      data-tooltip={help}
-      tabIndex={0}
-      aria-label={`${label}: ${help}`}
+    <section
+      className="driver-transport-overview"
+      aria-labelledby="driver-transport-overview-title"
     >
-      {label}
-    </span>
+      <div className="driver-transport-heading">
+        <div>
+          <span className="eyebrow">TRANSPORT DISTRIBUTION</span>
+          <h4 id="driver-transport-overview-title">Driver overview</h4>
+        </div>
+        <strong>{total}</strong>
+      </div>
+      <div className="driver-transport-bars">
+        {rows.map((row) => (
+          <div className={`driver-transport-row ${row.tone}`} key={row.label}>
+            <div>
+              <span>{row.label}</span>
+              <b>{row.value}</b>
+            </div>
+            <span
+              className="driver-transport-track"
+              role="img"
+              aria-label={`${row.label}: ${row.value}, ${row.percent}% of registered drivers`}
+            >
+              <span style={{ width: `${row.percent}%` }} />
+            </span>
+            <small>{row.percent}%</small>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -718,7 +743,7 @@ export function QrCodePanel({
   }
   return (
     <ModalShell
-      eyebrow="LGU-ISSUED VEHICLE IDENTITY"
+      eyebrow="BPLO-ISSUED VEHICLE IDENTITY"
       title="Vehicle QR code"
       description="Passenger verification reads this identity against the live TriSafe registry."
       onClose={onClose}
@@ -748,7 +773,7 @@ export function QrCodePanel({
     >
       <div className="qr-modal-layout">
         <div className="qr-copy">
-          <span className="eyebrow">LGU-ISSUED VEHICLE IDENTITY</span>
+          <span className="eyebrow">BPLO-ISSUED VEHICLE IDENTITY</span>
           <h3>Ready for vehicle display</h3>
           <p>
             Print and place this code inside the vehicle where passengers can
@@ -776,7 +801,7 @@ export function QrCodePanel({
         <div className="qr-preview qr-official-preview">
           <div
             className="qr-preview-branding"
-            aria-label="Official LGU QR layout preview"
+            aria-label="Official BPLO QR layout preview"
           >
             <span role="img" aria-label="TriSafe logo placeholder">
               TriSafe
@@ -788,8 +813,8 @@ export function QrCodePanel({
               <br />
               VEHICLE QR
             </b>
-            <span role="img" aria-label="LGU Trinidad logo placeholder">
-              LGU
+            <span role="img" aria-label="BPLO Trinidad logo placeholder">
+              BPLO
               <br />
               <small>LOGO</small>
             </span>
@@ -804,7 +829,7 @@ export function QrCodePanel({
             includeMargin
           />
           <strong>SCAN TO VERIFY</strong>
-          <small>{vehicle.plateNumber} · LGU Trinidad, Bohol</small>
+          <small>{vehicle.plateNumber} · BPLO Trinidad, Bohol</small>
         </div>
       </div>
     </ModalShell>
@@ -839,38 +864,41 @@ function daysUntil(value: string) {
 function describeFranchiseTimeline(expiresAt?: string) {
   if (!expiresAt) return "Expiry date not recorded";
   const days = daysUntil(expiresAt);
-  if (days < 0) return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
+  if (days < 0)
+    return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
   if (days === 0) return "Expires today — renew now";
   if (days === 1) return "Expires tomorrow — renewal due";
-  if (days <= 30) return `Expires in ${days} days — renewal due`;
+  if (days <= 90) return `Expires in ${days} days — renewal due`;
   return `Expires ${formatDate(expiresAt)}`;
 }
 
 function describeQrIdentity(driver: Driver, status: DriverStatus) {
-  const issued = driver.vehicles.some((vehicle) => Boolean(vehicle.qrCode?.token));
+  const issued = driver.vehicles.some((vehicle) =>
+    Boolean(vehicle.qrCode?.token),
+  );
   if (!issued) {
     return {
       label: "QR not issued",
       className: "qr-identity-missing",
-      help: "No LGU-issued vehicle QR is available for passenger verification.",
+      help: "No BPLO-issued vehicle QR is available for passenger verification.",
     };
   }
   if ((driver.accountStatus ?? "ACTIVE") !== "ACTIVE") {
     return {
       label: "QR issued · account inactive",
       className: "qr-identity-warning",
-      help: "An LGU-issued QR exists, but the driver's account cannot sign in.",
+      help: "An BPLO-issued QR exists, but the driver's account cannot sign in.",
     };
   }
   if (status !== "VERIFIED") {
     return {
       label: "QR issued · ride blocked",
       className: "qr-identity-warning",
-      help: "An LGU-issued QR exists, but the current transport status blocks passenger rides.",
+      help: "An BPLO-issued QR exists, but the current transport status blocks passenger rides.",
     };
   }
   return {
-    label: "LGU-issued QR active",
+    label: "BPLO-issued QR active",
     className: "qr-identity-active",
     help: "This official QR can verify the vehicle against the live TriSafe registry.",
   };
@@ -878,11 +906,9 @@ function describeQrIdentity(driver: Driver, status: DriverStatus) {
 function driverStatusHelp(status: DriverStatus) {
   return status === "VERIFIED"
     ? "Valid franchise; eligible for QR verification and rides."
-    : status === "PENDING"
-      ? "Awaiting LGU verification."
-      : status === "SUSPENDED"
-        ? "Manually suspended by the LGU."
-        : "Franchise expiration date has passed.";
+    : status === "SUSPENDED"
+      ? "Manually suspended by the BPLO."
+      : "Franchise expiration date has passed.";
 }
 
 function normalizeVehicleType(value: string) {

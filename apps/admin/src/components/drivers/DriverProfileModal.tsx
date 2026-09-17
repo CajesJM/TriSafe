@@ -33,8 +33,8 @@ export function DriverProfileModal({
   const qrState = vehicle?.qrCode?.token
     ? operationalStatus === "VERIFIED" &&
       (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
-      ? "LGU-issued QR active"
-      : "LGU-issued QR · ride blocked"
+      ? "BPLO-issued QR active"
+      : "BPLO-issued QR · ride blocked"
     : "QR not issued";
 
   useEffect(() => {
@@ -71,8 +71,17 @@ export function DriverProfileModal({
             <div className="driver-profile-intro">
               <p className="eyebrow">REGISTERED DRIVER RECORD</p>
               <h3 id={titleId}>{displayPersonName(driver.fullName)}</h3>
-              <small>@{driver.username ?? "account-pending"} · {vehicle?.vehicleType === "HABAL_HABAL" ? "Habal-habal" : "Tricycle"} driver</small>
-              <span className="driver-profile-record-id">LGU registry record · {vehicle?.bodyNumber ?? vehicle?.permitNumber ?? "Unit pending"}</span>
+              <small>
+                @{driver.username ?? "account-pending"} ·{" "}
+                {vehicle?.vehicleType === "HABAL_HABAL"
+                  ? "Habal-habal"
+                  : "Tricycle"}{" "}
+                driver
+              </small>
+              <span className="driver-profile-record-id">
+                BPLO registry record ·{" "}
+                {vehicle?.bodyNumber ?? vehicle?.permitNumber ?? "Unit pending"}
+              </span>
             </div>
           </div>
           <div className="driver-profile-header-actions">
@@ -89,10 +98,33 @@ export function DriverProfileModal({
           </div>
         </header>
 
-        <section className="driver-profile-summary" aria-label="Driver profile summary">
-          <div><span>Account access</span><strong className={`status ${(driver.accountStatus ?? "ACTIVE").toLowerCase()}`}>{driver.accountStatus ?? "ACTIVE"}</strong><small>Controls driver sign-in</small></div>
-          <div><span>Transport status</span><strong className={`status ${operationalStatus.toLowerCase()}`}>{operationalStatus}</strong><small>Controls passenger eligibility</small></div>
-          <div><span>Registered vehicle</span><strong>{vehicle?.plateNumber ?? "Not assigned"}</strong><small>{vehicle?.vehicleType?.replaceAll("_", " ") ?? "Vehicle pending"}</small></div>
+        <section
+          className="driver-profile-summary"
+          aria-label="Driver profile summary"
+        >
+          <div>
+            <span>Account access</span>
+            <strong
+              className={`status ${(driver.accountStatus ?? "ACTIVE").toLowerCase()}`}
+            >
+              {driver.accountStatus ?? "ACTIVE"}
+            </strong>
+            <small>Controls driver sign-in</small>
+          </div>
+          <div>
+            <span>Transport status</span>
+            <strong className={`status ${operationalStatus.toLowerCase()}`}>
+              {operationalStatus}
+            </strong>
+            <small>Controls passenger eligibility</small>
+          </div>
+          <div>
+            <span>Registered vehicle</span>
+            <strong>{vehicle?.plateNumber ?? "Not assigned"}</strong>
+            <small>
+              {vehicle?.vehicleType?.replaceAll("_", " ") ?? "Vehicle pending"}
+            </small>
+          </div>
         </section>
 
         <div className="driver-profile-grid">
@@ -112,7 +144,10 @@ export function DriverProfileModal({
             />
           </ProfileSection>
 
-          <ProfileSection icon={<ClipboardList />} title="Owner and transport eligibility">
+          <ProfileSection
+            icon={<ClipboardList />}
+            title="Owner and transport eligibility"
+          >
             <ProfileField
               label="Owner / operator"
               value={
@@ -197,10 +232,7 @@ export function DriverProfileModal({
               label="Chassis number"
               value={vehicle?.chassisNumber ?? "Not assigned"}
             />
-            <ProfileField
-              label="LGU QR code"
-              value={qrState}
-            />
+            <ProfileField label="BPLO QR code" value={qrState} />
           </ProfileSection>
         </div>
 
@@ -304,9 +336,10 @@ function franchiseRenewalLabel(value?: string) {
   target.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
   const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
-  if (days < 0) return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
+  if (days < 0)
+    return `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
   if (days === 0) return "Expires today — renew now";
   if (days === 1) return "Expires tomorrow — renewal due";
-  if (days <= 30) return `Expires in ${days} days — renewal due`;
+  if (days <= 90) return `Expires in ${days} days — renewal due`;
   return "Current renewal period";
 }
