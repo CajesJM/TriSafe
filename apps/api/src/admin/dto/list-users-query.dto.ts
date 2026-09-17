@@ -1,6 +1,14 @@
-import { Type } from 'class-transformer';
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { UserRole, UserStatus } from '@prisma/client';
+import { Type } from "class-transformer";
+import {
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
+import { UserRole, UserStatus } from "@prisma/client";
 
 export class ListUsersQueryDto {
   @IsOptional()
@@ -16,8 +24,8 @@ export class ListUsersQueryDto {
   status?: UserStatus;
 
   @IsOptional()
-  @IsIn(['NEWEST', 'OLDEST', 'NAME_ASC', 'NAME_DESC'])
-  sort?: 'NEWEST' | 'OLDEST' | 'NAME_ASC' | 'NAME_DESC';
+  @IsIn(["NEWEST", "OLDEST", "NAME_ASC", "NAME_DESC"])
+  sort?: "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC";
 
   @IsOptional()
   @Type(() => Number)

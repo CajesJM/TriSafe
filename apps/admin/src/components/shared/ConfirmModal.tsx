@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { AlertTriangle, HelpCircle, X } from "lucide-react";
+import { AlertTriangle, CircleCheck, HelpCircle, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
 export function ConfirmModal({
   title,
   message,
   confirmLabel,
+  confirmationText,
   tone = "danger",
   showIcon = true,
   onConfirm,
@@ -15,7 +16,8 @@ export function ConfirmModal({
   title: string;
   message: string;
   confirmLabel: string;
-  tone?: "danger" | "warning";
+  confirmationText?: string;
+  tone?: "danger" | "warning" | "success";
   showIcon?: boolean;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
@@ -24,17 +26,20 @@ export function ConfirmModal({
   const titleId = useId();
   const descriptionId = useId();
   const confirmButton = useRef<HTMLButtonElement>(null);
+  const confirmationInput = useRef<HTMLInputElement>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [confirmationValue, setConfirmationValue] = useState("");
+  const confirmationMatches = !confirmationText || confirmationValue === confirmationText;
 
   useEffect(() => {
-    confirmButton.current?.focus();
+    (confirmationText ? confirmationInput.current : confirmButton.current)?.focus();
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape" && !working) onCancel();
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [onCancel, working]);
+  }, [confirmationText, onCancel, working]);
 
   async function confirm() {
     setWorking(true);
@@ -50,7 +55,12 @@ export function ConfirmModal({
     }
   }
 
-  const Icon = tone === "danger" ? AlertTriangle : HelpCircle;
+  const Icon =
+    tone === "danger"
+      ? AlertTriangle
+      : tone === "success"
+        ? CircleCheck
+        : HelpCircle;
   return createPortal(
     <div
       className="confirm-modal-backdrop"
@@ -59,7 +69,7 @@ export function ConfirmModal({
       }}
     >
       <section
-        className={`confirm-modal ${tone}${showIcon ? "" : " no-icon"}`}
+        className={`confirm-modal confirm-modal-${tone}${showIcon ? "" : " no-icon"}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -74,10 +84,28 @@ export function ConfirmModal({
           <h3 id={titleId}>{title}</h3>
           <p id={descriptionId}>{message}</p>
         </div>
+        {confirmationText && (
+          <label className="confirm-modal-verification">
+            <span>Type <strong>{confirmationText}</strong> to confirm permanent deletion.</span>
+            <input
+              ref={confirmationInput}
+              type="text"
+              value={confirmationValue}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              onChange={(event) =>
+                setConfirmationValue(event.target.value.toUpperCase())
+              }
+              disabled={working}
+              aria-label={`Type ${confirmationText} to confirm`}
+            />
+          </label>
+        )}
         {error && <div className="confirm-modal-error" role="alert">{error}</div>}
         <div className="confirm-modal-actions">
           <button className="secondary" type="button" onClick={onCancel} disabled={working}>Cancel</button>
-          <button ref={confirmButton} className={`confirm-action ${tone}`} type="button" onClick={() => void confirm()} disabled={working}>
+          <button ref={confirmButton} className={`confirm-action confirm-action-${tone}`} type="button" onClick={() => void confirm()} disabled={working || !confirmationMatches}>
             {working ? "Processing…" : confirmLabel}
           </button>
         </div>

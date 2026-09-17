@@ -1,5 +1,13 @@
-import { OffenseLevel, PenaltyStatus, ViolationStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { OffenseLevel, PenaltyStatus, ViolationStatus } from "@prisma/client";
+import {
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from "class-validator";
 
 export class CreateViolationDto {
   @IsString() driverId!: string;

@@ -19,7 +19,6 @@ enum UserStatus {
 }
 
 enum DriverVerificationStatus {
-  PENDING
   VERIFIED
   SUSPENDED
   EXPIRED
@@ -149,7 +148,7 @@ model Driver {
   id            String                   @id @default(cuid())
   userId        String                   @unique
   ownerId       String?
-  verification  DriverVerificationStatus @default(PENDING)
+  verification  DriverVerificationStatus @default(VERIFIED)
   user          User                     @relation(fields: [userId], references: [id])
   owner         TransportOwner?          @relation(fields: [ownerId], references: [id])
   franchise     Franchise?
@@ -196,7 +195,7 @@ model Franchise {
   franchiseNumber String                   @unique
   issuedAt        DateTime
   expiresAt       DateTime
-  status          DriverVerificationStatus @default(PENDING)
+  status          DriverVerificationStatus @default(VERIFIED)
   driver          Driver                   @relation(fields: [driverId], references: [id])
 }
 

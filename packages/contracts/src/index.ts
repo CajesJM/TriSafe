@@ -5,7 +5,6 @@ export enum UserRole {
 }
 
 export enum DriverVerificationStatus {
-  PENDING = 'PENDING',
   VERIFIED = 'VERIFIED',
   SUSPENDED = 'SUSPENDED',
   EXPIRED = 'EXPIRED',
@@ -81,7 +80,7 @@ export type VerifiedVehicle = {
 export type QrVerificationResult = {
   legitimate: boolean;
   eligibleForRide: boolean;
-  transportStatus: "VERIFIED" | "PENDING" | "SUSPENDED" | "EXPIRED" | "NOT_LGU_ISSUED";
+  transportStatus: "VERIFIED" | "SUSPENDED" | "EXPIRED" | "NOT_LGU_ISSUED";
   accountStatus: "ACTIVE" | "INACTIVE" | null;
   qrStatus: "ACTIVE" | "REVOKED" | "UNKNOWN";
   message: string;

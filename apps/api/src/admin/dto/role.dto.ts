@@ -1,5 +1,13 @@
-import { UserRole } from '@prisma/client';
-import { ArrayMaxSize, IsArray, IsBoolean, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { UserRole } from "@prisma/client";
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
 export class CreateRoleDto {
   @IsEnum(UserRole)

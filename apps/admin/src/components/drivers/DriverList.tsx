@@ -321,6 +321,10 @@ export function DriverList({
             onCloseProfile();
             onEditAccount(selectedDriver);
           }}
+          onViewRegistrationFile={() => {
+            onCloseProfile();
+            setFileDriver(selectedDriver);
+          }}
         />
       )}
       {suspendingDriver && (
@@ -619,12 +623,6 @@ function DriverRow({
 
 function DriverTransportOverview({ drivers }: { drivers: Driver[] }) {
   const total = drivers.length;
-  const renewalDue = drivers.filter((driver) => {
-    const expiresAt = driver.franchise?.expiresAt;
-    if (!expiresAt) return false;
-    const days = daysUntil(expiresAt);
-    return days >= 0 && days <= 90;
-  }).length;
   const percentage = (value: number) =>
     total > 0 ? Math.round((value / total) * 100) : 0;
   const rows = [
@@ -662,9 +660,20 @@ function DriverTransportOverview({ drivers }: { drivers: Driver[] }) {
       tone: "verified",
     },
     {
-      label: "Renewal due",
-      value: renewalDue,
-      tone: "renewal-due",
+      label: "Suspended",
+      value: drivers.filter(
+        (driver) =>
+          (driver.franchise?.status ?? driver.verification) === "SUSPENDED",
+      ).length,
+      tone: "suspended",
+    },
+    {
+      label: "Expired",
+      value: drivers.filter(
+        (driver) =>
+          (driver.franchise?.status ?? driver.verification) === "EXPIRED",
+      ).length,
+      tone: "expired",
     },
   ].map((row) => ({
     ...row,

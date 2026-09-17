@@ -1,7 +1,11 @@
 .administrator-workspace {
   border-color: #dce4ea;
   background:
-    radial-gradient(circle at 0% 100%, rgba(68, 116, 173, 0.07), transparent 30%),
+    radial-gradient(
+      circle at 0% 100%,
+      rgba(68, 116, 173, 0.07),
+      transparent 30%
+    ),
     #fbfcfd;
   box-shadow: 0 16px 42px rgba(20, 37, 55, 0.06);
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
@@ -26,8 +30,15 @@
   border-radius: 16px;
   padding: 15px 18px;
   background:
-    linear-gradient(90deg, rgba(249, 253, 251, 0.98) 0%, rgba(249, 253, 251, 0.94) 45%, rgba(249, 253, 251, 0.5) 68%, rgba(249, 253, 251, 0.08) 100%),
-    url("/images/dashboard/manager-hero.webp") right center / auto 100% no-repeat,
+    linear-gradient(
+      90deg,
+      rgba(249, 253, 251, 0.98) 0%,
+      rgba(249, 253, 251, 0.94) 45%,
+      rgba(249, 253, 251, 0.5) 68%,
+      rgba(249, 253, 251, 0.08) 100%
+    ),
+    url("/images/dashboard/manager-hero.webp") right center / auto 100%
+      no-repeat,
     linear-gradient(125deg, #f5faf7, #e9f4ef);
 }
 
@@ -125,11 +136,17 @@
   background: #3978d4;
 }
 
-.administrator-workspace .passenger-chart-row.active .passenger-chart-track > span {
+.administrator-workspace
+  .passenger-chart-row.active
+  .passenger-chart-track
+  > span {
   background: #35a85c;
 }
 
-.administrator-workspace .passenger-chart-row.inactive .passenger-chart-track > span {
+.administrator-workspace
+  .passenger-chart-row.inactive
+  .passenger-chart-track
+  > span {
   background: #d88a2b;
 }
 

@@ -8,6 +8,7 @@ export function ModalShell({
   description,
   children,
   footer,
+  headerAction,
   onClose,
   busy = false,
   size = "medium",
@@ -18,6 +19,7 @@ export function ModalShell({
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  headerAction?: ReactNode;
   onClose: () => void;
   busy?: boolean;
   size?: "small" | "medium" | "large";
@@ -54,6 +56,7 @@ export function ModalShell({
             <h2 id={titleId}>{title}</h2>
             {description && <p id={descriptionId}>{description}</p>}
           </div>
+          {headerAction}
           <button
             type="button"
             onClick={onClose}

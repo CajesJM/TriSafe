@@ -1,19 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AdminUser,
   api,
   CreateUserInput,
+  getSessionUser,
   RoleDefinition,
+  updateSessionUser,
   UpdateUserInput,
   UserPage,
   UserStatus,
 } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState, ErrorMessage, LoadingState } from "../shared/Feedback";
-import {
-  ToastNotification,
-  type ToastMessage,
-} from "../shared/ToastNotification";
+import type { ToastMessage } from "../shared/ToastNotification";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm } from "./UserForm";
 import { displayPersonName } from "../../utils/personName";
@@ -49,13 +48,16 @@ type Confirmation = {
   title: string;
   message: string;
   confirmLabel: string;
-  tone: "danger" | "warning";
+  tone: "danger" | "warning" | "success";
+  confirmationText?: string;
   action: () => Promise<void>;
 };
 export function UserDirectory({
   managementRole,
+  onNotify,
 }: {
   managementRole: "PASSENGER" | "LGU_ADMIN";
+  onNotify: (type: ToastMessage["type"], message: string) => void;
 }) {
   const isAdministrator = managementRole === "LGU_ADMIN";
   const initialCacheKey = accountCacheKey(managementRole, "", "", "NEWEST", 1);
@@ -76,19 +78,17 @@ export function UserDirectory({
   const [waitingForAccounts, setWaitingForAccounts] =
     useState(!initialCachedPage);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [passengerRideDeletion, setPassengerRideDeletion] = useState<{
+    user: AdminUser;
+    rideCount: number;
+    incidentCount: number;
+  } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [accountStats, setAccountStats] = useState<AccountStats | null>(null);
   const [accountStatsFailed, setAccountStatsFailed] = useState(false);
 
-  const showToast = useCallback(
-    (type: ToastMessage["type"], message: string) => {
-      setToast({ id: Date.now(), type, message });
-    },
-    [],
-  );
-  const dismissToast = useCallback(() => setToast(null), []);
+  const showToast = onNotify;
 
   useEffect(() => {
     api
@@ -161,7 +161,12 @@ export function UserDirectory({
     setAccountStatsFailed(false);
     Promise.all([
       api.users({ role: managementRole, page: 1, pageSize: 5 }),
-      api.users({ role: managementRole, status: "ACTIVE", page: 1, pageSize: 5 }),
+      api.users({
+        role: managementRole,
+        status: "ACTIVE",
+        page: 1,
+        pageSize: 5,
+      }),
       api.users({
         role: managementRole,
         status: "INACTIVE",
@@ -198,7 +203,23 @@ export function UserDirectory({
 
   async function saveUser(input: CreateUserInput | UpdateUserInput) {
     if (editingUser) {
-      await api.updateUser(editingUser.id, input as UpdateUserInput);
+      const updated = await api.updateUser(
+        editingUser.id,
+        input as UpdateUserInput,
+      );
+      const currentSession = getSessionUser();
+      if (currentSession?.id === updated.id) {
+        updateSessionUser({
+          ...currentSession,
+          fullName: updated.fullName,
+          username: updated.username ?? null,
+          email: updated.email ?? null,
+          phone: updated.phone ?? null,
+          avatarData: updated.avatarData ?? null,
+          role: updated.role,
+          status: updated.status,
+        });
+      }
       reload(`${editingUser.fullName}'s account was updated.`);
     } else {
       const created = await api.createUser(input as CreateUserInput);
@@ -213,35 +234,39 @@ export function UserDirectory({
 
   function toggleStatus(user: AdminUser) {
     const next: UserStatus = user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-    if (next === "INACTIVE") {
-      setConfirmation({
-        title: `Deactivate ${user.fullName}?`,
-        message:
-          "This account will be signed out and prevented from logging in until an Administrator activates it again.",
-        confirmLabel: "Deactivate account",
-        tone: "warning",
-        action: () => applyUserStatus(user, next),
-      });
-      return;
-    }
-    void applyUserStatus(user, next).catch((requestError: unknown) =>
-      showToast(
-        "error",
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to update account status.",
-      ),
-    );
+    const deactivating = next === "INACTIVE";
+    setConfirmation({
+      title: `${deactivating ? "Deactivate" : "Activate"} ${user.fullName}?`,
+      message: deactivating
+        ? "This account will be signed out and prevented from logging in until an Administrator activates it again."
+        : "This account will be allowed to sign in and use its authorized TriSafe features again.",
+      confirmLabel: deactivating ? "Deactivate account" : "Activate account",
+      tone: deactivating ? "warning" : "success",
+      action: () => applyUserStatus(user, next),
+    });
   }
 
   function deleteUser(user: AdminUser) {
     setConfirmation({
       title: `Permanently delete ${user.fullName}?`,
-      message:
-        "This cannot be undone. Accounts connected to rides, reports, or driver records cannot be deleted and should be deactivated instead.",
+      message: isAdministrator
+        ? "This cannot be undone. Accounts connected to operational records cannot be deleted and should be deactivated instead."
+        : "This permanently removes the passenger account and profile details. TriSafe will check for linked ride records before continuing.",
       confirmLabel: "Delete permanently",
       tone: "danger",
       action: async () => {
+        if (!isAdministrator) {
+          const impact = await api.userDeletionImpact(user.id);
+          if (impact.rideCount > 0) {
+            setPassengerRideDeletion({
+              user,
+              rideCount: impact.rideCount,
+              incidentCount: impact.incidentCount,
+            });
+            setConfirmation(null);
+            return;
+          }
+        }
         await api.deleteUser(user.id);
         if (data.items.length === 1 && page > 1)
           setPage((current) => current - 1);
@@ -463,24 +488,41 @@ export function UserDirectory({
           />
         )}
       </>
-      {toast && (
-        <ToastNotification
-          key={toast.id}
-          toast={toast}
-          onDismiss={dismissToast}
-          variant="dashboard"
-        />
-      )}
       {confirmation && (
         <ConfirmModal
           title={confirmation.title}
           message={confirmation.message}
           confirmLabel={confirmation.confirmLabel}
+          confirmationText={confirmation.confirmationText}
           tone={confirmation.tone}
           showIcon={false}
           onConfirm={confirmation.action}
           onCancel={() => setConfirmation(null)}
           onError={(message) => showToast("error", message)}
+        />
+      )}
+      {passengerRideDeletion && (
+        <ConfirmModal
+          title={`Delete ${displayPersonName(passengerRideDeletion.user.fullName)} and all ride history?`}
+          message={`This passenger has ${passengerRideDeletion.rideCount} ride ${passengerRideDeletion.rideCount === 1 ? "record" : "records"}. Continuing permanently deletes the account, ride history, ratings, trusted contacts${passengerRideDeletion.incidentCount > 0 ? `, and ${passengerRideDeletion.incidentCount} submitted incident ${passengerRideDeletion.incidentCount === 1 ? "report" : "reports"}` : ""}. Driver accounts and vehicle records will remain.`}
+          confirmLabel="Delete account and rides"
+          confirmationText="DELETE"
+          tone="danger"
+          showIcon={false}
+          onCancel={() => setPassengerRideDeletion(null)}
+          onError={(message) => showToast("error", message)}
+          onConfirm={async () => {
+            const result = await api.deleteUser(
+              passengerRideDeletion.user.id,
+              "DELETE",
+            );
+            if (data.items.length === 1 && page > 1)
+              setPage((current) => current - 1);
+            reload(
+              `${passengerRideDeletion.user.fullName}'s account and ${result.deletedRideCount} ride ${result.deletedRideCount === 1 ? "record" : "records"} were deleted.`,
+            );
+            setPassengerRideDeletion(null);
+          }}
         />
       )}
       {(creatingUser || editingUser) && (
@@ -553,7 +595,7 @@ function UserTable({
                     : "Activate account",
                 icon: user.status === "ACTIVE" ? <UserX /> : <UserCheck />,
                 onSelect: () => onToggleStatus(user),
-                tone: user.status === "ACTIVE" ? "danger" : "default",
+                tone: user.status === "ACTIVE" ? "warning" : "success",
               },
             ],
           },
@@ -636,7 +678,6 @@ function UserTable({
             )}
             <span className="row-menu">
               <ActionMenu
-                iconOnly
                 label={`Actions for ${displayPersonName(user.fullName)}`}
                 groups={accountActionGroups}
               />
@@ -686,10 +727,7 @@ function AccountStatusChart({
   ];
 
   return (
-    <section
-      className="passenger-status-chart"
-      aria-labelledby={titleId}
-    >
+    <section className="passenger-status-chart" aria-labelledby={titleId}>
       <div className="passenger-chart-heading">
         <div>
           <span className="eyebrow">ACCOUNT STATUS</span>

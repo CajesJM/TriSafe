@@ -1992,14 +1992,14 @@
     transform: none;
   }
 }
-html.trisafe-dashboard-view,
-body.trisafe-dashboard-view {
+html.trisafe-scrollbar-hidden,
+body.trisafe-scrollbar-hidden {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-html.trisafe-dashboard-view::-webkit-scrollbar,
-body.trisafe-dashboard-view::-webkit-scrollbar {
+html.trisafe-scrollbar-hidden::-webkit-scrollbar,
+body.trisafe-scrollbar-hidden::-webkit-scrollbar {
   width: 0;
   height: 0;
 }

@@ -27,6 +27,8 @@ export function createDriverRegistrationFileData(
   driver: Driver,
 ): DriverRegistrationFileData {
   const vehicle = driver.vehicles[0];
+  const initialPasswordSource =
+    vehicle?.vehicleType === "HABAL_HABAL" ? "Permit Number" : "Body Number";
   return {
     generatedAt: new Date().toISOString(),
     title: "Driver registration file",
@@ -42,8 +44,7 @@ export function createDriverRegistrationFileData(
           },
           {
             label: "Initial password",
-            value:
-              vehicle?.permitNumber ?? vehicle?.bodyNumber ?? "Not assigned",
+            value: `${initialPasswordSource} - change anytime for security`,
           },
           { label: "Mobile number", value: driver.phone ?? "Not recorded" },
           { label: "Account status", value: driver.accountStatus ?? "ACTIVE" },
@@ -65,19 +66,19 @@ export function createDriverRegistrationFileData(
       {
         title: "Registered address",
         fields: [
-          { label: "Purok", value: driver.address?.purok ?? "Not recorded" },
           {
-            label: "Barangay",
-            value: driver.address?.barangayName ?? "Not recorded",
+            label: "Province",
+            value: driver.address?.provinceName ?? "Not recorded",
           },
           {
             label: "Municipality / City",
             value: driver.address?.municipalityName ?? "Not recorded",
           },
           {
-            label: "Province",
-            value: driver.address?.provinceName ?? "Not recorded",
+            label: "Barangay",
+            value: driver.address?.barangayName ?? "Not recorded",
           },
+          { label: "Purok", value: driver.address?.purok ?? "Not recorded" },
         ],
       },
       {
@@ -165,13 +166,36 @@ export function createDriverRegistrationFileBlob(
 function createHtml(data: DriverRegistrationFileData) {
   const sections = data.sections
     .map(
-      (section) => `
-    <section><h2>${escapeHtml(section.title)}</h2><div class="grid">
-      ${section.fields.map((field) => `<div class="row"><span>${escapeHtml(field.label)}</span><strong>${escapeHtml(field.value)}</strong></div>`).join("")}
-    </div></section>`,
+      (section, index) => `
+      <section class="record-section">
+        <h2><b>${index + 1}</b>${escapeHtml(section.title)}</h2>
+        <div class="field-grid">
+          ${section.fields.map((field) => `<div class="field"><span>${escapeHtml(field.label)}</span>${htmlFieldValue(field)}</div>`).join("")}
+        </div>
+      </section>`,
     )
     .join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(data.title)}</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;border-top:8px solid #337418;padding:40px;background:#fff;box-shadow:0 10px 35px #0001}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}h1{margin:8px 0 4px;font-size:28px}.meta{color:#666;font-size:12px}.notice{margin:24px 0;padding:14px 16px;border-radius:8px;background:#eef8e9;color:#245b11;font-size:12px;line-height:1.5}section{margin-top:18px;border:1px solid #ddd}h2{margin:0;padding:10px 14px;color:#245b11;background:#eef8e9;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.grid{display:grid;grid-template-columns:1fr 1fr}.row{min-width:0;border-top:1px solid #eee;padding:12px 14px}.row:nth-child(odd){border-right:1px solid #eee}.row span{display:block;color:#777;font-size:10px;letter-spacing:.08em;text-transform:uppercase}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.footer{margin-top:24px;border-top:1px solid #ddd;padding-top:14px;color:#777;font-size:10px;line-height:1.5}@media print{body{background:#fff}.page{margin:0;box-shadow:none}}@media(max-width:600px){.page{margin:0;padding:24px}.grid{grid-template-columns:1fr}.row:nth-child(odd){border-right:0}}</style></head><body><main class="page"><div class="brand">TRISAFE · LGU DRIVER REGISTRY</div><h1>${escapeHtml(data.title)}</h1><div class="meta">Generated ${escapeHtml(formatDateTime(data.generatedAt))} from live registry data</div><div class="notice"><strong>Current database record.</strong> The initial password is the registered Body Number or Permit Number; TriSafe stores only its secure hash.</div>${sections}<p class="footer">This document reflects the TriSafe record at the generation time shown above. Confirm current account and transport eligibility through the live LGU registry before relying on a previously downloaded copy.</p></main></body></html>`;
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(data.title)}</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;padding:32px;background:#f4f7f5;color:#151b17;font-family:Inter,"Segoe UI",Arial,sans-serif}.page{max-width:760px;margin:0 auto;border:1px solid #d8ded9;border-radius:12px;padding:34px 38px;background:#fff;box-shadow:0 18px 46px rgba(29,47,34,.12)}
+  .document-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:10px;color:#287b37}.brand svg{width:40px;height:40px}.brand div{display:grid;gap:2px}.brand strong{font-size:17px;letter-spacing:.08em}.brand span,.tagline{color:#34463b;font-size:9px;font-weight:700;letter-spacing:.05em;line-height:1.45;text-transform:uppercase}.tagline{text-align:right}
+  h1{margin:24px 0 4px;font-size:27px;letter-spacing:-.025em}.meta{margin:0 0 18px;color:#627069;font-size:11px;font-weight:500}.record-section{overflow:hidden;margin-top:14px;border:1px solid #dce4de;border-radius:7px}.record-section h2{display:flex;align-items:center;gap:9px;margin:0;padding:8px 10px;color:#1a642b;background:linear-gradient(90deg,#e4f2e4,#f1f8f1);font-size:11px}.record-section h2 b{display:grid;width:21px;height:21px;place-items:center;border-radius:50%;color:#fff;background:#4ca65b;font-size:10px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.field{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.2fr);min-height:42px;border-top:1px solid #e1e6e2}.field:nth-child(odd){border-right:1px solid #e1e6e2}.field>span,.field>strong{display:flex;align-items:center;min-width:0;padding:9px 10px;font-size:10px;overflow-wrap:anywhere}.field>span{color:#4f5a53;font-weight:500}.field>strong{border-left:1px solid #e1e6e2;color:#151b17;font-weight:700}.status{display:inline-flex!important;align-items:center;gap:6px}.status i{flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:currentColor}.status.positive{color:#17652a}.status.negative{color:#cb2d3e}.document-footer{display:flex;justify-content:space-between;gap:24px;margin-top:24px;border-top:1px solid #dce3de;padding-top:15px;color:#69756e;font-size:9px;line-height:1.5}.document-footer strong{flex:0 0 auto;color:#25362c}
+  @media print{body{padding:0;background:#fff}.page{max-width:none;border:0;border-radius:0;padding:14mm;box-shadow:none}@page{size:A4;margin:0}}
+  @media(max-width:650px){body{padding:0}.page{border:0;border-radius:0;padding:24px 16px;box-shadow:none}.field-grid{grid-template-columns:1fr}.field:nth-child(odd){border-right:0}.document-footer{flex-direction:column}}
+</style></head><body><main class="page">
+  <header class="document-header"><div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.9 8.2 7 10 4.1-1.8 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg><div><strong>TRISAFE</strong><span>BPLO Driver Registry</span></div></div><div class="tagline">Safe transport<br>A stronger Trinidad</div></header>
+  <h1>Driver Registration Record</h1><p class="meta">Generated ${escapeHtml(formatDateTime(data.generatedAt))} from the live TriSafe registry</p>
+  ${sections}
+  <footer class="document-footer"><span>This record was generated from the live TriSafe registry. Verify all information before relying on a downloaded copy.</span><strong>TriSafe · BPLO Trinidad, Bohol</strong></footer>
+</main></body></html>`;
+}
+
+function htmlFieldValue(field: { label: string; value: string }) {
+  if (!isStatusField(field.label))
+    return `<strong>${escapeHtml(field.value)}</strong>`;
+  const tone = isNegativeStatus(field.value) ? "negative" : "positive";
+  return `<strong class="status ${tone}"><i></i>${escapeHtml(titleCase(field.value))}</strong>`;
 }
 
 function createPdf(data: DriverRegistrationFileData) {
@@ -188,49 +212,82 @@ function createPdf(data: DriverRegistrationFileData) {
       `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${x} ${y} Td (${pdfEscape(value)}) Tj ET`,
     );
   };
-  commands.push("0.2 0.455 0.094 rg 0 820 595 22 re f");
-  text("TRISAFE  |  LGU DRIVER REGISTRY", 42, 791, 9, true, "0.2 0.455 0.094");
-  text(data.title, 42, 764, 22, true);
+  const fillRect = (x: number, y: number, width: number, height: number, color: string) =>
+    commands.push(`${color} rg ${x} ${y} ${width} ${height} re f`);
+  const strokeRect = (x: number, y: number, width: number, height: number, color = "0.86 0.89 0.87") =>
+    commands.push(`${color} RG ${x} ${y} ${width} ${height} re S`);
+  const line = (x1: number, y1: number, x2: number, y2: number, color = "0.88 0.9 0.89") =>
+    commands.push(`${color} RG ${x1} ${y1} m ${x2} ${y2} l S`);
+
+  text("TRISAFE", 48, 794, 13, true, "0.12 0.45 0.19");
+  text("BPLO DRIVER REGISTRY", 48, 781, 6.5, true, "0.2 0.28 0.23");
+  text("SAFE TRANSPORT", 472, 794, 7, true, "0.2 0.28 0.23");
+  text("A STRONGER TRINIDAD", 451, 783, 7, true, "0.2 0.28 0.23");
+  text("Driver Registration Record", 48, 746, 21, true);
   text(
-    `Generated ${formatDateTime(data.generatedAt)} from live registry data`,
-    42,
-    745,
+    `Generated ${formatDateTime(data.generatedAt)} from the live TriSafe registry`,
+    48,
+    727,
     8,
     false,
-    "0.4 0.4 0.4",
+    "0.36 0.42 0.38",
   );
-  commands.push("0.933 0.973 0.914 rg 42 695 511 36 re f");
-  text("CURRENT DATABASE RECORD", 54, 717, 8, true, "0.137 0.357 0.067");
-  text(
-    "The initial password is the Body Number or Permit Number; TriSafe stores its secure hash only.",
-    54,
-    704,
-    7,
-    false,
-    "0.25 0.35 0.22",
-  );
-  let y = 671;
-  for (const section of data.sections) {
-    commands.push(`0.933 0.973 0.914 rg 42 ${y - 4} 511 22 re f`);
-    text(section.title.toUpperCase(), 52, y + 3, 8, true, "0.137 0.357 0.067");
-    y -= 28;
-    for (const field of section.fields) {
-      text(field.label.toUpperCase(), 52, y + 7, 6.5, true, "0.45 0.45 0.45");
-      text(shorten(field.value, 72), 192, y + 7, 8.5, true);
-      commands.push(`0.88 0.88 0.88 RG 42 ${y} m 553 ${y} l S`);
-      y -= 25;
+
+  const pageX = 48;
+  const pageWidth = 499;
+  const cellWidth = pageWidth / 2;
+  const labelWidth = 87;
+  let y = 699;
+  data.sections.forEach((section, sectionIndex) => {
+    const headerBottom = y - 22;
+    fillRect(pageX, headerBottom, pageWidth, 22, "0.89 0.95 0.89");
+    strokeRect(pageX, headerBottom, pageWidth, 22);
+    fillRect(pageX + 8, headerBottom + 4, 14, 14, "0.3 0.65 0.36");
+    text(String(sectionIndex + 1), pageX + 13, headerBottom + 8, 7, true, "1 1 1");
+    text(section.title, pageX + 29, headerBottom + 8, 8, true, "0.1 0.39 0.17");
+    y = headerBottom;
+
+    for (let fieldIndex = 0; fieldIndex < section.fields.length; fieldIndex += 2) {
+      const rowBottom = y - 28;
+      strokeRect(pageX, rowBottom, pageWidth, 28);
+      line(pageX + cellWidth, rowBottom, pageX + cellWidth, y);
+      section.fields.slice(fieldIndex, fieldIndex + 2).forEach((field, columnIndex) => {
+        const cellX = pageX + cellWidth * columnIndex;
+        line(cellX + labelWidth, rowBottom, cellX + labelWidth, y);
+        text(shorten(field.label, 28), cellX + 7, rowBottom + 10, 5.6, false, "0.3 0.35 0.32");
+        const valueX = cellX + labelWidth + 8;
+        if (isStatusField(field.label)) {
+          const negative = isNegativeStatus(field.value);
+          const color = negative ? "0.78 0.16 0.22" : "0.09 0.4 0.16";
+          fillRect(valueX, rowBottom + 12, 4, 4, color);
+          text(shorten(titleCase(field.value), 28), valueX + 8, rowBottom + 10, 7.2, true, color);
+        } else {
+          const isPasswordGuidance =
+            field.label === "Initial password" && field.value.length > 30;
+          text(
+            shorten(field.value, isPasswordGuidance ? 48 : 30),
+            valueX,
+            rowBottom + 10,
+            isPasswordGuidance ? 5.8 : 7.2,
+            true,
+          );
+        }
+      });
+      y = rowBottom;
     }
-    y -= 8;
-  }
-  commands.push("0.88 0.88 0.88 RG 42 48 m 553 48 l S");
+    y -= 10;
+  });
+
+  line(48, 55, 547, 55, "0.84 0.88 0.85");
   text(
-    "Confirm current account and transport eligibility through the live TriSafe registry.",
-    42,
-    32,
-    7,
+    "This record was generated from the live TriSafe registry. Verify all information before relying on a downloaded copy.",
+    48,
+    39,
+    6.5,
     false,
-    "0.42 0.42 0.42",
+    "0.4 0.46 0.42",
   );
+  text("TriSafe  |  BPLO Trinidad, Bohol", 416, 27, 6.5, true, "0.15 0.23 0.18");
   return pdfBlob(commands.join("\n"));
 }
 
@@ -259,26 +316,47 @@ function pdfBlob(stream: string) {
   return new Blob([pdf], { type: "application/pdf" });
 }
 
+function docxFieldRows(fields: { label: string; value: string }[]) {
+  const rows: string[] = [];
+  for (let index = 0; index < fields.length; index += 2) {
+    const pair = fields.slice(index, index + 2);
+    rows.push(`<w:tr><w:trPr><w:cantSplit/></w:trPr>${pair.map(docxFieldCells).join("")}${pair.length === 1 ? docxEmptyFieldCells() : ""}</w:tr>`);
+  }
+  return rows.join("");
+}
+
+function docxFieldCells(field: { label: string; value: string }) {
+  const status = isStatusField(field.label);
+  const statusColor = isNegativeStatus(field.value) ? "C72A38" : "17662B";
+  const valueRun = status
+    ? `<w:r><w:rPr><w:b/><w:color w:val="${statusColor}"/><w:sz w:val="17"/></w:rPr><w:t>&#9679; ${xml(titleCase(field.value))}</w:t></w:r>`
+    : `<w:r><w:rPr><w:b/><w:color w:val="151B17"/><w:sz w:val="17"/></w:rPr><w:t>${xml(field.value)}</w:t></w:r>`;
+  return `<w:tc><w:tcPr><w:tcW w:w="1680" w:type="dxa"/><w:shd w:fill="FAFCFA"/></w:tcPr><w:p><w:r><w:rPr><w:color w:val="4F5A53"/><w:sz w:val="16"/></w:rPr><w:t>${xml(field.label)}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p>${valueRun}</w:p></w:tc>`;
+}
+
+function docxEmptyFieldCells() {
+  return `<w:tc><w:tcPr><w:tcW w:w="1680" w:type="dxa"/><w:shd w:fill="FAFCFA"/></w:tcPr><w:p/></w:tc><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
+}
+
 function createDocx(data: DriverRegistrationFileData) {
   const sectionXml = data.sections
     .map(
-      (section) => `
-    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>${xml(section.title)}</w:t></w:r></w:p>
-    <w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="110" w:type="dxa"/><w:left w:w="140" w:type="dxa"/><w:bottom w:w="110" w:type="dxa"/><w:right w:w="140" w:type="dxa"/></w:tblCellMar><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D9E2D5"/><w:left w:val="single" w:sz="4" w:color="D9E2D5"/><w:bottom w:val="single" w:sz="4" w:color="D9E2D5"/><w:right w:val="single" w:sz="4" w:color="D9E2D5"/><w:insideH w:val="single" w:sz="4" w:color="E7ECE5"/><w:insideV w:val="single" w:sz="4" w:color="E7ECE5"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="3000"/><w:gridCol w:w="6360"/></w:tblGrid>
-      ${section.fields.map((field) => `<w:tr><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/><w:shd w:fill="F1F7EE"/></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="337418"/><w:sz w:val="17"/></w:rPr><w:t>${xml(field.label.toUpperCase())}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="6360" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:sz w:val="19"/></w:rPr><w:t>${xml(field.value)}</w:t></w:r></w:p></w:tc></w:tr>`).join("")}
-    </w:tbl>`,
+      (section, index) => `
+    <w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="85" w:type="dxa"/><w:left w:w="110" w:type="dxa"/><w:bottom w:w="85" w:type="dxa"/><w:right w:w="110" w:type="dxa"/></w:tblCellMar><w:tblBorders><w:top w:val="single" w:sz="4" w:color="D9E2D5"/><w:left w:val="single" w:sz="4" w:color="D9E2D5"/><w:bottom w:val="single" w:sz="4" w:color="D9E2D5"/><w:right w:val="single" w:sz="4" w:color="D9E2D5"/><w:insideH w:val="single" w:sz="4" w:color="E1E6E2"/><w:insideV w:val="single" w:sz="4" w:color="E1E6E2"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="1680"/><w:gridCol w:w="3000"/><w:gridCol w:w="1680"/><w:gridCol w:w="3000"/></w:tblGrid>
+      <w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:tcPr><w:gridSpan w:val="4"/><w:tcW w:w="9360" w:type="dxa"/><w:shd w:fill="E4F2E4"/></w:tcPr><w:p><w:pPr><w:spacing w:before="20" w:after="20"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="4CA65B"/><w:sz w:val="17"/></w:rPr><w:t xml:space="preserve">${index + 1}   </w:t></w:r><w:r><w:rPr><w:b/><w:color w:val="1A642B"/><w:sz w:val="18"/></w:rPr><w:t>${xml(section.title)}</w:t></w:r></w:p></w:tc></w:tr>
+      ${docxFieldRows(section.fields)}
+    </w:tbl><w:p><w:pPr><w:spacing w:after="70"/></w:pPr></w:p>`,
     )
     .join("");
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
-    <w:p><w:pPr><w:pStyle w:val="Brand"/></w:pPr><w:r><w:t>TRISAFE  |  LGU DRIVER REGISTRY</w:t></w:r></w:p>
-    <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>${xml(data.title)}</w:t></w:r></w:p>
-    <w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr><w:r><w:t>Generated ${xml(formatDateTime(data.generatedAt))} from live registry data</w:t></w:r></w:p>
-    <w:p><w:pPr><w:shd w:fill="EEF8E9"/><w:spacing w:before="180" w:after="180"/><w:ind w:left="180" w:right="180"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="245B11"/></w:rPr><w:t>Current database record. </w:t></w:r><w:r><w:rPr><w:color w:val="3F5737"/></w:rPr><w:t>The initial password is the Body Number or Permit Number; TriSafe stores its secure hash only.</w:t></w:r></w:p>
+    <w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="6000"/><w:gridCol w:w="3360"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="6000" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="287B37"/><w:sz w:val="28"/><w:spacing w:val="20"/></w:rPr><w:t>TRISAFE</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>BPLO DRIVER REGISTRY</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="3360" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>SAFE TRANSPORT</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>A STRONGER TRINIDAD</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+    <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>Driver Registration Record</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr><w:r><w:t>Generated ${xml(formatDateTime(data.generatedAt))} from the live TriSafe registry</w:t></w:r></w:p>
     ${sectionXml}
-    <w:p><w:pPr><w:spacing w:before="220"/><w:pBdr><w:top w:val="single" w:sz="4" w:space="8" w:color="D9E2D5"/></w:pBdr></w:pPr><w:r><w:rPr><w:color w:val="6B7468"/><w:sz w:val="16"/></w:rPr><w:t>Confirm current account and transport eligibility through the live TriSafe registry before relying on a previously downloaded copy.</w:t></w:r></w:p>
+    <w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="DCE3DE"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:tblCellMar><w:top w:w="140" w:type="dxa"/><w:left w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="6500"/><w:gridCol w:w="2860"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="6500" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:color w:val="69756E"/><w:sz w:val="14"/></w:rPr><w:t>This record was generated from the live TriSafe registry. Verify all information before relying on a downloaded copy.</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2860" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="25362C"/><w:sz w:val="13"/></w:rPr><w:t>TriSafe | BPLO Trinidad, Bohol</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
     <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1080" w:right="1440" w:bottom="1080" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>
   </w:body></w:document>`;
-  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/><w:color w:val="202020"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Brand"><w:name w:val="Brand"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="80"/></w:pPr><w:rPr><w:b/><w:color w:val="337418"/><w:sz w:val="18"/><w:spacing w:val="18"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="0" w:after="70"/></w:pPr><w:rPr><w:b/><w:color w:val="202020"/><w:sz w:val="38"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="100"/></w:pPr><w:rPr><w:color w:val="666666"/><w:sz w:val="18"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="220" w:after="90"/></w:pPr><w:rPr><w:b/><w:color w:val="337418"/><w:sz w:val="20"/><w:caps/></w:rPr></w:style></w:styles>`;
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="18"/><w:color w:val="151B17"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="70" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="260" w:after="45"/></w:pPr><w:rPr><w:b/><w:color w:val="111713"/><w:sz w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="170"/></w:pPr><w:rPr><w:color w:val="627069"/><w:sz w:val="16"/></w:rPr></w:style></w:styles>`;
   const files = [
     {
       name: "[Content_Types].xml",
@@ -415,6 +493,24 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+function isStatusField(label: string) {
+  return label.toLowerCase().includes("status");
+}
+function isNegativeStatus(value: string) {
+  const normalized = value.toLowerCase();
+  return (
+    normalized.includes("expired") ||
+    normalized.includes("suspend") ||
+    normalized.includes("inactive") ||
+    normalized.includes("not ")
+  );
+}
+function titleCase(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 function safeFileName(value: string) {
   return value

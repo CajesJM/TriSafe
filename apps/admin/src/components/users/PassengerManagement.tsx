@@ -1,6 +1,10 @@
 import { UserDirectory } from "./UserDirectory";
+import type { ToastMessage } from "../shared/ToastNotification";
 
-/** Dedicated BPLO Passenger Management workspace. */
-export function PassengerManagement() {
-  return <UserDirectory managementRole="PASSENGER" />;
+export function PassengerManagement({
+  onNotify,
+}: {
+  onNotify: (type: ToastMessage["type"], message: string) => void;
+}) {
+  return <UserDirectory managementRole="PASSENGER" onNotify={onNotify} />;
 }

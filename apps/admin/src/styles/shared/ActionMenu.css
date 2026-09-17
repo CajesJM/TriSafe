@@ -97,17 +97,41 @@
   width: 13px;
   height: 13px;
 }
-.action-menu-group > button.danger {
+.action-menu-group > button.action-menu-tone-danger {
   color: #a52323;
 }
-.action-menu-group > button.danger i {
+.action-menu-group > button.action-menu-tone-danger i {
   color: #a52323;
   background: #fde8e8;
 }
-.action-menu-group > button.danger:hover:not(:disabled),
-.action-menu-group > button.danger:focus-visible {
+.action-menu-group > button.action-menu-tone-danger:hover:not(:disabled),
+.action-menu-group > button.action-menu-tone-danger:focus-visible {
   color: #8f2020;
   background: #fff0f0;
+}
+.action-menu-group > button.action-menu-tone-warning {
+  color: #b45309;
+}
+.action-menu-group > button.action-menu-tone-warning i {
+  color: #b45309;
+  background: #ffedd5;
+}
+.action-menu-group > button.action-menu-tone-warning:hover:not(:disabled),
+.action-menu-group > button.action-menu-tone-warning:focus-visible {
+  color: #92400e;
+  background: #fff7ed;
+}
+.action-menu-group > button.action-menu-tone-success {
+  color: #237529;
+}
+.action-menu-group > button.action-menu-tone-success i {
+  color: #237529;
+  background: #e8f5e5;
+}
+.action-menu-group > button.action-menu-tone-success:hover:not(:disabled),
+.action-menu-group > button.action-menu-tone-success:focus-visible {
+  color: #185d1d;
+  background: #f0f9ed;
 }
 @keyframes action-menu-in {
   from {

@@ -1,7 +1,12 @@
 import { DriverVerificationStatus } from '@prisma/client';
-import { IsDateString, IsEnum } from 'class-validator';
+import { IsDateString, IsIn } from 'class-validator';
 
 export class UpdateFranchiseDto {
-  @IsEnum(DriverVerificationStatus) status!: DriverVerificationStatus;
+  @IsIn([
+    DriverVerificationStatus.VERIFIED,
+    DriverVerificationStatus.SUSPENDED,
+    DriverVerificationStatus.EXPIRED,
+  ])
+  status!: DriverVerificationStatus;
   @IsDateString() expiresAt!: string;
 }

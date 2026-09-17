@@ -700,6 +700,49 @@ export class DriversService {
     return drivers.map((driver) => this.toAdminDriver(driver));
   }
 
+  async operationalProfile(driverId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { id: driverId },
+      select: { id: true },
+    });
+    if (!driver) throw new NotFoundException("Driver not found");
+
+    const rideFilter = { vehicle: { driverId } };
+    const [
+      totalRides,
+      completedRides,
+      cancelledRides,
+      ratingSummary,
+      incidentCount,
+      violationCount,
+    ] = await Promise.all([
+      this.prisma.ride.count({ where: rideFilter }),
+      this.prisma.ride.count({ where: { ...rideFilter, status: "COMPLETED" } }),
+      this.prisma.ride.count({ where: { ...rideFilter, status: "CANCELLED" } }),
+      this.prisma.driverRating.aggregate({
+        where: { driverId, visible: true },
+        _avg: { score: true },
+        _count: { _all: true },
+      }),
+      this.prisma.incident.count({
+        where: { ride: { is: { vehicle: { driverId } } } },
+      }),
+      this.prisma.driverViolation.count({ where: { driverId } }),
+    ]);
+
+    return {
+      metrics: {
+        totalRides,
+        completedRides,
+        cancelledRides,
+        averageRating: ratingSummary._avg.score,
+        ratingCount: ratingSummary._count._all,
+        incidentCount,
+        violationCount,
+      },
+    };
+  }
+
   async updateStatus(
     actorId: string,
     driverId: string,

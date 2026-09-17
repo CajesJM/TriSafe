@@ -7,7 +7,7 @@ export type ActionMenuItem = {
   icon: ReactNode;
   onSelect: () => void;
   disabled?: boolean;
-  tone?: "default" | "danger";
+  tone?: "default" | "danger" | "warning" | "success";
 };
 
 export type ActionMenuGroup = {
@@ -120,7 +120,11 @@ export function ActionMenu({
                       key={item.label}
                       type="button"
                       role="menuitem"
-                      className={item.tone === "danger" ? "danger" : ""}
+                      className={
+                        item.tone && item.tone !== "default"
+                          ? `action-menu-tone-${item.tone}`
+                          : ""
+                      }
                       disabled={item.disabled}
                       onClick={() => {
                         setOpen(false);

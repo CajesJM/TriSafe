@@ -70,7 +70,7 @@ export type UpdateProfileInput = {
 
 export type UserRole = "PASSENGER" | "DRIVER" | "LGU_ADMIN";
 export type UserStatus = "ACTIVE" | "INACTIVE";
-export type DriverStatus = "VERIFIED" | "PENDING" | "SUSPENDED" | "EXPIRED";
+export type DriverStatus = "VERIFIED" | "SUSPENDED" | "EXPIRED";
 
 export function hasAuthToken() {
   return Boolean(accessToken);
@@ -95,6 +95,11 @@ export function getSessionUser(): SessionUser | null {
 
 export function updateSessionUser(user: SessionUser) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(
+    new CustomEvent<SessionUser>("trisafe-session-user-updated", {
+      detail: user,
+    }),
+  );
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -408,6 +413,7 @@ export type RoleInput = {
 export type Driver = {
   id: string;
   userId: string;
+  createdAt: string;
   fullName: string;
   username?: string | null;
   avatarData?: string | null;
@@ -436,6 +442,17 @@ export type Driver = {
     chassisNumber?: string | null;
     qrCode?: { token: string };
   }[];
+};
+export type DriverOperationalProfile = {
+  metrics: {
+    totalRides: number;
+    completedRides: number;
+    cancelledRides: number;
+    averageRating: number | null;
+    ratingCount: number;
+    incidentCount: number;
+    violationCount: number;
+  };
 };
 export type Incident = {
   id: string;
@@ -648,7 +665,7 @@ export type StreetLocationSuggestion = {
   longitude: number;
 };
 export type UpdateFranchiseInput = {
-  status: "PENDING" | "VERIFIED" | "SUSPENDED" | "EXPIRED";
+  status: "VERIFIED" | "SUSPENDED" | "EXPIRED";
   expiresAt: string;
 };
 
@@ -723,10 +740,22 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  deleteUser: (id: string) =>
-    request<{ deleted: true }>(`/admin/users/${id}`, { method: "DELETE" }),
-  deleteDriver: (id: string) =>
-    request<{ deleted: true }>(`/admin/drivers/${id}`, { method: "DELETE" }),
+  userDeletionImpact: (id: string) =>
+    request<{ rideCount: number; incidentCount: number }>(
+      `/admin/users/${id}/deletion-impact`,
+    ),
+  deleteUser: (id: string, confirmation?: string) =>
+    request<{ deleted: true; deletedRideCount: number }>(`/admin/users/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify(confirmation ? { confirmation } : {}),
+    }),
+  driverDeletionImpact: (id: string) =>
+    request<{ rideCount: number }>(`/admin/drivers/${id}/deletion-impact`),
+  deleteDriver: (id: string, confirmation?: string) =>
+    request<{ deleted: true; deletedRideCount: number }>(`/admin/drivers/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify(confirmation ? { confirmation } : {}),
+    }),
   roles: () => request<RoleDefinition[]>("/admin/roles"),
   createRole: (body: RoleInput) =>
     request<RoleDefinition>("/admin/roles", {
@@ -741,6 +770,8 @@ export const api = {
   deleteRole: (id: string) =>
     request<{ deleted: true }>(`/admin/roles/${id}`, { method: "DELETE" }),
   drivers: () => request<Driver[]>("/admin/drivers"),
+  driverOperationalProfile: (id: string) =>
+    request<DriverOperationalProfile>(`/admin/drivers/${id}/profile`),
   incidents: () => request<Incident[]>("/incidents/admin/all"),
   auditLogs: (limit = 100) =>
     request<AuditLog[]>(`/admin/audit-logs?limit=${limit}`),

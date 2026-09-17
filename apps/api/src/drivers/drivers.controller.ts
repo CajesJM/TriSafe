@@ -80,6 +80,12 @@ export class DriversController {
   }
 
   @Roles(UserRole.LGU_ADMIN)
+  @Get("admin/drivers/:id/profile")
+  operationalProfile(@Param("id") id: string) {
+    return this.service.operationalProfile(id);
+  }
+
+  @Roles(UserRole.LGU_ADMIN)
   @Patch("admin/drivers/:id/franchise")
   updateFranchise(
     @Req() req: RequestWithUser,

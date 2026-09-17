@@ -84,16 +84,20 @@ export function App() {
         nextDrivers,
         nextIncidents,
         nextLogs,
+        nextProfile,
       ] = await Promise.all([
         api.dashboard(),
         api.drivers(),
         api.incidents(),
         api.auditLogs(),
+        api.profile(),
       ]);
       setDashboard(nextDashboard);
       setDrivers(nextDrivers);
       setIncidents(nextIncidents);
       setAuditLogs(nextLogs);
+      setSessionUser(nextProfile);
+      updateSessionUser(nextProfile);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -120,18 +124,26 @@ export function App() {
       setAuthenticated(false);
       setSessionUser(null);
     };
+    const syncSession = (event: Event) => {
+      setSessionUser((event as CustomEvent<SessionUser>).detail);
+    };
     window.addEventListener("trisafe-auth-expired", expireSession);
-    return () =>
+    window.addEventListener("trisafe-session-user-updated", syncSession);
+    return () => {
       window.removeEventListener("trisafe-auth-expired", expireSession);
+      window.removeEventListener("trisafe-session-user-updated", syncSession);
+    };
   }, []);
   useEffect(() => {
-    const dashboardClass = "trisafe-dashboard-view";
-    const isDashboard = authenticated && tab === "overview";
-    document.documentElement.classList.toggle(dashboardClass, isDashboard);
-    document.body.classList.toggle(dashboardClass, isDashboard);
+    const scrollbarClass = "trisafe-scrollbar-hidden";
+    const hideScrollbar =
+      authenticated &&
+      ["overview", "passengers", "administrators", "drivers"].includes(tab);
+    document.documentElement.classList.toggle(scrollbarClass, hideScrollbar);
+    document.body.classList.toggle(scrollbarClass, hideScrollbar);
     return () => {
-      document.documentElement.classList.remove(dashboardClass);
-      document.body.classList.remove(dashboardClass);
+      document.documentElement.classList.remove(scrollbarClass);
+      document.body.classList.remove(scrollbarClass);
     };
   }, [authenticated, tab]);
 
@@ -239,13 +251,23 @@ export function App() {
     );
   }
 
-  async function deleteDriver(driver: Driver) {
-    await api.deleteDriver(driver.id);
+  async function deleteDriver(driver: Driver, confirmation?: string) {
+    const result = await api.deleteDriver(driver.id, confirmation);
     setDrivers((items) => items.filter((item) => item.id !== driver.id));
     setDriverProfileId(null);
     setAuditLogs(await api.auditLogs());
     void api.dashboard().then(setDashboard);
-    showToast("success", `${driver.fullName}'s driver account and unused registry record were deleted.`);
+    showToast(
+      "success",
+      result.deletedRideCount > 0
+        ? `${driver.fullName}'s driver account and ${result.deletedRideCount} ride ${result.deletedRideCount === 1 ? "record" : "records"} were deleted.`
+        : `${driver.fullName}'s driver account and unused registry record were deleted.`,
+    );
+  }
+
+  async function checkDriverDeletion(driver: Driver) {
+    const result = await api.driverDeletionImpact(driver.id);
+    return result.rideCount;
   }
 
   return (
@@ -272,7 +294,14 @@ export function App() {
           onNavigate={changeTab}
         />
         <AdminProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={(user) => { setSessionUser(user); updateSessionUser(user); }} />
-        {toast && <ToastNotification key={toast.id} toast={toast} onDismiss={() => setToast(null)} />}
+        {toast && (
+          <ToastNotification
+            key={toast.id}
+            toast={toast}
+            onDismiss={() => setToast(null)}
+            variant="dashboard"
+          />
+        )}
         {error && (
           <ErrorMessage message={error} onRetry={() => void loadData()} />
         )}
@@ -290,8 +319,12 @@ export function App() {
                 onRegister={openRegistration}
               />
             )}
-            {tab === "passengers" && <PassengerManagement />}
-            {tab === "administrators" && <AdministratorManagement />}
+            {tab === "passengers" && (
+              <PassengerManagement onNotify={showToast} />
+            )}
+            {tab === "administrators" && (
+              <AdministratorManagement onNotify={showToast} />
+            )}
             {tab === "drivers" && (
               <DriverList
                 drivers={drivers}
@@ -300,6 +333,7 @@ export function App() {
                 onUpdateFranchise={setFranchiseDriver}
                 onUpdateStatus={updateDriverStatus}
                 onUpdateAccountStatus={updateDriverAccountStatus}
+                onCheckDeleteDriver={checkDriverDeletion}
                 onDeleteDriver={deleteDriver}
                 selectedDriverId={driverProfileId}
                 onViewProfile={setDriverProfileId}

@@ -556,8 +556,7 @@
     min-height: 76px;
   }
 }
-.status-guide,
-.driver-status-guide {
+.status-guide {
   display: flex;
   align-items: center;
   gap: 13px;
@@ -569,16 +568,14 @@
   background: var(--gray);
   font-size: 10px;
 }
-.status-guide strong,
-.driver-status-guide strong {
+.status-guide strong {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--gray);
   white-space: nowrap;
 }
-.status-guide strong span,
-.driver-status-guide strong span {
+.status-guide strong span {
   display: grid;
   width: 19px;
   height: 19px;
@@ -588,80 +585,14 @@
   background: var(--primary-700);
   font-size: 9px;
 }
-.status-guide p,
-.driver-status-guide p {
+.status-guide p {
   margin: 0;
   line-height: 1.5;
 }
-.status-guide .status,
-.driver-status-guide .status {
+.status-guide .status {
   margin: 0 2px;
   padding: 4px 7px;
   font-size: 8px;
-}
-.driver-status-guide > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.driver-status-guide .driver-guide-group {
-  align-items: center;
-  border-left: 1px solid var(--line);
-  padding-left: 10px;
-}
-.driver-guide-group > small {
-  margin-right: 2px;
-  color: var(--muted);
-  font-size: 8px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.status-help-badge {
-  position: relative;
-  cursor: help;
-  transition:
-    box-shadow 0.16s ease,
-    transform 0.16s ease;
-}
-.status-help-badge::after {
-  position: absolute;
-  z-index: 100;
-  right: 50%;
-  bottom: calc(100% + 9px);
-  width: max-content;
-  max-width: min(250px, calc(100vw - 32px));
-  border-radius: 8px;
-  padding: 7px 9px;
-  color: #fff;
-  background: var(--charcoal);
-  box-shadow: 0 10px 28px rgba(15, 15, 15, 0.2);
-  content: attr(data-tooltip);
-  font-size: 9px;
-  font-weight: 650;
-  line-height: 1.45;
-  text-align: left;
-  text-transform: none;
-  white-space: normal;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(50%, 4px);
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
-}
-.status-help-badge:hover,
-.status-help-badge:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(93, 214, 44, 0.28);
-  transform: translateY(-1px);
-}
-.status-help-badge:hover::after,
-.status-help-badge:focus-visible::after {
-  opacity: 1;
-  transform: translate(50%, 0);
-}
-.driver-status-guide p {
-  margin-left: auto;
 }
 .role-workspace {
   display: grid;

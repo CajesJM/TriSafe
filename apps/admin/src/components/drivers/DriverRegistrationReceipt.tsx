@@ -1,16 +1,14 @@
-import {
-  Download,
-  FileCheck2,
-  FileText,
-  Info,
-  Printer,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Download, FileCheck2, FileText, Info, Printer, ShieldCheck, UserRound } from "lucide-react";
 import type { Driver, RegisterDriverInput } from "../../api";
-import { ModalShell } from "../shared/ModalShell";
+import {
+  createDriverRegistrationFileBlob,
+  driverFileFormats,
+  type DriverFileFormat,
+  type DriverRegistrationFileData,
+} from "../../utils/driverRegistrationFile";
 import { displayPersonName } from "../../utils/personName";
+import { ModalShell } from "../shared/ModalShell";
 
 export type DriverRegistrationReceiptData = {
   receiptNumber: string;
@@ -20,10 +18,14 @@ export type DriverRegistrationReceiptData = {
   driverName: string;
   username: string;
   phone: string;
+  avatarData?: string | null;
   initialPassword: string;
   accountStatus: string;
   driverStatus: string;
-  addressLine: string;
+  province: string;
+  municipality: string;
+  barangay: string;
+  purok: string;
   unitLabel: string;
   unitNumber: string;
   engineNumber: string;
@@ -45,11 +47,9 @@ export function createDriverReceipt(
   const generatedAt = new Date().toISOString();
   const habal = (vehicle?.vehicleType ?? input.vehicleType) === "HABAL_HABAL";
   const unitNumber =
-    vehicle?.permitNumber ??
-    vehicle?.bodyNumber ??
-    input.permitNumber ??
-    input.bodyNumber ??
-    "Not assigned";
+    vehicle?.permitNumber ?? vehicle?.bodyNumber ?? input.permitNumber ??
+    input.bodyNumber ?? "Not assigned";
+
   return {
     receiptNumber: `TRI-${generatedAt.slice(0, 10).replaceAll("-", "")}-${driver.id.slice(-6).toUpperCase()}`,
     generatedAt,
@@ -60,17 +60,14 @@ export function createDriverReceipt(
     driverName: displayPersonName(driver.fullName),
     username: driver.username ?? "Not assigned",
     phone: driver.phone ?? input.phone,
+    avatarData: driver.avatarData ?? input.avatarData,
     initialPassword: unitNumber,
     accountStatus: driver.accountStatus ?? "ACTIVE",
     driverStatus: driver.verification,
-    addressLine: [
-      driver.address?.purok ?? input.address.purok,
-      driver.address?.barangayName ?? input.address.barangayName,
-      driver.address?.municipalityName ?? input.address.municipalityName,
-      "Bohol",
-    ]
-      .filter(Boolean)
-      .join(", "),
+    province: driver.address?.provinceName ?? input.address.provinceName,
+    municipality: driver.address?.municipalityName ?? input.address.municipalityName,
+    barangay: driver.address?.barangayName ?? input.address.barangayName,
+    purok: driver.address?.purok ?? input.address.purok,
     unitLabel: habal ? "Permit number" : "Body number",
     unitNumber,
     engineNumber: vehicle?.engineNumber ?? input.engineNumber,
@@ -81,223 +78,185 @@ export function createDriverReceipt(
     franchiseIssuedAt: driver.franchise?.issuedAt ?? input.franchiseIssuedAt,
     franchiseExpiresAt: driver.franchise?.expiresAt ?? input.franchiseExpiresAt,
     franchiseStatus: driver.franchise?.status ?? driver.verification,
-    qrStatus: vehicle?.qrCode?.token ? "Generated and active" : "Not generated",
+    qrStatus: vehicle?.qrCode?.token ? "Generated" : "Not generated",
   };
 }
 
-export function DriverRegistrationReceipt({
-  receipt,
-  onClose,
-  onDownloaded,
-  onError,
-}: {
+export function DriverRegistrationReceipt({ receipt, onClose, onDownloaded, onError }: {
   receipt: DriverRegistrationReceiptData;
   onClose: () => void;
   onDownloaded: () => void;
   onError: (message: string) => void;
 }) {
+  const [format, setFormat] = useState<DriverFileFormat>("pdf");
+  const [formatMenuOpen, setFormatMenuOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const formatControl = useRef<HTMLDivElement>(null);
+  const file = useMemo(() => createReceiptFileData(receipt), [receipt]);
+  const selectedFormat = driverFileFormats.find((item) => item.value === format)!;
+
+  useEffect(() => {
+    if (!formatMenuOpen) return;
+    function closeMenu(event: PointerEvent) {
+      if (!formatControl.current?.contains(event.target as Node)) setFormatMenuOpen(false);
+    }
+    function closeWithKeyboard(event: KeyboardEvent) {
+      if (event.key === "Escape") setFormatMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeWithKeyboard);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeWithKeyboard);
+    };
+  }, [formatMenuOpen]);
+
   function download() {
-    const blob = new Blob([receiptDocument(receipt)], {
-      type: "text/html;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `trisafe-driver-receipt-${safeName(receipt.driverName)}.html`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    onDownloaded();
+    setDownloading(true);
+    try {
+      const extension = driverFileFormats.find((item) => item.value === format)?.extension ?? ".html";
+      downloadBlob(
+        createDriverRegistrationFileBlob(file, format),
+        `trisafe-driver-${safeName(receipt.driverName)}${extension}`,
+      );
+      onDownloaded();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to generate the driver registration file.");
+    } finally {
+      setDownloading(false);
+    }
   }
-  function print() {
-    const target = window.open("", "_blank");
+
+  function preview() {
+    const url = URL.createObjectURL(createDriverRegistrationFileBlob(file, "pdf"));
+    const target = window.open(url, "_blank");
     if (!target) {
-      onError("Printing was blocked. Allow pop-ups and try again.");
+      URL.revokeObjectURL(url);
+      onError("Preview was blocked. Allow pop-ups and try again.");
       return;
     }
     target.opener = null;
-    target.document.write(receiptDocument(receipt, true));
-    target.document.close();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
+
   return (
     <ModalShell
       eyebrow="REGISTRATION RECORD"
       title={`${receipt.driverName}'s File`}
-      description="Review the current database record before choosing a download format."
+      description="Review the newly created record before choosing a download format."
       onClose={onClose}
+      busy={downloading}
       size="large"
-      className="driver-receipt-modal"
-      footer={
-        <div className="driver-record-footer">
-          <button className="secondary" type="button" onClick={onClose}>
-            Close
-          </button>
-          <div className="driver-record-download">
-            <label htmlFor="driver-record-format">File format</label>
-            <select id="driver-record-format" aria-label="Download file format">
-              <option>HTML document (.html)</option>
-            </select>
-            <button className="primary" type="button" onClick={download}>
-              <Download /> Download record
-            </button>
-          </div>
-        </div>
-      }
+      className="driver-file-modal driver-receipt-modal"
     >
       <div className="driver-record-layout">
         <aside className="driver-record-sidebar">
           <div className="driver-record-person">
-            <span className="driver-record-avatar" aria-hidden="true">
-              <UserRound />
+            <span className={`driver-record-avatar${receipt.avatarData ? " has-photo" : ""}`}>
+              {receipt.avatarData ? (
+                <img src={receipt.avatarData} alt={`${receipt.driverName} profile`} />
+              ) : (
+                <UserRound aria-hidden="true" />
+              )}
             </span>
             <div>
               <h3>{receipt.driverName}</h3>
-              <StatusBadge
-                value={receipt.accountStatus}
-                label={`${titleCase(receipt.accountStatus)} driver`}
-              />
+              <FileStatus value={receipt.accountStatus} label={`${titleCase(receipt.accountStatus)} driver`} />
             </div>
           </div>
           <dl className="driver-record-quick-facts">
-            <div>
-              <dt>Driver ID</dt>
-              <dd>{receipt.driverId}</dd>
-            </div>
-            <div>
-              <dt>Mobile number</dt>
-              <dd>{receipt.phone}</dd>
-            </div>
+            <div><dt>Driver ID</dt><dd>{receipt.driverId}</dd></div>
+            <div><dt>Mobile number</dt><dd>{receipt.phone}</dd></div>
           </dl>
-          <button className="driver-record-print" type="button" onClick={print}>
+          <div className="driver-record-download-control" ref={formatControl}>
+            <div className="driver-record-download-split">
+              <button className="driver-record-primary-action" type="button" onClick={download} disabled={downloading}>
+                <Download aria-hidden="true" /> {downloading ? "Generating…" : "Download record"}
+              </button>
+              <button
+                className="driver-record-format-trigger"
+                type="button"
+                aria-label={`Choose file type. Current selection: ${selectedFormat.label}`}
+                aria-haspopup="menu"
+                aria-expanded={formatMenuOpen}
+                onClick={() => setFormatMenuOpen((open) => !open)}
+                disabled={downloading}
+              >
+                <ChevronDown aria-hidden="true" />
+              </button>
+            </div>
+            {formatMenuOpen && (
+              <div className="driver-record-format-menu" role="menu" aria-label="File type">
+                <span>Download as</span>
+                {driverFileFormats.map((item) => (
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={item.value === format}
+                    className={item.value === format ? "selected" : ""}
+                    key={item.value}
+                    onClick={() => { setFormat(item.value); setFormatMenuOpen(false); }}
+                  >
+                    <span><strong>{item.label}</strong><small>{item.extension}</small></span>
+                    {item.value === format && <Check aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button className="driver-record-print" type="button" onClick={preview} disabled={downloading}>
             <Printer aria-hidden="true" /> Print / Preview
           </button>
           <div className="driver-record-current-view">
             <FileText aria-hidden="true" />
-            <div>
-              <strong>Registration record</strong>
-              <span>Complete driver and vehicle details</span>
-            </div>
+            <div><strong>Registration record</strong><span>Complete driver and vehicle details</span></div>
           </div>
           <div className="driver-record-note">
             <Info aria-hidden="true" />
-            <p>
-              Use this record to verify the driver account, transport
-              eligibility, and franchise status.
-            </p>
+            <p>Save the initial password securely and ask the driver to change it after signing in.</p>
           </div>
-          <div
-            className="driver-record-brand"
-            aria-label="TriSafe BPLO Driver Registry"
-          >
+          <div className="driver-record-brand" aria-label="TriSafe BPLO Driver Registry">
             <ShieldCheck aria-hidden="true" />
             <strong>TRISAFE</strong>
-            <span>
-              Safe Transport
-              <br />A Stronger Trinidad
-            </span>
+            <span>Safe Transport<br />A Stronger Trinidad</span>
           </div>
         </aside>
 
         <section className="driver-record-workspace">
           <header className="driver-record-workspace-heading">
-            <span className="driver-record-file-icon" aria-hidden="true">
-              <FileCheck2 />
-            </span>
+            <span className="driver-record-file-icon" aria-hidden="true"><FileCheck2 /></span>
             <div>
               <h3>Driver registration file</h3>
-              <p>
-                Generated {formatDateTime(receipt.generatedAt)} from live
-                registry data
-              </p>
+              <p>Generated {formatDateTime(file.generatedAt)} from the completed registration</p>
             </div>
-            <span className="driver-record-live">
-              <i aria-hidden="true" /> Live registry record
-            </span>
           </header>
-
-          <article className="driver-record-document">
+          <article className="driver-record-document" aria-label="New driver registration file preview">
             <header className="driver-record-document-header">
               <div className="driver-record-document-brand">
                 <ShieldCheck aria-hidden="true" />
-                <div>
-                  <strong>TRISAFE</strong>
-                  <span>BPLO Driver Registry</span>
-                </div>
+                <div><strong>TRISAFE</strong><span>BPLO Driver Registry</span></div>
               </div>
-              <div className="driver-record-document-tagline">
-                Safe transport
-                <br />A stronger Trinidad
-              </div>
+              <div className="driver-record-document-tagline">Safe transport<br />A stronger Trinidad</div>
             </header>
             <h2>Driver Registration Record</h2>
             <p className="driver-record-document-meta">
-              Record {receipt.receiptNumber} · Generated{" "}
-              {formatDateTime(receipt.generatedAt)}
+              Generated {formatDateTime(file.generatedAt)} from the TriSafe registration record
             </p>
-
-            <ReceiptSection
-              number="1"
-              title="Driver account and contact"
-              rows={[
-                ["Driver name", receipt.driverName],
-                ["Login identifier", receipt.username],
-                ["Initial password", receipt.initialPassword],
-                ["Mobile number", receipt.phone],
-                [
-                  "Account status",
-                  <StatusBadge value={receipt.accountStatus} />,
-                ],
-                ["Driver ID", receipt.driverId],
-              ]}
-            />
-            <ReceiptSection
-              number="2"
-              title="Owner and transport eligibility"
-              rows={[
-                ["Owner / organization leader", receipt.ownerName],
-                [
-                  "Transport status",
-                  <StatusBadge value={receipt.driverStatus} />,
-                ],
-              ]}
-            />
-            <ReceiptSection
-              number="3"
-              title="Registered address"
-              rows={[["Present address", receipt.addressLine]]}
-            />
-            <ReceiptSection
-              number="4"
-              title="Franchise details"
-              rows={[
-                ["Franchise number", receipt.franchiseNumber],
-                ["Franchise issued", formatDate(receipt.franchiseIssuedAt)],
-                [
-                  "Franchise expiration",
-                  formatDate(receipt.franchiseExpiresAt),
-                ],
-                [
-                  "Franchise status",
-                  <StatusBadge value={receipt.franchiseStatus} />,
-                ],
-              ]}
-            />
-            <ReceiptSection
-              number="5"
-              title="Vehicle and QR identity"
-              rows={[
-                ["Plate number", receipt.plateNumber],
-                ["Vehicle type", titleCase(receipt.vehicleType)],
-                [receipt.unitLabel, receipt.unitNumber],
-                ["Engine number", receipt.engineNumber],
-                ["Chassis number", receipt.chassisNumber],
-                ["QR status", receipt.qrStatus],
-              ]}
-            />
+            {file.sections.map((section, index) => (
+              <section className="driver-record-section" key={section.title}>
+                <h3><span>{index + 1}</span>{section.title}</h3>
+                <dl>
+                  {section.fields.map((field) => (
+                    <div key={field.label}>
+                      <dt>{field.label}</dt>
+                      <dd>{isStatusField(field.label) ? <FileStatus value={field.value} /> : field.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
             <footer className="driver-record-document-footer">
-              This record was generated from the live TriSafe registry. Verify
-              all information before relying on a downloaded copy.
+              This record was generated when the driver account was created. Keep the initial password private and verify all information before relying on a downloaded copy.
               <strong>TriSafe · BPLO Trinidad, Bohol</strong>
             </footer>
           </article>
@@ -307,111 +266,99 @@ export function DriverRegistrationReceipt({
   );
 }
 
-function ReceiptSection({
-  number,
-  title,
-  rows,
-}: {
-  number: string;
-  title: string;
-  rows: [string, ReactNode][];
-}) {
-  return (
-    <section className="driver-record-section">
-      <h3>
-        <span>{number}</span>
-        {title}
-      </h3>
-      <dl>
-        {rows.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
+function createReceiptFileData(receipt: DriverRegistrationReceiptData): DriverRegistrationFileData {
+  return {
+    generatedAt: receipt.generatedAt,
+    title: "Driver registration file",
+    subtitle: "New account record from the TriSafe LGU Driver Registry",
+    sections: [
+      {
+        title: "Driver account and contact",
+        fields: [
+          { label: "Driver name", value: receipt.driverName },
+          { label: "Login identifier", value: receipt.username },
+          { label: "Initial password", value: receipt.initialPassword },
+          { label: "Mobile number", value: receipt.phone },
+          { label: "Account status", value: receipt.accountStatus },
+          { label: "Driver ID", value: receipt.driverId },
+        ],
+      },
+      {
+        title: "Owner and transport eligibility",
+        fields: [
+          { label: "Owner / organization leader", value: receipt.ownerName },
+          { label: "Transport status", value: receipt.driverStatus },
+        ],
+      },
+      {
+        title: "Registered address",
+        fields: [
+          { label: "Province", value: receipt.province },
+          { label: "Municipality / City", value: receipt.municipality },
+          { label: "Barangay", value: receipt.barangay },
+          { label: "Purok", value: receipt.purok },
+        ],
+      },
+      {
+        title: "Franchise details",
+        fields: [
+          { label: "Franchise number", value: receipt.franchiseNumber },
+          { label: "Franchise issued", value: formatDate(receipt.franchiseIssuedAt) },
+          { label: "Franchise expiration", value: formatDate(receipt.franchiseExpiresAt) },
+          { label: "Franchise status", value: receipt.franchiseStatus },
+        ],
+      },
+      {
+        title: "Vehicle and QR identity",
+        fields: [
+          { label: "Plate number", value: receipt.plateNumber },
+          { label: "Vehicle type", value: receipt.vehicleType.replaceAll("_", " ") },
+          { label: receipt.unitLabel, value: receipt.unitNumber },
+          { label: "Engine number", value: receipt.engineNumber },
+          { label: "Chassis number", value: receipt.chassisNumber },
+          { label: "LGU QR status", value: receipt.qrStatus },
+        ],
+      },
+    ],
+  };
 }
 
-function StatusBadge({ value, label }: { value: string; label?: string }) {
+function FileStatus({ value, label }: { value: string; label?: string }) {
   const normalized = value.toLowerCase();
-  const negative =
-    normalized.includes("expired") ||
-    normalized.includes("suspend") ||
-    normalized.includes("inactive");
-  return (
-    <span
-      className={`driver-record-status ${negative ? "negative" : "positive"}`}
-    >
-      <i aria-hidden="true" /> {label ?? titleCase(value)}
-    </span>
-  );
+  const negative = normalized.includes("expired") || normalized.includes("suspend") ||
+    normalized.includes("inactive") || normalized.includes("not ");
+  return <span className={`driver-record-status ${negative ? "negative" : "positive"}`}>
+    <i aria-hidden="true" /> {label ?? titleCase(value)}
+  </span>;
+}
+
+function isStatusField(label: string) {
+  return label.toLowerCase().includes("status");
 }
 
 function titleCase(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function receiptRows(
-  receipt: DriverRegistrationReceiptData,
-): [string, string][] {
-  return [
-    ["Owner / leader", receipt.ownerName],
-    ["Driver name", receipt.driverName],
-    ["Login identifier", receipt.username],
-    ["Driver contact", receipt.phone],
-    ["Initial password", receipt.initialPassword],
-    ["Account status", receipt.accountStatus],
-    ["Present address", receipt.addressLine],
-    ["Vehicle type", receipt.vehicleType.replaceAll("_", " ")],
-    [receipt.unitLabel, receipt.unitNumber],
-    ["Engine number", receipt.engineNumber],
-    ["Chassis number", receipt.chassisNumber],
-    ["Plate number", receipt.plateNumber],
-    ["Franchise number", receipt.franchiseNumber],
-    ["Franchise issued", formatDate(receipt.franchiseIssuedAt)],
-    ["Franchise expires", formatDate(receipt.franchiseExpiresAt)],
-    ["Franchise status", receipt.franchiseStatus],
-    ["Transport status", receipt.driverStatus],
-    ["QR status", receipt.qrStatus],
-  ];
-}
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return new Date(value).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
 }
+
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-PH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return new Date(value).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
 }
+
 function safeName(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
-function escapeHtml(value: string) {
-  return value.replace(
-    /[&<>'"]/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[
-        c
-      ] ?? c,
-  );
-}
-function receiptDocument(
-  receipt: DriverRegistrationReceiptData,
-  autoPrint = false,
-) {
-  const rows = receiptRows(receipt);
-  return `<!doctype html><html><head><meta charset="utf-8"><title>TriSafe Driver Receipt</title><style>body{margin:0;background:#f8f8f8;color:#202020;font-family:Arial,sans-serif}.page{max-width:760px;margin:32px auto;background:#fff;border-top:8px solid #337418;padding:40px}.brand{color:#337418;font-size:13px;font-weight:800;letter-spacing:.12em}h1{margin:8px 0}.meta{color:#666;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd;margin-top:22px}.row{padding:12px 14px;border-bottom:1px solid #eee}.row:nth-child(odd){border-right:1px solid #eee}.row span{display:block;color:#777;font-size:10px;text-transform:uppercase;letter-spacing:.06em}.row strong{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}.password{background:#dff7d4}@media print{body{background:#fff}.page{margin:0}}@media(max-width:600px){.grid{grid-template-columns:1fr}.row:nth-child(odd){border-right:0}.page{margin:0;padding:24px}}</style></head><body><main class="page"><div class="brand">TRISAFE · BPLO DRIVER REGISTRY</div><h1>Driver registration receipt</h1><div class="meta">${escapeHtml(receipt.receiptNumber)} · ${escapeHtml(formatDateTime(receipt.generatedAt))}</div><section class="grid">${rows.map(([label, value]) => `<div class="row ${label === "Initial password" ? "password" : ""}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</section></main>${autoPrint ? "<script>window.addEventListener('load',()=>window.print())<\/script>" : ""}</body></html>`;
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
