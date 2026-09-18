@@ -38,6 +38,36 @@ describe('IncidentsService ride report ownership', () => {
     expect(ai.draft).not.toHaveBeenCalled();
   });
 
+  it('creates a unique public incident report ID', async () => {
+    incident.findUnique.mockResolvedValue(null);
+    incident.create.mockResolvedValue({
+      id: 'INCR-A1B2C',
+      rawDescription: 'A sufficiently detailed incident description.',
+      aiDraft: 'Organized incident description.',
+      category: 'OTHER',
+      status: 'DRAFT',
+      createdAt: new Date(),
+      evidence: [],
+    });
+    ai.draft.mockReturnValue({
+      draft: 'Organized incident description.',
+      category: 'OTHER',
+      missingInformation: [],
+    });
+
+    await service.createDraft('passenger-1', {
+      rawDescription: 'A sufficiently detailed incident description.',
+    });
+
+    expect(incident.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          id: expect.stringMatching(/^INCR-[A-Z0-9]{5}$/),
+        }),
+      }),
+    );
+  });
+
   it('looks up an existing report only within the passenger ride', async () => {
     incident.findFirst.mockResolvedValue({ id: 'incident-1' });
 

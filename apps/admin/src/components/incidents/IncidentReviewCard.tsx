@@ -1,39 +1,36 @@
 import { useState } from "react";
 import {
-  AlertTriangle,
   CarFront,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   CircleX,
   Clock3,
   FileText,
   LoaderCircle,
-  Tag,
-  UserRound,
-  WalletCards,
+  Star,
 } from "lucide-react";
 import { Incident, IncidentReviewInput } from "../../api";
 import type { ToastMessage } from "../shared/ToastNotification";
 
-const categories = ["SAFETY", "OVERCHARGING", "HARASSMENT", "VEHICLE", "OTHER"];
-
 export function IncidentReviewCard({
   incident,
+  searchQuery,
   onReview,
   onNotify,
 }: {
   incident: Incident;
+  searchQuery: string;
   onReview: (id: string, review: IncidentReviewInput) => Promise<void>;
   onNotify: (type: ToastMessage["type"], message: string) => void;
 }) {
-  const [category, setCategory] = useState(incident.category);
-  const [notes, setNotes] = useState(incident.reviewerNotes ?? "");
+  const category = incident.category;
+  const notes = incident.reviewerNotes ?? "";
+  const driverRatings = incident.ride?.vehicle.driver.ratings ?? [];
+  const driverRating = driverRatings.length
+    ? driverRatings.reduce((total, rating) => total + rating.score, 0) /
+      driverRatings.length
+    : 0;
   const [saving, setSaving] = useState(false);
   const [confirmDismiss, setConfirmDismiss] = useState(false);
-  const [expanded, setExpanded] = useState(
-    ["SUBMITTED", "UNDER_REVIEW"].includes(incident.status),
-  );
 
   async function review(status: IncidentReviewInput["status"]) {
     setSaving(true);
@@ -64,215 +61,264 @@ export function IncidentReviewCard({
   }
 
   return (
-    <article className={`incident-review-card ${expanded ? "expanded" : ""}`}>
+    <article className="incident-review-card">
       <header className="incident-card-header">
-        <div className="incident-card-icon">
-          <AlertTriangle size={20} />
-        </div>
         <div className="incident-card-title">
           <div className="incident-card-badges">
-            <span className={`status ${incident.status.toLowerCase()}`}>
-              {statusLabel(incident.status)}
+            <span className="incident-id-badge">
+              <HighlightText
+                text={formatIncidentId(incident.id)}
+                query={searchQuery}
+              />
             </span>
-            <span className="incident-category">
-              <Tag size={11} /> {categoryLabel(incident.category)}
+            <span
+              className={`incident-review-status ${incident.status.toLowerCase()}`}
+            >
+              {outcomeLabel(incident.status)}
             </span>
-            {incident.ride && (
-              <span className="incident-ride-badge">Ride linked</span>
-            )}
           </div>
           <h4>
-            Incident report <span>#{incident.id.slice(-8).toUpperCase()}</span>
+            <HighlightText
+              text={incident.passenger.fullName}
+              query={searchQuery}
+            />
           </h4>
           <div className="incident-submitter">
-            <UserRound size={13} /> Submitted by{" "}
-            <b>{incident.passenger.fullName}</b>
-            <span>•</span>
-            <Clock3 size={13} /> {formatDate(incident.createdAt)}
+            <span className="incident-passenger-avatar">
+              {incident.passenger.avatarData ? (
+                <img src={incident.passenger.avatarData} alt="" />
+              ) : (
+                initials(incident.passenger.fullName)
+              )}
+            </span>
+            <div>
+              <b>
+                {incident.passenger.username
+                  ? `@${incident.passenger.username}`
+                  : "Passenger account"}
+              </b>
+              <small>
+                Submitted {formatDate(incident.createdAt)}
+                {incident.passenger.phone
+                  ? ` · ${incident.passenger.phone}`
+                  : ""}
+              </small>
+            </div>
           </div>
         </div>
-        <button
-          className="incident-expand-button"
-          type="button"
-          onClick={() => setExpanded((current) => !current)}
-          aria-expanded={expanded}
-        >
-          {expanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}{" "}
-          {expanded ? "Hide details" : "Review details"}
-        </button>
+        <FileText className="incident-record-mark" aria-hidden="true" />
       </header>
 
-      {expanded && (
-        <div className="incident-card-body">
-          {incident.ride ? (
-            <section
-              className="incident-ride-context"
-              aria-label="Related ride information"
-            >
-              <div>
-                <CarFront size={17} />
-                <span>
-                  <small>Vehicle</small>
-                  <b>{incident.ride.vehicle.plateNumber}</b>
-                  <em>{incident.ride.vehicle.vehicleType}</em>
-                </span>
-              </div>
-              <div>
-                <UserRound size={17} />
-                <span>
-                  <small>Registered driver</small>
-                  <b>{incident.ride.vehicle.driver.user.fullName}</b>
-                </span>
-              </div>
-              <div>
-                <WalletCards size={17} />
-                <span>
-                  <small>Estimated fare</small>
-                  <b>PHP {Number(incident.ride.estimatedFare).toFixed(2)}</b>
-                </span>
-              </div>
-            </section>
-          ) : (
-            <div className="incident-no-ride">
-              <CarFront size={16} /> This report is not linked to a recorded
-              ride.
-            </div>
-          )}
+      <div className="incident-card-summary">
+        <section className="incident-description-block">
+          <div>
+            <span>DESCRIPTION</span>
+            <small>
+              <HighlightText
+                text={categoryLabel(incident.category)}
+                query={searchQuery}
+              />
+            </small>
+          </div>
+          <p>
+            <HighlightText
+              text={incident.rawDescription}
+              query={searchQuery}
+            />
+          </p>
+        </section>
+      </div>
 
+      <div className="incident-card-body">
+        {incident.ride ? (
           <section
-            className="incident-evidence-grid"
-            aria-label="Report evidence comparison"
+            className="incident-ride-context"
+            aria-label="Related ride information"
           >
-            <article className="evidence-panel passenger-evidence">
-              <div className="evidence-heading">
-                <span>
-                  <FileText size={16} />
-                </span>
-                <div>
-                  <small>ORIGINAL STATEMENT</small>
-                  <h5>Passenger description</h5>
-                </div>
-              </div>
-              <p>{incident.rawDescription}</p>
-            </article>
-          </section>
-
-          <section className="incident-decision-panel">
-            <div className="decision-heading">
-              <div>
-                <span className="eyebrow">LGU DECISION</span>
-                <h5>Record review outcome</h5>
-                <p>
-                  Confirm the category, add useful review notes, then choose the
-                  appropriate outcome.
-                </p>
-              </div>
-              <span className="decision-required">Human review required</span>
-            </div>
-            <div className="incident-review-fields">
-              <label className="field">
-                <span>Final incident category</span>
-                <select
-                  value={category}
-                  onChange={(event) => {
-                    setCategory(event.target.value);
-                  }}
-                >
-                  {categories.map((item) => (
-                    <option value={item} key={item}>
-                      {categoryLabel(item)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field incident-notes">
-                <span>Reviewer notes</span>
-                <textarea
-                  value={notes}
-                  onChange={(event) => {
-                    setNotes(event.target.value);
-                  }}
-                  placeholder="Document findings, actions taken, or required follow-up…"
-                  rows={4}
+            <div className="incident-driver-identity">
+              <b className="incident-driver-name">
+                <HighlightText
+                  text={incident.ride.vehicle.driver.user.fullName}
+                  query={searchQuery}
                 />
+              </b>
+              <div className="incident-driver-meta">
+                <span className="incident-driver-avatar">
+                  {incident.ride.vehicle.driver.user.avatarData ? (
+                    <img
+                      src={incident.ride.vehicle.driver.user.avatarData}
+                      alt={`${incident.ride.vehicle.driver.user.fullName} profile`}
+                    />
+                  ) : (
+                    initials(incident.ride.vehicle.driver.user.fullName)
+                  )}
+                </span>
+                <span>
+                  <strong>
+                    {unitLabel(incident.ride.vehicle.vehicleType)}{" "}
+                    <HighlightText
+                      text={unitNumber(incident.ride.vehicle)}
+                      query={searchQuery}
+                    />
+                  </strong>
+                </span>
+              </div>
+              <div
+                className="incident-driver-rating"
+                style={{ color: ratingColor(driverRating) }}
+                aria-label={
+                  driverRatings.length
+                    ? `${driverRating.toFixed(1)} out of 5`
+                    : "No driver ratings yet"
+                }
+              >
+                <span className="incident-rating-stars" aria-hidden="true">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span className="incident-rating-star" key={star}>
+                      <Star className="incident-rating-star-empty" />
+                      <span
+                        className="incident-rating-star-fill"
+                        style={{
+                          width: `${Math.max(0, Math.min(1, driverRating - (star - 1))) * 100}%`,
+                        }}
+                      >
+                        <Star fill="currentColor" />
+                      </span>
+                    </span>
+                  ))}
+                </span>
                 <small>
-                  {notes.length} characters · Include facts relevant to the LGU
-                  decision.
+                  {driverRatings.length
+                    ? driverRating.toFixed(1)
+                    : "No ratings yet"}
                 </small>
-              </label>
-            </div>
-            <div className="incident-decision-actions">
-              <button
-                className="secondary"
-                disabled={saving || incident.status === "UNDER_REVIEW"}
-                onClick={() => void review("UNDER_REVIEW")}
-                type="button"
-              >
-                <Clock3 size={15} />{" "}
-                {incident.status === "UNDER_REVIEW"
-                  ? "Review in progress"
-                  : "Start review"}
-              </button>
-              <button
-                className="primary"
-                disabled={saving}
-                onClick={() => void review("RESOLVED")}
-                type="button"
-              >
-                {saving ? (
-                  <LoaderCircle className="spin" size={15} />
-                ) : (
-                  <CheckCircle2 size={15} />
-                )}{" "}
-                Mark resolved
-              </button>
-              {confirmDismiss ? (
-                <div className="dismiss-confirm">
-                  <span>Dismiss this report?</span>
-                  <button
-                    disabled={saving}
-                    onClick={() => void review("DISMISSED")}
-                    type="button"
-                  >
-                    Confirm dismiss
-                  </button>
-                  <button
-                    disabled={saving}
-                    onClick={() => setConfirmDismiss(false)}
-                    type="button"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="dismiss-button"
-                  disabled={saving}
-                  onClick={() => setConfirmDismiss(true)}
-                  type="button"
-                >
-                  <CircleX size={15} /> Dismiss
-                </button>
-              )}
+                <span className="incident-driver-detail-separator">–</span>
+                <small>{vehicleTypeLabel(incident.ride.vehicle.vehicleType)}</small>
+                <span className="incident-driver-detail-separator">–</span>
+                <small>
+                  Franchise {incident.ride.vehicle.driver.franchise?.franchiseNumber ?? "not assigned"}
+                </small>
+                <span className="incident-driver-detail-separator">–</span>
+                <small>
+                  PHP {Number(incident.ride.estimatedFare).toFixed(2)} estimated fare
+                </small>
+              </div>
             </div>
           </section>
-        </div>
-      )}
+        ) : (
+          <div className="incident-no-ride">
+            <CarFront size={16} /> This report is not linked to a recorded ride.
+          </div>
+        )}
+      </div>
+
+      <footer className="incident-card-actions">
+        <button
+          className="secondary"
+          disabled={saving || incident.status === "UNDER_REVIEW"}
+          onClick={() => void review("UNDER_REVIEW")}
+          type="button"
+        >
+          <Clock3 size={15} />{" "}
+          {incident.status === "UNDER_REVIEW"
+            ? "Review in progress"
+            : "Start review"}
+        </button>
+        <button
+          className="primary"
+          disabled={saving}
+          onClick={() => void review("RESOLVED")}
+          type="button"
+        >
+          {saving ? (
+            <LoaderCircle className="spin" size={15} />
+          ) : (
+            <CheckCircle2 size={15} />
+          )}{" "}
+          Mark resolved
+        </button>
+        {confirmDismiss ? (
+          <div className="dismiss-confirm">
+            <span>Dismiss this report?</span>
+            <button
+              disabled={saving}
+              onClick={() => void review("DISMISSED")}
+              type="button"
+            >
+              Confirm dismiss
+            </button>
+            <button
+              disabled={saving}
+              onClick={() => setConfirmDismiss(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            className="dismiss-button"
+            disabled={saving}
+            onClick={() => setConfirmDismiss(true)}
+            type="button"
+          >
+            <CircleX size={15} /> Dismiss
+          </button>
+        )}
+      </footer>
     </article>
   );
 }
 
-function statusLabel(value: string) {
+function formatIncidentId(value: string) {
+  return /^INCR-[A-Z0-9]{5}$/i.test(value)
+    ? value.toUpperCase()
+    : `#${value.slice(-8).toUpperCase()}`;
+}
+function outcomeLabel(value: string) {
+  if (value === "UNDER_REVIEW") return "Review in progress";
+  if (value === "RESOLVED") return "Incident resolved";
+  if (value === "DISMISSED") return "Report dismissed";
+  return "Review outcome pending";
+}
+function initials(value: string) {
   return value
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/^\w/, (letter) => letter.toUpperCase());
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 function categoryLabel(value: string) {
   return value
     .toLowerCase()
     .replace(/_/g, " ")
     .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+function unitNumber(vehicle: {
+  vehicleType: string;
+  bodyNumber?: string | null;
+  permitNumber?: string | null;
+}) {
+  return vehicle.vehicleType === "HABAL_HABAL"
+    ? (vehicle.permitNumber ?? "Not assigned")
+    : (vehicle.bodyNumber ?? "Not assigned");
+}
+function unitLabel(vehicleType: string) {
+  return vehicleType === "HABAL_HABAL" ? "Permit no." : "Body no.";
+}
+function vehicleTypeLabel(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+function ratingColor(rating: number) {
+  if (rating >= 4) return "#e6a008";
+  if (rating >= 3) return "#d78b16";
+  if (rating > 0) return "#d05a45";
+  return "#aab4ad";
 }
 function formatDate(value: string) {
   return new Date(value).toLocaleString("en-PH", {
@@ -282,4 +328,27 @@ function formatDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+function HighlightText({ text, query }: { text: string; query: string }) {
+  const terms = Array.from(
+    new Set(query.trim().split(/\s+/).filter(Boolean)),
+  ).sort((left, right) => right.length - left.length);
+  if (terms.length === 0) return text;
+  const escapedTerms = terms.map((term) =>
+    term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  );
+  const parts = text.split(new RegExp(`(${escapedTerms.join("|")})`, "gi"));
+  return (
+    <>
+      {parts.map((part, index) =>
+        terms.some((term) => term.toLowerCase() === part.toLowerCase()) ? (
+          <mark className="incident-search-highlight" key={`${part}-${index}`}>
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
 }

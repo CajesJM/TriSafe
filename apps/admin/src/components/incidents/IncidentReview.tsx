@@ -6,7 +6,7 @@ import { IncidentReviewCard } from "./IncidentReviewCard";
 import { ArrowUpDown, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import type { ToastMessage } from "../shared/ToastNotification";
 
-const pageSize = 5;
+const pageSize = 6;
 type IncidentSort = "NEWEST" | "OLDEST";
 export function IncidentReview({
   incidents,
@@ -26,9 +26,15 @@ export function IncidentReview({
       incidents
         .filter((incident) => {
           const text =
-            `${incident.category} ${incident.rawDescription} ${incident.aiDraft ?? ""} ${incident.passenger.fullName} ${incident.ride?.vehicle.plateNumber ?? ""}`.toLowerCase();
+            `${incident.id} #${incident.id.slice(-8)} ${incident.category} ${incident.rawDescription} ${incident.aiDraft ?? ""} ${incident.passenger.fullName} ${incident.ride?.vehicle.plateNumber ?? ""} ${incident.ride?.vehicle.driver.user.fullName ?? ""} ${incident.ride?.vehicle.bodyNumber ?? ""} ${incident.ride?.vehicle.permitNumber ?? ""}`.toLowerCase();
+          const searchTerms = search
+            .trim()
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(Boolean);
           return (
-            (!search || text.includes(search.toLowerCase())) &&
+            (searchTerms.length === 0 ||
+              searchTerms.every((term) => text.includes(term))) &&
             (!status || incident.status === status)
           );
         })
@@ -42,9 +48,15 @@ export function IncidentReview({
   );
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   const counts = {
-    submitted: incidents.filter((incident) => incident.status === "SUBMITTED").length,
-    reviewing: incidents.filter((incident) => incident.status === "UNDER_REVIEW").length,
-    closed: incidents.filter((incident) => ["RESOLVED", "DISMISSED"].includes(incident.status)).length,
+    submitted: incidents.filter((incident) => incident.status === "SUBMITTED")
+      .length,
+    reviewing: incidents.filter(
+      (incident) => incident.status === "UNDER_REVIEW",
+    ).length,
+    resolved: incidents.filter((incident) => incident.status === "RESOLVED")
+      .length,
+    dismissed: incidents.filter((incident) => incident.status === "DISMISSED")
+      .length,
   };
   function updateSearch(value: string) {
     setSearch(value);
@@ -73,12 +85,15 @@ export function IncidentReview({
       <DataToolbar
         search={search}
         onSearch={updateSearch}
-        searchLabel="Search passenger, category, plate, or report"
+        searchLabel="Search incident ID, passenger, driver, or unit number"
         additionalFilter={
           <div className="incident-table-controls">
             <label className="data-filter incident-status-filter">
               <span>Status</span>
-              <select value={status} onChange={(event) => updateStatus(event.target.value)}>
+              <select
+                value={status}
+                onChange={(event) => updateStatus(event.target.value)}
+              >
                 <option value="">All statuses</option>
                 <option value="SUBMITTED">Submitted</option>
                 <option value="UNDER_REVIEW">Under review</option>
@@ -121,6 +136,7 @@ export function IncidentReview({
         {visible.map((incident) => (
           <IncidentReviewCard
             incident={incident}
+            searchQuery={search}
             onReview={onReview}
             onNotify={onNotify}
             key={incident.id}
@@ -153,16 +169,25 @@ function IncidentStatusChart({
   counts,
   total,
 }: {
-  counts: { submitted: number; reviewing: number; closed: number };
+  counts: {
+    submitted: number;
+    reviewing: number;
+    resolved: number;
+    dismissed: number;
+  };
   total: number;
 }) {
   const rows = [
     { label: "Submitted", value: counts.submitted, tone: "submitted" },
     { label: "Under review", value: counts.reviewing, tone: "reviewing" },
-    { label: "Closed", value: counts.closed, tone: "closed" },
+    { label: "Resolved", value: counts.resolved, tone: "resolved" },
+    { label: "Dismissed", value: counts.dismissed, tone: "dismissed" },
   ];
   return (
-    <section className="incident-status-chart" aria-labelledby="incident-status-title">
+    <section
+      className="incident-status-chart"
+      aria-labelledby="incident-status-title"
+    >
       <div className="incident-chart-heading">
         <div>
           <span className="eyebrow">CASE STATUS</span>
@@ -172,11 +197,17 @@ function IncidentStatusChart({
       </div>
       <div className="incident-chart-bars">
         {rows.map((row) => {
-          const percentage = total > 0 ? Math.round((row.value / total) * 100) : 0;
+          const percentage =
+            total > 0 ? Math.round((row.value / total) * 100) : 0;
           return (
             <div className={`incident-chart-row ${row.tone}`} key={row.label}>
-              <div><span>{row.label}</span><b>{row.value}</b></div>
-              <span className="incident-chart-track"><span style={{ width: `${percentage}%` }} /></span>
+              <div>
+                <span>{row.label}</span>
+                <b>{row.value}</b>
+              </div>
+              <span className="incident-chart-track">
+                <span style={{ width: `${percentage}%` }} />
+              </span>
               <small>{percentage}%</small>
             </div>
           );

@@ -460,14 +460,27 @@ export type Incident = {
   aiDraft?: string;
   category: string;
   status: string;
-  passenger: { fullName: string };
+  passenger: {
+    id: string;
+    fullName: string;
+    username?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    avatarData?: string | null;
+  };
   reviewerNotes?: string | null;
   ride?: {
     estimatedFare: number | string;
     vehicle: {
       plateNumber: string;
       vehicleType: string;
-      driver: { user: { fullName: string } };
+      bodyNumber?: string | null;
+      permitNumber?: string | null;
+      driver: {
+        user: { fullName: string; avatarData?: string | null };
+        ratings: Array<{ score: number }>;
+        franchise?: { franchiseNumber: string } | null;
+      };
     };
   } | null;
   createdAt: string;
