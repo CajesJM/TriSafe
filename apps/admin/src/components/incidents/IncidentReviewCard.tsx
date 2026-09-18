@@ -1,9 +1,7 @@
 import { useState } from "react";
 import {
   AlertTriangle,
-  Bot,
   CarFront,
-  Check,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -16,21 +14,22 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Incident, IncidentReviewInput } from "../../api";
+import type { ToastMessage } from "../shared/ToastNotification";
 
 const categories = ["SAFETY", "OVERCHARGING", "HARASSMENT", "VEHICLE", "OTHER"];
 
 export function IncidentReviewCard({
   incident,
   onReview,
+  onNotify,
 }: {
   incident: Incident;
   onReview: (id: string, review: IncidentReviewInput) => Promise<void>;
+  onNotify: (type: ToastMessage["type"], message: string) => void;
 }) {
   const [category, setCategory] = useState(incident.category);
   const [notes, setNotes] = useState(incident.reviewerNotes ?? "");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [savedMessage, setSavedMessage] = useState("");
   const [confirmDismiss, setConfirmDismiss] = useState(false);
   const [expanded, setExpanded] = useState(
     ["SUBMITTED", "UNDER_REVIEW"].includes(incident.status),
@@ -38,24 +37,23 @@ export function IncidentReviewCard({
 
   async function review(status: IncidentReviewInput["status"]) {
     setSaving(true);
-    setError("");
-    setSavedMessage("");
     try {
       await onReview(incident.id, {
         status,
         category,
         reviewerNotes: notes.trim() || undefined,
       });
-      setSavedMessage(
+      const message =
         status === "UNDER_REVIEW"
           ? "Report assigned for LGU review."
           : status === "RESOLVED"
             ? "Report marked as resolved."
-            : "Report dismissed and recorded.",
-      );
+            : "Report dismissed and recorded.";
+      onNotify("success", message);
       setConfirmDismiss(false);
     } catch (requestError) {
-      setError(
+      onNotify(
+        "error",
         requestError instanceof Error
           ? requestError.message
           : "Unable to save the review.",
@@ -157,25 +155,6 @@ export function IncidentReviewCard({
               </div>
               <p>{incident.rawDescription}</p>
             </article>
-            <article className="evidence-panel ai-evidence">
-              <div className="evidence-heading">
-                <span>
-                  <Bot size={16} />
-                </span>
-                <div>
-                  <small>AI-ASSISTED ORGANIZATION</small>
-                  <h5>Structured draft</h5>
-                </div>
-              </div>
-              <p>
-                {incident.aiDraft ??
-                  "No AI-assisted draft was generated for this report."}
-              </p>
-              <small className="ai-reminder">
-                Use as a drafting aid only. Verify details against the passenger
-                statement.
-              </small>
-            </article>
           </section>
 
           <section className="incident-decision-panel">
@@ -197,7 +176,6 @@ export function IncidentReviewCard({
                   value={category}
                   onChange={(event) => {
                     setCategory(event.target.value);
-                    setSavedMessage("");
                   }}
                 >
                   {categories.map((item) => (
@@ -213,7 +191,6 @@ export function IncidentReviewCard({
                   value={notes}
                   onChange={(event) => {
                     setNotes(event.target.value);
-                    setSavedMessage("");
                   }}
                   placeholder="Document findings, actions taken, or required follow-up…"
                   rows={4}
@@ -224,16 +201,6 @@ export function IncidentReviewCard({
                 </small>
               </label>
             </div>
-            {error && (
-              <div className="incident-feedback error" role="alert">
-                <AlertTriangle size={16} /> {error}
-              </div>
-            )}
-            {savedMessage && (
-              <div className="incident-feedback success" role="status">
-                <Check size={16} /> {savedMessage}
-              </div>
-            )}
             <div className="incident-decision-actions">
               <button
                 className="secondary"

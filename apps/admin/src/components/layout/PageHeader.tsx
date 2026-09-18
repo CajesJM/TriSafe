@@ -380,18 +380,14 @@ export function PageHeader({
       {tab !== "overview" &&
         tab !== "passengers" &&
         tab !== "administrators" &&
-        tab !== "drivers" && (
+        tab !== "drivers" &&
+        tab !== "incidents" && (
           <div className="page-title-row">
             <div>
               <p className="eyebrow">TRINIDAD BPLO · TRANSPORT SAFETY</p>
               <h1>{titleByTab[tab]}</h1>
               <p>{hintByTab[tab]}</p>
             </div>
-            {tab === "incidents" && openIncidents > 0 && (
-              <span className="attention-chip">
-                {openIncidents} awaiting action
-              </span>
-            )}
           </div>
         )}
     </header>

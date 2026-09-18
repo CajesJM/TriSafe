@@ -138,7 +138,7 @@ export function App() {
     const scrollbarClass = "trisafe-scrollbar-hidden";
     const hideScrollbar =
       authenticated &&
-      ["overview", "passengers", "administrators", "drivers"].includes(tab);
+      ["overview", "passengers", "administrators", "drivers", "incidents"].includes(tab);
     document.documentElement.classList.toggle(scrollbarClass, hideScrollbar);
     document.body.classList.toggle(scrollbarClass, hideScrollbar);
     return () => {
@@ -395,7 +395,11 @@ export function App() {
               <AnnouncementComposer onNotify={showToast} />
             )}
             {tab === "incidents" && (
-              <IncidentReview incidents={incidents} onReview={reviewIncident} />
+              <IncidentReview
+                incidents={incidents}
+                onReview={reviewIncident}
+                onNotify={showToast}
+              />
             )}
             {tab === "violations" && <ViolationManagement drivers={drivers} onNotify={showToast} />}
             {tab === "ratings" && <RatingManagement onNotify={showToast} />}

@@ -1,5 +1,6 @@
 .franchise-modal {
   width: min(100%, 780px);
+  overflow: visible;
   color: #171c18;
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
@@ -29,9 +30,13 @@
   font-weight: 500;
 }
 .franchise-modal .dashboard-modal-body {
+  overflow: visible;
   padding: 22px 26px 25px;
 }
 .franchise-modal .dashboard-modal-footer {
+  position: relative;
+  z-index: 1;
+  border-radius: 0 0 18px 18px;
   padding: 15px 26px 18px;
   background: var(--off-white);
 }
@@ -259,33 +264,375 @@
   font-weight: 500;
 }
 .franchise-modal-form .field > span,
+.franchise-modal-form .field > label,
 .franchise-modal-form input,
 .franchise-modal-form select {
   color: #242a26;
 }
-.franchise-date-input {
-  display: flex;
+.franchise-modal-form .field > label {
+  font-size: 10px;
+  font-weight: 750;
+}
+.franchise-status-select,
+.franchise-calendar-control {
+  position: relative;
+  min-width: 0;
+}
+.franchise-select-trigger,
+.franchise-date-trigger {
+  display: grid;
+  width: 100%;
+  min-height: 42px;
   align-items: center;
-  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 9px;
+  padding: 5px 10px;
+  color: #242a26;
   background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
 }
-.franchise-date-input:focus-within {
-  border-color: var(--forest);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 18%, transparent);
+.franchise-select-trigger {
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
+  gap: 8px;
 }
-.franchise-date-input svg {
-  flex: 0 0 17px;
+.franchise-select-trigger:hover,
+.franchise-date-trigger:hover {
+  border-color: #a9c6a7;
+  background: #fbfefb;
+}
+.franchise-status-select.is-open .franchise-select-trigger,
+.franchise-select-trigger:focus-visible,
+.franchise-date-trigger[aria-expanded="true"],
+.franchise-date-trigger:focus-visible {
+  border-color: rgba(47, 138, 53, 0.58);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(75, 188, 68, 0.12);
+}
+.franchise-select-trigger > span:not(.franchise-option-icon) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.franchise-select-trigger strong,
+.franchise-status-menu strong {
+  color: #202722;
+  font-size: 9px;
+  font-weight: 750;
+}
+.franchise-select-trigger small,
+.franchise-status-menu small {
+  overflow: hidden;
+  color: #69736c;
+  font-size: 7px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.franchise-select-chevron {
+  width: 16px;
+  height: 16px;
+  color: #68716b;
+  transition: transform 0.18s ease;
+}
+.franchise-status-select.is-open .franchise-select-chevron,
+.franchise-date-trigger[aria-expanded="true"] > svg:last-child {
+  transform: rotate(180deg);
+}
+.franchise-option-icon {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 7px;
+  color: #237529;
+  background: #eaf6e8;
+}
+.franchise-option-icon.suspended {
+  color: #a55708;
+  background: #fff2df;
+}
+.franchise-option-icon.expired {
+  color: #c32626;
+  background: #fdeaea;
+}
+.franchise-option-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.franchise-status-menu,
+.franchise-calendar-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  width: 100%;
+  border: 1px solid #d9e4da;
+  border-radius: 12px;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(20, 49, 24, 0.17);
+  animation: franchise-control-in 0.16s ease-out both;
+}
+@keyframes franchise-control-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.franchise-status-menu {
+  display: grid;
+  gap: 2px;
+  max-width: 310px;
+  padding: 4px;
+}
+.franchise-status-menu > button {
+  display: grid;
+  grid-template-columns: 29px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 7px;
+  min-height: 39px;
+  border: 0;
+  border-radius: 8px;
+  padding: 5px 7px;
+  color: #253029;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.franchise-status-menu > button:hover,
+.franchise-status-menu > button:focus-visible {
+  outline: 0;
+  background: #f2f8f1;
+}
+.franchise-status-menu > button.selected {
+  background: #edf7eb;
+}
+.franchise-status-menu > button > span:not(.franchise-option-icon) {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.franchise-status-menu > button > svg {
+  width: 14px;
+  height: 14px;
+  color: #237529;
+}
+.franchise-date-trigger {
+  grid-template-columns: 18px minmax(0, 1fr) 16px;
+  gap: 8px;
+}
+.franchise-date-trigger > svg:first-child {
   width: 17px;
   height: 17px;
-  margin-left: 11px;
-  color: var(--forest);
+  color: #2f8a35;
+  transition: color 0.18s ease;
 }
-.franchise-date-input input {
+.franchise-date-trigger.is-expired > svg:first-child {
+  color: #d12b2b;
+}
+.franchise-date-trigger > svg:last-child {
+  width: 16px;
+  height: 16px;
+  color: #68716b;
+  transition: transform 0.18s ease;
+}
+.franchise-date-trigger > span {
+  font-size: 9px;
+  font-weight: 650;
+}
+.franchise-date-trigger > span.placeholder {
+  color: #7c857f;
+  font-weight: 500;
+}
+.franchise-calendar-popover {
+  left: auto;
+  right: 0;
+  width: min(248px, calc(100vw - 40px));
+  border-color: #cbd9cc;
+  padding: 9px;
+  color: #202722;
+  background: #fff;
+  box-shadow: 0 20px 48px rgba(17, 45, 21, 0.22);
+}
+.franchise-calendar-control.opens-above .franchise-calendar-popover {
+  top: auto;
+  bottom: calc(100% + 7px);
+  animation-name: franchise-control-in-above;
+}
+@keyframes franchise-control-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.franchise-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 1px 8px;
+}
+.franchise-calendar-header > label {
+  display: grid;
+  flex: 1;
+  gap: 1px;
   min-width: 0;
+}
+.franchise-calendar-header > label > span {
+  color: #526158;
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.franchise-calendar-header input[type="month"] {
+  width: 116px;
+  min-height: 25px;
   border: 0;
-  box-shadow: none !important;
+  border-radius: 6px;
+  outline: 0;
+  padding: 2px 4px;
+  color: #151b17;
+  background: #f2f6f2;
+  font-size: 10px;
+  font-weight: 700;
+}
+.franchise-calendar-header input[type="month"]:focus {
+  box-shadow: 0 0 0 2px rgba(75, 188, 68, 0.15);
+}
+.franchise-calendar-header > span {
+  display: flex;
+  gap: 4px;
+}
+.franchise-calendar-header button,
+.franchise-calendar-footer button {
+  display: grid;
+  place-items: center;
+  border: 1px solid #e0e7e1;
+  color: #405047;
+  background: #f8faf8;
+  cursor: pointer;
+}
+.franchise-calendar-header button {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+}
+.franchise-calendar-header button:hover,
+.franchise-calendar-header button:focus-visible,
+.franchise-calendar-footer button:hover,
+.franchise-calendar-footer button:focus-visible {
+  border-color: #b8d2b6;
+  outline: 0;
+  color: #237529;
+  background: #edf7eb;
+}
+.franchise-calendar-header svg {
+  width: 14px;
+  height: 14px;
+}
+.franchise-calendar-weekdays,
+.franchise-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.franchise-calendar-weekdays {
+  margin-bottom: 4px;
+}
+.franchise-calendar-weekdays span {
+  color: #667169;
+  font-size: 7px;
+  font-weight: 750;
+  text-align: center;
+}
+.franchise-calendar-grid > button,
+.franchise-calendar-grid > span {
+  aspect-ratio: 1;
+}
+.franchise-calendar-grid > button {
+  border: 0;
+  border-radius: 7px;
+  color: #222b25;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.franchise-calendar-grid > button:hover,
+.franchise-calendar-grid > button:focus-visible {
+  outline: 0;
+  color: #237529;
+  background: #edf7eb;
+}
+.franchise-calendar-grid > button.today {
+  box-shadow: inset 0 0 0 1px #9fc79c;
+}
+.franchise-calendar-grid > button.selected {
+  color: #fff;
+  background: #2f8a35;
+  box-shadow: 0 5px 12px rgba(47, 138, 53, 0.24);
+}
+.franchise-calendar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+  border-top: 1px solid #edf0ed;
+  padding: 7px 1px 0;
+}
+.franchise-calendar-footer > span {
+  overflow: hidden;
+  color: #4f5b53;
+  font-size: 8px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.franchise-calendar-footer button {
+  min-height: 25px;
+  border-radius: 7px;
+  padding: 0 8px;
+  font-size: 7px;
+  font-weight: 750;
+}
+@media (prefers-reduced-motion: reduce) {
+  .franchise-status-menu,
+  .franchise-calendar-popover {
+    animation-duration: 0.01ms;
+  }
+}
+@media (max-width: 600px) {
+  .franchise-modal {
+    overflow: hidden;
+  }
+  .franchise-modal .dashboard-modal-footer {
+    border-radius: 0 0 10px 10px;
+  }
+  .franchise-modal .dashboard-modal-body {
+    overflow-y: auto;
+  }
+  .franchise-status-menu,
+  .franchise-calendar-popover {
+    position: static;
+    z-index: auto;
+    width: 100%;
+    margin-top: 7px;
+  }
 }
 .driver-receipt-modal {
   grid-template-columns: 285px minmax(0, 1fr);

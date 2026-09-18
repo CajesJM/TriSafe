@@ -1,32 +1,44 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { Incident, IncidentReviewInput } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState } from "../shared/Feedback";
 import { IncidentReviewCard } from "./IncidentReviewCard";
-import { CircleCheckBig, Clock3, Send, ShieldAlert } from "lucide-react";
+import { ArrowUpDown, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import type { ToastMessage } from "../shared/ToastNotification";
 
 const pageSize = 5;
+type IncidentSort = "NEWEST" | "OLDEST";
 export function IncidentReview({
   incidents,
   onReview,
+  onNotify,
 }: {
   incidents: Incident[];
   onReview: (id: string, review: IncidentReviewInput) => Promise<void>;
+  onNotify: (type: ToastMessage["type"], message: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [sort, setSort] = useState<IncidentSort>("NEWEST");
   const [page, setPage] = useState(1);
   const filtered = useMemo(
     () =>
-      incidents.filter((incident) => {
-        const text =
-          `${incident.category} ${incident.rawDescription} ${incident.aiDraft ?? ""} ${incident.passenger.fullName} ${incident.ride?.vehicle.plateNumber ?? ""}`.toLowerCase();
-        return (
-          (!search || text.includes(search.toLowerCase())) &&
-          (!status || incident.status === status)
-        );
-      }),
-    [incidents, search, status],
+      incidents
+        .filter((incident) => {
+          const text =
+            `${incident.category} ${incident.rawDescription} ${incident.aiDraft ?? ""} ${incident.passenger.fullName} ${incident.ride?.vehicle.plateNumber ?? ""}`.toLowerCase();
+          return (
+            (!search || text.includes(search.toLowerCase())) &&
+            (!status || incident.status === status)
+          );
+        })
+        .sort((left, right) => {
+          const difference =
+            new Date(right.createdAt).getTime() -
+            new Date(left.createdAt).getTime();
+          return sort === "NEWEST" ? difference : -difference;
+        }),
+    [incidents, search, sort, status],
   );
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   const counts = {
@@ -43,45 +55,74 @@ export function IncidentReview({
     setPage(1);
   }
   return (
-    <section className="card data-card">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">PASSENGER SAFETY REPORTS</span>
-          <h3>LGU review queue</h3>
-          <p className="section-description">
-            Compare the passenger statement with the AI-organized draft before
-            recording an LGU decision.
-          </p>
+    <section className="card data-card incident-workspace">
+      <div className="incident-top-grid">
+        <div className="section-heading incident-hero">
+          <div className="incident-heading-main">
+            <span className="eyebrow">PASSENGER SAFETY</span>
+            <h3>Incident Reports</h3>
+            <p className="section-description">
+              Review passenger reports, verify ride evidence, and record LGU
+              decisions from one workspace.
+            </p>
+          </div>
+          <ShieldAlert className="incident-hero-mark" aria-hidden="true" />
         </div>
-        <span className="ai-notice">AI assists drafting only</span>
-      </div>
-      <div className="incident-queue-summary" aria-label="Incident queue summary">
-        <QueueMetric icon={<Send size={17} />} label="New reports" value={counts.submitted} tone="new" />
-        <QueueMetric icon={<Clock3 size={17} />} label="Under review" value={counts.reviewing} tone="reviewing" />
-        <QueueMetric icon={<CircleCheckBig size={17} />} label="Closed reports" value={counts.closed} tone="closed" />
-        <div className="queue-guidance"><ShieldAlert size={17} /><span><b>Review carefully</b><small>AI organizes the report. The LGU makes every final decision.</small></span></div>
+        <IncidentStatusChart counts={counts} total={incidents.length} />
       </div>
       <DataToolbar
         search={search}
         onSearch={updateSearch}
         searchLabel="Search passenger, category, plate, or report"
-        filter={status}
-        onFilter={updateStatus}
-        filterLabel="Status"
-        options={[
-          { value: "", label: "All reports" },
-          { value: "SUBMITTED", label: "Submitted" },
-          { value: "UNDER_REVIEW", label: "Under review" },
-          { value: "RESOLVED", label: "Resolved" },
-          { value: "DISMISSED", label: "Dismissed" },
-        ]}
-        resultCount={filtered.length}
+        additionalFilter={
+          <div className="incident-table-controls">
+            <label className="data-filter incident-status-filter">
+              <span>Status</span>
+              <select value={status} onChange={(event) => updateStatus(event.target.value)}>
+                <option value="">All statuses</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="UNDER_REVIEW">Under review</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="DISMISSED">Dismissed</option>
+              </select>
+            </label>
+            <label className="data-filter incident-sort-filter">
+              <span>Sort reports</span>
+              <select
+                value={sort}
+                onChange={(event) => {
+                  setSort(event.target.value as IncidentSort);
+                  setPage(1);
+                }}
+              >
+                <option value="NEWEST">Sort by: newest</option>
+                <option value="OLDEST">Sort by: oldest</option>
+              </select>
+              <ArrowUpDown aria-hidden="true" />
+            </label>
+            <button
+              className="incident-view-reset"
+              type="button"
+              title="Reset search, status, and sorting"
+              aria-label="Reset incident report view"
+              onClick={() => {
+                setSearch("");
+                setStatus("");
+                setSort("NEWEST");
+                setPage(1);
+              }}
+            >
+              <SlidersHorizontal aria-hidden="true" />
+            </button>
+          </div>
+        }
       />
       <div className="incident-list">
         {visible.map((incident) => (
           <IncidentReviewCard
             incident={incident}
             onReview={onReview}
+            onNotify={onNotify}
             key={incident.id}
           />
         ))}
@@ -108,6 +149,39 @@ export function IncidentReview({
   );
 }
 
-function QueueMetric({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: string }) {
-  return <div className={`queue-metric ${tone}`}><span>{icon}</span><div><strong>{value}</strong><small>{label}</small></div></div>;
+function IncidentStatusChart({
+  counts,
+  total,
+}: {
+  counts: { submitted: number; reviewing: number; closed: number };
+  total: number;
+}) {
+  const rows = [
+    { label: "Submitted", value: counts.submitted, tone: "submitted" },
+    { label: "Under review", value: counts.reviewing, tone: "reviewing" },
+    { label: "Closed", value: counts.closed, tone: "closed" },
+  ];
+  return (
+    <section className="incident-status-chart" aria-labelledby="incident-status-title">
+      <div className="incident-chart-heading">
+        <div>
+          <span className="eyebrow">CASE STATUS</span>
+          <h4 id="incident-status-title">Incident overview</h4>
+        </div>
+        <strong>{total}</strong>
+      </div>
+      <div className="incident-chart-bars">
+        {rows.map((row) => {
+          const percentage = total > 0 ? Math.round((row.value / total) * 100) : 0;
+          return (
+            <div className={`incident-chart-row ${row.tone}`} key={row.label}>
+              <div><span>{row.label}</span><b>{row.value}</b></div>
+              <span className="incident-chart-track"><span style={{ width: `${percentage}%` }} /></span>
+              <small>{percentage}%</small>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }

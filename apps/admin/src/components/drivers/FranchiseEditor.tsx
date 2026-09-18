@@ -1,6 +1,18 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import {
   CalendarClock,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileWarning,
   Info,
   ShieldAlert,
@@ -33,7 +45,20 @@ export function FranchiseEditor({
   const [error, setError] = useState("");
   const [informationOpen, setInformationOpen] = useState(false);
   const [informationClosing, setInformationClosing] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarPlacement, setCalendarPlacement] = useState<"above" | "below">(
+    "below",
+  );
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    monthFromDate(franchise?.expiresAt?.slice(0, 10) ?? localDate()),
+  );
   const informationControl = useRef<HTMLDivElement>(null);
+  const statusControl = useRef<HTMLDivElement>(null);
+  const calendarControl = useRef<HTMLDivElement>(null);
+  const calendarPopover = useRef<HTMLDivElement>(null);
+  const statusListId = useId();
+  const calendarId = useId();
   const currentStatus = franchise?.status ?? driver.verification;
   const currentStatusLabel = statusLabel(currentStatus);
   const expirationLabel = franchise?.expiresAt
@@ -56,6 +81,33 @@ export function FranchiseEditor({
       document.removeEventListener("pointerdown", closeOutside);
     };
   }, [informationClosing, informationOpen]);
+
+  useEffect(() => {
+    if (!statusOpen && !calendarOpen) return;
+    function closeOutside(event: PointerEvent) {
+      const target = event.target as Node;
+      if (!statusControl.current?.contains(target)) setStatusOpen(false);
+      if (!calendarControl.current?.contains(target)) setCalendarOpen(false);
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [calendarOpen, statusOpen]);
+
+  useLayoutEffect(() => {
+    if (!calendarOpen) return;
+    function placeCalendar() {
+      const control = calendarControl.current;
+      const popover = calendarPopover.current;
+      if (!control || !popover) return;
+      const bounds = control.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - bounds.bottom;
+      const requiredSpace = popover.offsetHeight + 12;
+      setCalendarPlacement(spaceBelow >= requiredSpace ? "below" : "above");
+    }
+    placeCalendar();
+    window.addEventListener("resize", placeCalendar);
+    return () => window.removeEventListener("resize", placeCalendar);
+  }, [calendarMonth, calendarOpen]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -178,7 +230,9 @@ export function FranchiseEditor({
         </div>
         <div className="franchise-summary-item franchise-status-summary">
           <small>Current status</small>
-          <strong className={`franchise-status-pill ${currentStatus.toLowerCase()}`}>
+          <strong
+            className={`franchise-status-pill ${currentStatus.toLowerCase()}`}
+          >
             <i aria-hidden="true" /> {currentStatusLabel}
           </strong>
           <span>{statusTimeline(currentStatus, expirationLabel)}</span>
@@ -203,48 +257,280 @@ export function FranchiseEditor({
         onSubmit={submit}
         noValidate
       >
-        <label className="field">
-          <span>
+        <div className="field">
+          <label id="franchise-status-label">
             Driver and franchise status <em>*</em>
-          </span>
-          <select
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as UpdateFranchiseInput["status"]);
-              setError("");
+          </label>
+          <div
+            className={`franchise-status-select${statusOpen ? " is-open" : ""}`}
+            ref={statusControl}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return;
+              event.stopPropagation();
+              setStatusOpen(false);
             }}
-            required
           >
-            <option value="VERIFIED">Verified — eligible for rides</option>
-            <option value="SUSPENDED">Suspended — temporarily blocked</option>
-            <option value="EXPIRED">Expired — franchise ended</option>
-          </select>
+            <button
+              className="franchise-select-trigger"
+              type="button"
+              role="combobox"
+              aria-labelledby="franchise-status-label"
+              aria-controls={statusListId}
+              aria-expanded={statusOpen}
+              aria-haspopup="listbox"
+              onClick={() => {
+                setCalendarOpen(false);
+                setStatusOpen((open) => !open);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setStatusOpen(true);
+                }
+              }}
+            >
+              <StatusIcon status={status} />
+              <span>
+                <strong>{statusLabel(status)}</strong>
+                <small>{statusDescription(status)}</small>
+              </span>
+              <ChevronDown
+                className="franchise-select-chevron"
+                aria-hidden="true"
+              />
+            </button>
+            {statusOpen && (
+              <div
+                className="franchise-status-menu"
+                id={statusListId}
+                role="listbox"
+                aria-labelledby="franchise-status-label"
+              >
+                {FRANCHISE_STATUSES.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={status === option.value}
+                    className={status === option.value ? "selected" : ""}
+                    onClick={() => {
+                      setStatus(option.value);
+                      setStatusOpen(false);
+                      setError("");
+                    }}
+                  >
+                    <StatusIcon status={option.value} />
+                    <span>
+                      <strong>{option.label}</strong>
+                      <small>{option.description}</small>
+                    </span>
+                    {status === option.value && <Check aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <small className="field-input-hint">
             The selected status applies to both the driver and franchise.
           </small>
-        </label>
-        <label className="field">
-          <span>
+        </div>
+        <div className="field">
+          <label id="franchise-expiration-label">
             Franchise expiration date <em>*</em>
-          </span>
-          <div className="franchise-date-input">
-            <CalendarClock aria-hidden="true" />
-            <input
-              type="date"
-              value={expiresAt}
-              onChange={(event) => {
-                setExpiresAt(event.target.value);
-                setError("");
+          </label>
+          <div
+            className={`franchise-calendar-control opens-${calendarPlacement}`}
+            ref={calendarControl}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return;
+              event.stopPropagation();
+              setCalendarOpen(false);
+            }}
+          >
+            <button
+              className={`franchise-date-trigger${
+                status === "EXPIRED" ||
+                (expiresAt !== "" && expiresAt < localDate())
+                  ? " is-expired"
+                  : ""
+              }`}
+              type="button"
+              aria-labelledby="franchise-expiration-label"
+              aria-controls={calendarId}
+              aria-expanded={calendarOpen}
+              aria-haspopup="dialog"
+              onClick={() => {
+                setStatusOpen(false);
+                setCalendarMonth(monthFromDate(expiresAt || localDate()));
+                setCalendarOpen((open) => !open);
               }}
-              required
-            />
+            >
+              <CalendarClock aria-hidden="true" />
+              <span className={expiresAt ? "" : "placeholder"}>
+                {expiresAt
+                  ? formatCalendarDate(expiresAt)
+                  : "Select expiration date"}
+              </span>
+              <ChevronDown aria-hidden="true" />
+            </button>
+            {calendarOpen && (
+              <FranchiseCalendar
+                id={calendarId}
+                popoverRef={calendarPopover}
+                month={calendarMonth}
+                value={expiresAt}
+                onMonthChange={setCalendarMonth}
+                onChange={(value) => {
+                  setExpiresAt(value);
+                  setCalendarOpen(false);
+                  setError("");
+                }}
+              />
+            )}
           </div>
           <small className="field-input-hint">
             Verified status requires a date later than today.
           </small>
-        </label>
+        </div>
       </form>
     </ModalShell>
+  );
+}
+
+const FRANCHISE_STATUSES: Array<{
+  value: UpdateFranchiseInput["status"];
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "VERIFIED",
+    label: "Verified",
+    description: "Eligible for passenger rides",
+  },
+  {
+    value: "SUSPENDED",
+    label: "Suspended",
+    description: "Transport access temporarily blocked",
+  },
+  {
+    value: "EXPIRED",
+    label: "Expired",
+    description: "Franchise validity has ended",
+  },
+];
+
+function StatusIcon({ status }: { status: UpdateFranchiseInput["status"] }) {
+  const Icon =
+    status === "VERIFIED"
+      ? ShieldCheck
+      : status === "SUSPENDED"
+        ? ShieldAlert
+        : FileWarning;
+  return (
+    <span className={`franchise-option-icon ${status.toLowerCase()}`}>
+      <Icon aria-hidden="true" />
+    </span>
+  );
+}
+
+function FranchiseCalendar({
+  id,
+  popoverRef,
+  month,
+  value,
+  onMonthChange,
+  onChange,
+}: {
+  id: string;
+  popoverRef: RefObject<HTMLDivElement | null>;
+  month: Date;
+  value: string;
+  onMonthChange: (month: Date) => void;
+  onChange: (value: string) => void;
+}) {
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const leadingDays = new Date(year, monthIndex, 1).getDay();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const today = localDate();
+
+  return (
+    <div
+      ref={popoverRef}
+      className="franchise-calendar-popover"
+      id={id}
+      role="dialog"
+      aria-label="Choose franchise expiration date"
+    >
+      <div className="franchise-calendar-header">
+        <label>
+          <span>Month and year</span>
+          <input
+            type="month"
+            aria-label="Calendar month and year"
+            value={`${year}-${String(monthIndex + 1).padStart(2, "0")}`}
+            onChange={(event) => {
+              if (/^\d{4}-\d{2}$/.test(event.target.value))
+                onMonthChange(monthFromDate(`${event.target.value}-01`));
+            }}
+          />
+        </label>
+        <span>
+          <button
+            type="button"
+            aria-label="Previous month"
+            onClick={() => onMonthChange(new Date(year, monthIndex - 1, 1))}
+          >
+            <ChevronLeft aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next month"
+            onClick={() => onMonthChange(new Date(year, monthIndex + 1, 1))}
+          >
+            <ChevronRight aria-hidden="true" />
+          </button>
+        </span>
+      </div>
+      <div className="franchise-calendar-weekdays" aria-hidden="true">
+        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+          <span key={day}>{day}</span>
+        ))}
+      </div>
+      <div className="franchise-calendar-grid">
+        {Array.from({ length: leadingDays }, (_, index) => (
+          <span key={`empty-${index}`} aria-hidden="true" />
+        ))}
+        {Array.from({ length: daysInMonth }, (_, index) => {
+          const day = index + 1;
+          const date = toDateValue(year, monthIndex, day);
+          return (
+            <button
+              key={date}
+              type="button"
+              className={`${date === value ? "selected" : ""}${date === today ? " today" : ""}`}
+              aria-label={formatCalendarDate(date)}
+              aria-pressed={date === value}
+              onClick={() => onChange(date)}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+      <div className="franchise-calendar-footer">
+        <span>{value ? formatCalendarDate(value) : "No date selected"}</span>
+        <button
+          type="button"
+          onClick={() => {
+            onMonthChange(monthFromDate(today));
+            onChange(today);
+          }}
+        >
+          Today
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -260,6 +546,13 @@ function statusLabel(value: string) {
   return value.charAt(0) + value.slice(1).toLowerCase();
 }
 
+function statusDescription(value: UpdateFranchiseInput["status"]) {
+  return (
+    FRANCHISE_STATUSES.find((option) => option.value === value)?.description ??
+    "Choose a franchise status"
+  );
+}
+
 function statusTimeline(status: string, expiration: string) {
   if (status === "EXPIRED") return `Expired since ${expiration}`;
   if (status === "SUSPENDED") return `Franchise expires ${expiration}`;
@@ -271,4 +564,22 @@ function localDate() {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
     .toISOString()
     .slice(0, 10);
+}
+
+function monthFromDate(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+function toDateValue(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function formatCalendarDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
