@@ -7,6 +7,7 @@ export function ConfirmModal({
   message,
   confirmLabel,
   confirmationText,
+  backdropClassName,
   tone = "danger",
   showIcon = true,
   onConfirm,
@@ -17,6 +18,7 @@ export function ConfirmModal({
   message: string;
   confirmLabel: string;
   confirmationText?: string;
+  backdropClassName?: string;
   tone?: "danger" | "warning" | "success";
   showIcon?: boolean;
   onConfirm: () => void | Promise<void>;
@@ -30,10 +32,14 @@ export function ConfirmModal({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [confirmationValue, setConfirmationValue] = useState("");
-  const confirmationMatches = !confirmationText || confirmationValue === confirmationText;
+  const confirmationMatches =
+    !confirmationText || confirmationValue === confirmationText;
 
   useEffect(() => {
-    (confirmationText ? confirmationInput.current : confirmButton.current)?.focus();
+    (confirmationText
+      ? confirmationInput.current
+      : confirmButton.current
+    )?.focus();
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape" && !working) onCancel();
     }
@@ -48,7 +54,10 @@ export function ConfirmModal({
       await onConfirm();
       onCancel();
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "The requested action could not be completed.";
+      const message =
+        reason instanceof Error
+          ? reason.message
+          : "The requested action could not be completed.";
       setError(message);
       onError?.(message);
       setWorking(false);
@@ -63,7 +72,7 @@ export function ConfirmModal({
         : HelpCircle;
   return createPortal(
     <div
-      className="confirm-modal-backdrop"
+      className={`confirm-modal-backdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !working) onCancel();
       }}
@@ -75,10 +84,20 @@ export function ConfirmModal({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
       >
-        <button className="confirm-modal-close" type="button" onClick={onCancel} disabled={working} aria-label="Close confirmation">
+        <button
+          className="confirm-modal-close"
+          type="button"
+          onClick={onCancel}
+          disabled={working}
+          aria-label="Close confirmation"
+        >
           <X size={17} />
         </button>
-        {showIcon && <span className="confirm-modal-icon"><Icon size={22} /></span>}
+        {showIcon && (
+          <span className="confirm-modal-icon">
+            <Icon size={22} />
+          </span>
+        )}
         <div className="confirm-modal-copy">
           <p className="eyebrow">PLEASE CONFIRM</p>
           <h3 id={titleId}>{title}</h3>
@@ -86,7 +105,10 @@ export function ConfirmModal({
         </div>
         {confirmationText && (
           <label className="confirm-modal-verification">
-            <span>Type <strong>{confirmationText}</strong> to confirm permanent deletion.</span>
+            <span>
+              Type <strong>{confirmationText}</strong> to confirm permanent
+              deletion.
+            </span>
             <input
               ref={confirmationInput}
               type="text"
@@ -102,10 +124,27 @@ export function ConfirmModal({
             />
           </label>
         )}
-        {error && <div className="confirm-modal-error" role="alert">{error}</div>}
+        {error && (
+          <div className="confirm-modal-error" role="alert">
+            {error}
+          </div>
+        )}
         <div className="confirm-modal-actions">
-          <button className="secondary" type="button" onClick={onCancel} disabled={working}>Cancel</button>
-          <button ref={confirmButton} className={`confirm-action confirm-action-${tone}`} type="button" onClick={() => void confirm()} disabled={working || !confirmationMatches}>
+          <button
+            className="secondary"
+            type="button"
+            onClick={onCancel}
+            disabled={working}
+          >
+            Cancel
+          </button>
+          <button
+            ref={confirmButton}
+            className={`confirm-action confirm-action-${tone}`}
+            type="button"
+            onClick={() => void confirm()}
+            disabled={working || !confirmationMatches}
+          >
             {working ? "Processing…" : confirmLabel}
           </button>
         </div>

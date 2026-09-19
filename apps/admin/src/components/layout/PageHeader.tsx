@@ -381,7 +381,8 @@ export function PageHeader({
         tab !== "passengers" &&
         tab !== "administrators" &&
         tab !== "drivers" &&
-        tab !== "incidents" && (
+        tab !== "incidents" &&
+        tab !== "ratings" && (
           <div className="page-title-row">
             <div>
               <p className="eyebrow">TRINIDAD BPLO · TRANSPORT SAFETY</p>

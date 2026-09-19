@@ -567,30 +567,49 @@ export type UpdateViolationInput = {
 };
 export type DriverRatingSummary = {
   driverId: string;
+  createdAt: string;
   fullName: string;
   username?: string | null;
-  vehicle: { plateNumber: string; vehicleType: string } | null;
+  avatarData?: string | null;
+  vehicle: {
+    plateNumber: string;
+    vehicleType: string;
+    bodyNumber?: string | null;
+    permitNumber?: string | null;
+  } | null;
   average: number | null;
   ratingCount: number;
 };
 export type DriverRating = {
   id: string;
+  driverId: string;
   score: number;
   comment?: string | null;
-  visible: boolean;
-  moderationNotes?: string | null;
   createdAt: string;
   driver: {
-    user: { fullName: string };
-    vehicles: { plateNumber: string; vehicleType: string }[];
+    user: { fullName: string; avatarData?: string | null };
+    vehicles: {
+      plateNumber: string;
+      vehicleType: string;
+      bodyNumber?: string | null;
+      permitNumber?: string | null;
+    }[];
   };
-  passenger: { fullName: string };
+  passenger: {
+    fullName: string;
+    username?: string | null;
+    avatarData?: string | null;
+  };
   ride: {
     startedAt: string;
     fromLocationName?: string | null;
     toLocationName?: string | null;
   };
 };
+export type DriverFeedback = Pick<
+  DriverRating,
+  "id" | "score" | "comment" | "createdAt" | "passenger"
+>;
 export type TermsDocument = {
   id: string;
   version: string;
@@ -765,10 +784,13 @@ export const api = {
   driverDeletionImpact: (id: string) =>
     request<{ rideCount: number }>(`/admin/drivers/${id}/deletion-impact`),
   deleteDriver: (id: string, confirmation?: string) =>
-    request<{ deleted: true; deletedRideCount: number }>(`/admin/drivers/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify(confirmation ? { confirmation } : {}),
-    }),
+    request<{ deleted: true; deletedRideCount: number }>(
+      `/admin/drivers/${id}`,
+      {
+        method: "DELETE",
+        body: JSON.stringify(confirmation ? { confirmation } : {}),
+      },
+    ),
   roles: () => request<RoleDefinition[]>("/admin/roles"),
   createRole: (body: RoleInput) =>
     request<RoleDefinition>("/admin/roles", {
@@ -855,14 +877,18 @@ export const api = {
   ratingSummaries: () =>
     request<DriverRatingSummary[]>("/ratings/admin/summary"),
   ratings: () => request<DriverRating[]>("/ratings/admin/all"),
-  moderateRating: (
-    id: string,
-    body: { visible: boolean; moderationNotes?: string },
-  ) =>
-    request<DriverRating>(`/ratings/admin/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
+  driverRatings: (driverId: string) =>
+    request<DriverFeedback[]>(
+      `/ratings/admin/driver/${encodeURIComponent(driverId)}`,
+    ),
+  resetDriverRatings: (driverId: string, confirmation: "RESET") =>
+    request<{ deletedCount: number }>(
+      `/ratings/admin/driver/${encodeURIComponent(driverId)}`,
+      {
+        method: "DELETE",
+        body: JSON.stringify({ confirmation }),
+      },
+    ),
   terms: () => request<TermsDocument[]>("/terms/admin"),
   createTerms: (body: SaveTermsInput) =>
     request<TermsDocument>("/terms/admin", {

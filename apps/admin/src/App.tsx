@@ -34,10 +34,7 @@ import { PassengerManagement } from "./components/users/PassengerManagement";
 import { AdministratorManagement } from "./components/users/AdministratorManagement";
 import { PageHeader } from "./components/layout/PageHeader";
 import { Sidebar } from "./components/layout/Sidebar";
-import {
-  ErrorMessage,
-  LoadingState,
-} from "./components/shared/Feedback";
+import { ErrorMessage, LoadingState } from "./components/shared/Feedback";
 import { Tab } from "./types/admin";
 import { AdminProfilePanel } from "./components/profile/AdminProfilePanel";
 import { DriverEditForm } from "./components/drivers/DriverEditForm";
@@ -67,31 +64,31 @@ export function App() {
   );
   const [profileOpen, setProfileOpen] = useState(false);
   const [driverProfileId, setDriverProfileId] = useState<string | null>(null);
-  const [editingDriverAccount, setEditingDriverAccount] = useState<AdminUser | null>(null);
-  const [driverReceipt, setDriverReceipt] = useState<DriverRegistrationReceiptData | null>(null);
+  const [editingDriverAccount, setEditingDriverAccount] =
+    useState<AdminUser | null>(null);
+  const [driverReceipt, setDriverReceipt] =
+    useState<DriverRegistrationReceiptData | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  const showToast = useCallback((type: ToastMessage["type"], message: string) => {
-    setToast({ id: Date.now(), type, message });
-  }, []);
+  const showToast = useCallback(
+    (type: ToastMessage["type"], message: string) => {
+      setToast({ id: Date.now(), type, message });
+    },
+    [],
+  );
 
   const loadData = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     setError("");
     try {
-      const [
-        nextDashboard,
-        nextDrivers,
-        nextIncidents,
-        nextLogs,
-        nextProfile,
-      ] = await Promise.all([
-        api.dashboard(),
-        api.drivers(),
-        api.incidents(),
-        api.auditLogs(),
-        api.profile(),
-      ]);
+      const [nextDashboard, nextDrivers, nextIncidents, nextLogs, nextProfile] =
+        await Promise.all([
+          api.dashboard(),
+          api.drivers(),
+          api.incidents(),
+          api.auditLogs(),
+          api.profile(),
+        ]);
       setDashboard(nextDashboard);
       setDrivers(nextDrivers);
       setIncidents(nextIncidents);
@@ -114,9 +111,12 @@ export function App() {
   }, [authenticated, loadData]);
   useEffect(() => {
     if (!authenticated) return;
-    const refreshSession = window.setInterval(() => {
-      void loadData(true);
-    }, 5 * 60 * 1000);
+    const refreshSession = window.setInterval(
+      () => {
+        void loadData(true);
+      },
+      5 * 60 * 1000,
+    );
     return () => window.clearInterval(refreshSession);
   }, [authenticated, loadData]);
   useEffect(() => {
@@ -136,16 +136,13 @@ export function App() {
   }, []);
   useEffect(() => {
     const scrollbarClass = "trisafe-scrollbar-hidden";
-    const hideScrollbar =
-      authenticated &&
-      ["overview", "passengers", "administrators", "drivers", "incidents"].includes(tab);
-    document.documentElement.classList.toggle(scrollbarClass, hideScrollbar);
-    document.body.classList.toggle(scrollbarClass, hideScrollbar);
+    document.documentElement.classList.toggle(scrollbarClass, authenticated);
+    document.body.classList.toggle(scrollbarClass, authenticated);
     return () => {
       document.documentElement.classList.remove(scrollbarClass);
       document.body.classList.remove(scrollbarClass);
     };
-  }, [authenticated, tab]);
+  }, [authenticated]);
 
   if (!authenticated)
     return (
@@ -168,12 +165,19 @@ export function App() {
       const account = await api.user(driver.userId);
       setEditingDriverAccount(account);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to open the driver account.");
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to open the driver account.",
+      );
     }
   }
   async function saveDriverAccount(input: UpdateUserInput) {
     if (!editingDriverAccount) return;
-    const updated = await api.updateUser(editingDriverAccount.id, input as UpdateUserInput);
+    const updated = await api.updateUser(
+      editingDriverAccount.id,
+      input as UpdateUserInput,
+    );
     setDrivers(await api.drivers());
     setEditingDriverAccount(null);
     showToast("success", `${updated.fullName}'s driver account was updated.`);
@@ -184,11 +188,17 @@ export function App() {
     setTab("drivers");
     setShowRegistration(true);
   }
-  function handleDriverCreated(driver: Driver, receipt: DriverRegistrationReceiptData) {
+  function handleDriverCreated(
+    driver: Driver,
+    receipt: DriverRegistrationReceiptData,
+  ) {
     setDrivers((current) => [driver, ...current]);
     setShowRegistration(false);
     setDriverReceipt(receipt);
-    showToast("success", `${driver.fullName} was registered and the one-time receipt was generated.`);
+    showToast(
+      "success",
+      `${driver.fullName} was registered and the one-time receipt was generated.`,
+    );
     void Promise.all([
       api.dashboard().then(setDashboard),
       api.auditLogs().then(setAuditLogs),
@@ -229,21 +239,36 @@ export function App() {
     showToast("success", `${updated.fullName}'s franchise record was updated.`);
   }
 
-  async function updateDriverStatus(driver: Driver, status: DriverStatus, reason?: string) {
+  async function updateDriverStatus(
+    driver: Driver,
+    status: DriverStatus,
+    reason?: string,
+  ) {
     const updated = await api.updateDriverStatus(driver.id, status, reason);
     setDrivers((items) =>
       items.map((item) => (item.id === updated.id ? updated : item)),
     );
     setAuditLogs(await api.auditLogs());
-    showToast("success", status === "SUSPENDED" ? `${updated.fullName}'s transport eligibility was suspended.` : `${updated.fullName} is now ${status.toLowerCase()}.`);
+    showToast(
+      "success",
+      status === "SUSPENDED"
+        ? `${updated.fullName}'s transport eligibility was suspended.`
+        : `${updated.fullName} is now ${status.toLowerCase()}.`,
+    );
   }
 
   async function updateDriverAccountStatus(driver: Driver, status: UserStatus) {
     const updated = await api.updateUser(driver.userId, { status });
-    setDrivers((items) => items.map((item) => item.id === driver.id ? {
-      ...item,
-      accountStatus: updated.status,
-    } : item));
+    setDrivers((items) =>
+      items.map((item) =>
+        item.id === driver.id
+          ? {
+              ...item,
+              accountStatus: updated.status,
+            }
+          : item,
+      ),
+    );
     setAuditLogs(await api.auditLogs());
     showToast(
       "success",
@@ -293,7 +318,14 @@ export function App() {
           onProfile={() => setProfileOpen(true)}
           onNavigate={changeTab}
         />
-        <AdminProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} onSaved={(user) => { setSessionUser(user); updateSessionUser(user); }} />
+        <AdminProfilePanel
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          onSaved={(user) => {
+            setSessionUser(user);
+            updateSessionUser(user);
+          }}
+        />
         {toast && (
           <ToastNotification
             key={toast.id}
@@ -340,7 +372,12 @@ export function App() {
                 onCloseProfile={() => setDriverProfileId(null)}
                 onEditAccount={openDriverAccount}
                 onError={(message) => showToast("error", message)}
-                onFileDownloaded={(driver, format) => showToast("success", `${driver.fullName}'s registration file was downloaded as ${format.toUpperCase()}.`)}
+                onFileDownloaded={(driver, format) =>
+                  showToast(
+                    "success",
+                    `${driver.fullName}'s registration file was downloaded as ${format.toUpperCase()}.`,
+                  )
+                }
               />
             )}
             {tab === "drivers" && showRegistration && (
@@ -362,7 +399,12 @@ export function App() {
               <QrCodePanel
                 driver={qrDriver}
                 onClose={() => setQrDriver(null)}
-                onDownloaded={() => showToast("success", "Vehicle QR code downloaded successfully.")}
+                onDownloaded={() =>
+                  showToast(
+                    "success",
+                    "Vehicle QR code downloaded successfully.",
+                  )
+                }
               />
             )}
             {tab === "drivers" && driverReceipt && (
@@ -370,21 +412,37 @@ export function App() {
                 receipt={driverReceipt}
                 onClose={() => {
                   setDriverReceipt(null);
-                  showToast("info", "The one-time receipt was closed. Its readable password is no longer retained by this screen.");
+                  showToast(
+                    "info",
+                    "The one-time receipt was closed. Its readable password is no longer retained by this screen.",
+                  );
                 }}
-                onDownloaded={() => showToast("success", "Driver registration receipt downloaded successfully.")}
+                onDownloaded={() =>
+                  showToast(
+                    "success",
+                    "Driver registration receipt downloaded successfully.",
+                  )
+                }
                 onError={(message) => showToast("error", message)}
               />
             )}
-            {tab === "drivers" && editingDriverAccount && drivers.find((driver) => driver.userId === editingDriverAccount.id) && (
-              <DriverEditForm
-                account={editingDriverAccount}
-                driver={drivers.find((driver) => driver.userId === editingDriverAccount.id)!}
-                onCancel={() => setEditingDriverAccount(null)}
-                onSave={saveDriverAccount}
-                onError={(message) => showToast("error", message)}
-              />
-            )}
+            {tab === "drivers" &&
+              editingDriverAccount &&
+              drivers.find(
+                (driver) => driver.userId === editingDriverAccount.id,
+              ) && (
+                <DriverEditForm
+                  account={editingDriverAccount}
+                  driver={
+                    drivers.find(
+                      (driver) => driver.userId === editingDriverAccount.id,
+                    )!
+                  }
+                  onCancel={() => setEditingDriverAccount(null)}
+                  onSave={saveDriverAccount}
+                  onError={(message) => showToast("error", message)}
+                />
+              )}
             {tab === "fares" && (
               <FareMatrixPanel
                 onChanged={refreshFareData}
@@ -401,7 +459,9 @@ export function App() {
                 onNotify={showToast}
               />
             )}
-            {tab === "violations" && <ViolationManagement drivers={drivers} onNotify={showToast} />}
+            {tab === "violations" && (
+              <ViolationManagement drivers={drivers} onNotify={showToast} />
+            )}
             {tab === "ratings" && <RatingManagement onNotify={showToast} />}
             {tab === "terms" && <TermsManagement onNotify={showToast} />}
             {tab === "settings" && (

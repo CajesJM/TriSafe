@@ -13,6 +13,7 @@ export function ModalShell({
   busy = false,
   size = "medium",
   className = "",
+  backdropClassName = "",
 }: {
   eyebrow: string;
   title: string;
@@ -24,6 +25,7 @@ export function ModalShell({
   busy?: boolean;
   size?: "small" | "medium" | "large";
   className?: string;
+  backdropClassName?: string;
 }) {
   const titleId = useId();
   const descriptionId = useId();
@@ -38,7 +40,7 @@ export function ModalShell({
 
   return createPortal(
     <div
-      className="dashboard-modal-backdrop"
+      className={`dashboard-modal-backdrop ${backdropClassName}`.trim()}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onClose();
       }}
