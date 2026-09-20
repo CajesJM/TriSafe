@@ -11,6 +11,16 @@
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
+.passenger-workspace .responsive-table {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.passenger-workspace .responsive-table::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .passenger-workspace .passenger-top-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(310px, 0.85fr);
@@ -239,21 +249,6 @@
 
 .passenger-workspace .passenger-status-filter select {
   min-width: 116px;
-}
-
-.passenger-workspace .passenger-sort-filter select {
-  min-width: 146px;
-  appearance: none;
-  padding-right: 34px;
-}
-
-.passenger-workspace .passenger-sort-filter > svg {
-  position: absolute;
-  right: 10px;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  color: #475467;
 }
 
 .passenger-workspace .passenger-view-reset {

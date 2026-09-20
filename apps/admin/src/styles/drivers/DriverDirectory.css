@@ -210,21 +210,6 @@
   min-width: 122px;
 }
 
-.driver-directory-workspace .driver-sort-filter select {
-  min-width: 146px;
-  appearance: none;
-  padding-right: 34px;
-}
-
-.driver-directory-workspace .driver-sort-filter > svg {
-  position: absolute;
-  right: 10px;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  color: #475467;
-}
-
 .driver-directory-workspace .driver-view-reset {
   display: grid;
   width: 39px;

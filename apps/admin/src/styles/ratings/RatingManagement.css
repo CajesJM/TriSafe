@@ -471,6 +471,9 @@
 .rating-sort-control {
   position: relative;
 }
+.directory-sort-control > .rating-list-control {
+  min-width: 146px;
+}
 .rating-sort-chevron {
   margin-left: 3px;
 }
@@ -488,6 +491,18 @@
   padding: 6px;
   background: #fff;
   box-shadow: 0 16px 35px rgba(28, 62, 35, 0.15);
+  transform-origin: top right;
+  animation: rating-sort-menu-in 150ms ease-out both;
+}
+@keyframes rating-sort-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .rating-sort-menu button {
   display: flex;
@@ -514,6 +529,11 @@
   color: #1f6a30;
   background: #eef8ef;
 }
+@media (prefers-reduced-motion: reduce) {
+  .rating-sort-menu {
+    animation-duration: 0.01ms;
+  }
+}
 .rating-sort-menu button:focus-visible {
   outline: 2px solid #258439;
   outline-offset: -2px;
@@ -537,6 +557,10 @@
   .rating-sort-menu {
     right: auto;
     left: 0;
+  }
+  .directory-sort-control .rating-sort-menu {
+    right: 0;
+    left: auto;
   }
 }
 .driver-rating-cards {

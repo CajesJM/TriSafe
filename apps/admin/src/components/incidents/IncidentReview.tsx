@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Incident, IncidentReviewInput } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState } from "../shared/Feedback";
 import { IncidentReviewCard } from "./IncidentReviewCard";
-import { ArrowUpDown, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { ArrowDownUp, Check, ChevronDown, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import type { ToastMessage } from "../shared/ToastNotification";
 
 const pageSize = 6;
@@ -20,7 +20,29 @@ export function IncidentReview({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState<IncidentSort>("NEWEST");
+  const [sortOpen, setSortOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const sortControlRef = useRef<HTMLDivElement>(null);
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
+  const sortMenuId = useId();
+  useEffect(() => {
+    if (!sortOpen) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (!sortControlRef.current?.contains(event.target as Node)) setSortOpen(false);
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSortOpen(false);
+        sortButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [sortOpen]);
   const filtered = useMemo(
     () =>
       incidents
@@ -101,20 +123,39 @@ export function IncidentReview({
                 <option value="DISMISSED">Dismissed</option>
               </select>
             </label>
-            <label className="data-filter incident-sort-filter">
-              <span>Sort reports</span>
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value as IncidentSort);
-                  setPage(1);
-                }}
+            <div className="rating-sort-control incident-sort-control" ref={sortControlRef}>
+              <button
+                ref={sortButtonRef}
+                className="rating-list-control"
+                type="button"
+                aria-expanded={sortOpen}
+                aria-controls={sortMenuId}
+                onClick={() => setSortOpen((current) => !current)}
               >
-                <option value="NEWEST">Sort by: newest</option>
-                <option value="OLDEST">Sort by: oldest</option>
-              </select>
-              <ArrowUpDown aria-hidden="true" />
-            </label>
+                <ArrowDownUp aria-hidden="true" />
+                {sort === "NEWEST" ? "Sort list" : "Oldest first"}
+                <ChevronDown className="rating-sort-chevron" aria-hidden="true" />
+              </button>
+              {sortOpen && (
+                <div className="rating-sort-menu" id={sortMenuId} aria-label="Sort reports">
+                  {(["NEWEST", "OLDEST"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={sort === option}
+                      onClick={() => {
+                        setSort(option);
+                        setPage(1);
+                        setSortOpen(false);
+                      }}
+                    >
+                      {option === "NEWEST" ? "Newest first" : "Oldest first"}
+                      {sort === option && <Check aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               className="incident-view-reset"
               type="button"
@@ -124,6 +165,7 @@ export function IncidentReview({
                 setSearch("");
                 setStatus("");
                 setSort("NEWEST");
+                setSortOpen(false);
                 setPage(1);
               }}
             >

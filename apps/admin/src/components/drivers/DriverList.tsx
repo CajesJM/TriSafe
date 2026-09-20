@@ -9,11 +9,15 @@ import { displayPersonName } from "../../utils/personName";
 import { SuspendDriverModal } from "./SuspendDriverModal";
 import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import {
+  SortListControl,
+  directorySortOptions,
+  type DirectorySort,
+} from "../shared/SortListControl";
 import { DriverRegistrationFileModal } from "./DriverRegistrationFileModal";
 import type { DriverFileFormat } from "../../utils/driverRegistrationFile";
 import { downloadVehicleQrPoster } from "../../utils/vehicleQrPoster";
 import {
-  ArrowUpDown,
   BadgeCheck,
   Download,
   FilePenLine,
@@ -28,7 +32,6 @@ import {
 } from "lucide-react";
 
 const pageSize = 8;
-type DriverSort = "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC";
 const statusOptions = [
   { value: "", label: "All statuses" },
   { value: "VERIFIED", label: "Verified" },
@@ -80,7 +83,7 @@ export function DriverList({
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [vehicleType, setVehicleType] = useState("");
-  const [sort, setSort] = useState<DriverSort>("NEWEST");
+  const [sort, setSort] = useState<DirectorySort>("NEWEST");
   const [page, setPage] = useState(1);
   const [changing, setChanging] = useState("");
   const [error, setError] = useState("");
@@ -211,22 +214,16 @@ export function DriverList({
                 ))}
               </select>
             </label>
-            <label className="data-filter driver-sort-filter">
-              <span>Sort drivers</span>
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value as DriverSort);
-                  setPage(1);
-                }}
-              >
-                <option value="NEWEST">Sort by: newest</option>
-                <option value="OLDEST">Sort by: oldest</option>
-                <option value="NAME_ASC">Name: A–Z</option>
-                <option value="NAME_DESC">Name: Z–A</option>
-              </select>
-              <ArrowUpDown aria-hidden="true" />
-            </label>
+            <SortListControl
+              label="Sort drivers"
+              value={sort}
+              defaultValue="NEWEST"
+              options={directorySortOptions}
+              onChange={(value) => {
+                setSort(value);
+                setPage(1);
+              }}
+            />
             <button
               className="driver-view-reset"
               type="button"

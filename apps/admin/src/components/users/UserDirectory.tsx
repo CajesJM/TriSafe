@@ -15,9 +15,13 @@ import { EmptyState, ErrorMessage, LoadingState } from "../shared/Feedback";
 import type { ToastMessage } from "../shared/ToastNotification";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm } from "./UserForm";
+import {
+  SortListControl,
+  directorySortOptions,
+  type DirectorySort,
+} from "../shared/SortListControl";
 import { displayPersonName } from "../../utils/personName";
 import {
-  ArrowUpDown,
   FilePenLine,
   Plus,
   SlidersHorizontal,
@@ -30,7 +34,7 @@ import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
 const pageSize = 10;
 type DirectoryUser = AdminUser & { username?: string | null };
 type AccountStats = { registered: number; active: number; inactive: number };
-type UserSort = "NEWEST" | "OLDEST" | "NAME_ASC" | "NAME_DESC";
+type UserSort = DirectorySort;
 const emptyUserPage: UserPage = { items: [], total: 0, page: 1, pageSize };
 const accountPageCache = new Map<string, UserPage>();
 let roleDefinitionCache: RoleDefinition[] | null = null;
@@ -352,22 +356,16 @@ export function UserDirectory({
                     <option value="INACTIVE">Inactive</option>
                   </select>
                 </label>
-                <label className="data-filter administrator-sort-filter">
-                  <span>Sort administrators</span>
-                  <select
-                    value={sort}
-                    onChange={(event) => {
-                      setSort(event.target.value as UserSort);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="NEWEST">Sort by: newest</option>
-                    <option value="OLDEST">Sort by: oldest</option>
-                    <option value="NAME_ASC">Name: A–Z</option>
-                    <option value="NAME_DESC">Name: Z–A</option>
-                  </select>
-                  <ArrowUpDown aria-hidden="true" />
-                </label>
+                <SortListControl
+                  label="Sort administrators"
+                  value={sort}
+                  defaultValue="NEWEST"
+                  options={directorySortOptions}
+                  onChange={(value) => {
+                    setSort(value);
+                    setPage(1);
+                  }}
+                />
                 <button
                   className="administrator-view-reset"
                   type="button"
@@ -406,22 +404,16 @@ export function UserDirectory({
                     <option value="INACTIVE">Inactive</option>
                   </select>
                 </label>
-                <label className="data-filter passenger-sort-filter">
-                  <span>Sort passengers</span>
-                  <select
-                    value={sort}
-                    onChange={(event) => {
-                      setSort(event.target.value as UserSort);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="NEWEST">Sort by: newest</option>
-                    <option value="OLDEST">Sort by: oldest</option>
-                    <option value="NAME_ASC">Name: A–Z</option>
-                    <option value="NAME_DESC">Name: Z–A</option>
-                  </select>
-                  <ArrowUpDown aria-hidden="true" />
-                </label>
+                <SortListControl
+                  label="Sort passengers"
+                  value={sort}
+                  defaultValue="NEWEST"
+                  options={directorySortOptions}
+                  onChange={(value) => {
+                    setSort(value);
+                    setPage(1);
+                  }}
+                />
                 <button
                   className="passenger-view-reset"
                   type="button"

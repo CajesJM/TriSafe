@@ -11,6 +11,16 @@
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
+.administrator-workspace .responsive-table {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.administrator-workspace .responsive-table::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .administrator-workspace .administrator-top-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(310px, 0.85fr);
@@ -209,21 +219,6 @@
 
 .administrator-workspace .administrator-status-filter select {
   min-width: 116px;
-}
-
-.administrator-workspace .administrator-sort-filter select {
-  min-width: 146px;
-  appearance: none;
-  padding-right: 34px;
-}
-
-.administrator-workspace .administrator-sort-filter > svg {
-  position: absolute;
-  right: 10px;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  color: #475467;
 }
 
 .administrator-workspace .administrator-view-reset {
