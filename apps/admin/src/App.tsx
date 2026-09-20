@@ -399,6 +399,7 @@ export function App() {
               <QrCodePanel
                 driver={qrDriver}
                 onClose={() => setQrDriver(null)}
+                onError={(message) => showToast("error", message)}
                 onDownloaded={() =>
                   showToast(
                     "success",

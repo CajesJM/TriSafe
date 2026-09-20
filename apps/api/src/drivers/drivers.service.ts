@@ -278,7 +278,7 @@ export class DriversService {
                 owner: true,
                 address: true,
                 franchise: true,
-                ratings: { where: { visible: true }, select: { score: true } },
+                ratings: { select: { score: true } },
               },
             },
           },
@@ -720,7 +720,7 @@ export class DriversService {
       this.prisma.ride.count({ where: { ...rideFilter, status: "COMPLETED" } }),
       this.prisma.ride.count({ where: { ...rideFilter, status: "CANCELLED" } }),
       this.prisma.driverRating.aggregate({
-        where: { driverId, visible: true },
+        where: { driverId },
         _avg: { score: true },
         _count: { _all: true },
       }),

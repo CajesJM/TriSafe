@@ -356,7 +356,6 @@ export class AdminService {
         where: {
           OR: [
             { comment: text },
-            { moderationNotes: text },
             { driver: { is: { user: { is: { fullName: text } } } } },
             { passenger: { is: { fullName: text } } },
           ],

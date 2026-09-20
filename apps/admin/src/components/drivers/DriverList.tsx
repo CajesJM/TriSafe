@@ -18,15 +18,19 @@ import { DriverRegistrationFileModal } from "./DriverRegistrationFileModal";
 import type { DriverFileFormat } from "../../utils/driverRegistrationFile";
 import { downloadVehicleQrPoster } from "../../utils/vehicleQrPoster";
 import {
+  CarFront,
+  Check,
   BadgeCheck,
   Download,
   FilePenLine,
   FileText,
+  Info,
   QrCode,
   ShieldAlert,
   SlidersHorizontal,
   UserCheck,
   UserRound,
+  UsersRound,
   UserX,
   Trash2,
 } from "lucide-react";
@@ -714,17 +718,26 @@ export function QrCodePanel({
   driver,
   onClose,
   onDownloaded,
+  onError,
 }: {
   driver: Driver;
   onClose: () => void;
   onDownloaded: () => void;
+  onError: (message: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [posterBusy, setPosterBusy] = useState(false);
   const vehicle = driver.vehicles[0];
   const token = vehicle?.qrCode?.token;
   if (!vehicle || !token) return null;
   const verifiedToken = token;
   const qrValue = `trisafe://verify/${verifiedToken}`;
+  const transportStatus = driver.franchise?.status ?? driver.verification;
+  const isVerified = transportStatus === "VERIFIED";
+  const vehicleType = vehicle.vehicleType
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
   function downloadQr() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -734,28 +747,40 @@ export function QrCodePanel({
     link.click();
     onDownloaded();
   }
-  function downloadOfficialLayout() {
+  async function downloadOfficialLayout() {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    downloadVehicleQrPoster(canvas, {
-      driverName: displayPersonName(driver.fullName),
-      plateNumber: vehicle.plateNumber,
-      vehicleType: vehicle.vehicleType,
-      franchiseNumber: driver.franchise?.franchiseNumber ?? "Not assigned",
-      qrReference: verifiedToken.slice(0, 12).toUpperCase(),
-    });
-    onDownloaded();
+    if (!canvas || posterBusy) return;
+    setPosterBusy(true);
+    try {
+      await downloadVehicleQrPoster(canvas, {
+        plateNumber: vehicle.plateNumber,
+        vehicleType: vehicle.vehicleType,
+      });
+      onDownloaded();
+    } catch (error) {
+      onError(
+        error instanceof Error
+          ? error.message
+          : "The printable QR layout could not be downloaded.",
+      );
+    } finally {
+      setPosterBusy(false);
+    }
   }
   return (
     <ModalShell
       eyebrow="BPLO-ISSUED VEHICLE IDENTITY"
-      title="Vehicle QR code"
-      description="Passenger verification reads this identity against the live TriSafe registry."
+      title="Vehicle QR Code"
+      description="Passengers scan this QR to verify the registered vehicle, driver, and franchise record."
       onClose={onClose}
       size="large"
       className="qr-code-modal"
       footer={
         <>
+          <p className="qr-footer-note">
+            <Info aria-hidden="true" /> This QR code is unique to this vehicle
+            and should only be used for official purposes.
+          </p>
           <button className="secondary" onClick={onClose} type="button">
             Close
           </button>
@@ -769,72 +794,151 @@ export function QrCodePanel({
           <button
             className="primary qr-download-button"
             onClick={downloadOfficialLayout}
+            disabled={posterBusy}
             type="button"
           >
-            <Download aria-hidden="true" /> Download official layout
+            <Download aria-hidden="true" />{" "}
+            {posterBusy ? "Preparing layout…" : "Download printable layout"}
           </button>
         </>
       }
     >
       <div className="qr-modal-layout">
         <div className="qr-copy">
-          <span className="eyebrow">BPLO-ISSUED VEHICLE IDENTITY</span>
-          <h3>Ready for vehicle display</h3>
-          <p>
-            Print and place this code inside the vehicle where passengers can
-            scan it safely. Scanning verifies this driver and franchise against
-            the live registry.
-          </p>
-          <div className="qr-details">
+          <div
+            className={`qr-status-banner ${isVerified ? "is-verified" : "is-restricted"}`}
+          >
+            <span className="qr-status-symbol">
+              {isVerified ? (
+                <Check aria-hidden="true" />
+              ) : (
+                <ShieldAlert aria-hidden="true" />
+              )}
+            </span>
             <div>
+              <h3>
+                {isVerified
+                  ? "Ready for vehicle display"
+                  : "Transport access restricted"}
+              </h3>
+              <p>
+                {isVerified
+                  ? "This vehicle is registered and verified in the live TriSafe registry."
+                  : "This QR remains linked to the registry, but the vehicle is not currently eligible for rides."}
+              </p>
+            </div>
+            <span className="qr-status-badge">
+              {isVerified ? "Verified record" : transportStatus.toLowerCase()}
+            </span>
+          </div>
+          <div className="qr-information-heading">
+            <span className="qr-section-icon">
+              <CarFront aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Vehicle information</h3>
+              <p>Details passengers see when they scan this QR code.</p>
+            </div>
+          </div>
+          <div className="qr-details">
+            <div className="qr-detail-card">
+              <span className="qr-detail-icon">
+                {driver.avatarData ? (
+                  <img src={driver.avatarData} alt="" />
+                ) : (
+                  <UserRound aria-hidden="true" />
+                )}
+              </span>
               <span>Driver</span>
               <b>{displayPersonName(driver.fullName)}</b>
+              <small>Driver ID: {driver.id}</small>
             </div>
-            <div>
+            <div className="qr-detail-card">
+              <span className="qr-detail-icon">
+                <CarFront aria-hidden="true" />
+              </span>
               <span>Vehicle</span>
-              <b>
-                {vehicle.plateNumber} · {vehicle.vehicleType}
-              </b>
+              <b>{vehicle.plateNumber}</b>
+              <small>Type: {vehicleType}</small>
             </div>
-            <div>
+            <div className="qr-detail-card">
+              <span className="qr-detail-icon">
+                <FileText aria-hidden="true" />
+              </span>
               <span>Franchise</span>
-              <b>{driver.franchise?.franchiseNumber ?? "—"}</b>
+              <b>{driver.franchise?.franchiseNumber ?? "Not assigned"}</b>
+              <small>
+                {transportStatus.charAt(0) +
+                  transportStatus.slice(1).toLowerCase()}
+              </small>
             </div>
           </div>
-          <code className="qr-token">{qrValue}</code>
-        </div>
-        <div className="qr-preview qr-official-preview">
-          <div
-            className="qr-preview-branding"
-            aria-label="Official BPLO QR layout preview"
-          >
-            <span role="img" aria-label="TriSafe logo placeholder">
-              TriSafe
-              <br />
-              <small>LOGO</small>
-            </span>
-            <b>
-              OFFICIAL
-              <br />
-              VEHICLE QR
-            </b>
-            <span role="img" aria-label="BPLO Trinidad logo placeholder">
-              BPLO
-              <br />
-              <small>LOGO</small>
-            </span>
+          <div className="qr-steps-card">
+            <div className="qr-steps-heading">
+              <span className="qr-section-icon">
+                <UsersRound aria-hidden="true" />
+              </span>
+              <div>
+                <h4>How passengers use this QR</h4>
+                <p>A quick way to verify the vehicle before riding.</p>
+              </div>
+            </div>
+            <ol>
+              <li>
+                <span>1</span>Passenger scans the QR code
+              </li>
+              <li>
+                <span>2</span>System checks the live registry
+              </li>
+              <li>
+                <span>3</span>Driver and franchise details appear
+              </li>
+            </ol>
           </div>
-          <QRCodeCanvas
-            ref={canvasRef}
-            value={qrValue}
-            size={512}
-            bgColor="#ffffff"
-            fgColor="#123f39"
-            level="H"
-            includeMargin
-          />
-          <strong>SCAN TO VERIFY</strong>
-          <small>{vehicle.plateNumber} · BPLO Trinidad, Bohol</small>
+        </div>
+        <div className="qr-preview-column">
+          <div className="qr-official-preview">
+            <div className="qr-poster-heading">
+              <img src="/Logo/Trisafe-logo-icon.webp" alt="TriSafe logo" />
+              <div>
+                <strong>TriSafe</strong>
+                <b>OFFICIAL VEHICLE QR</b>
+                <small>BPLO Trinidad, Bohol</small>
+              </div>
+              <img src="/Logo/LOGO-transparent.webp" alt="BPLO Trinidad seal" />
+            </div>
+            <div className="qr-poster-code">
+              <QRCodeCanvas
+                ref={canvasRef}
+                value={qrValue}
+                size={512}
+                bgColor="#ffffff"
+                fgColor="#000000"
+                level="H"
+                includeMargin
+              />
+              <div>
+                <strong>SCAN TO VERIFY</strong>
+                <b>
+                  {vehicle.plateNumber} · {vehicleType}
+                </b>
+                <small>TriSafe Registry</small>
+              </div>
+            </div>
+            <div className="qr-poster-bottom">
+              <strong>
+                Biyahing
+                <br />
+                Ligtas.
+                <br />
+                Trinidad!
+              </strong>
+              <small>
+                Place this QR code inside the vehicle where passengers can
+                easily scan it.
+              </small>
+            </div>
+          </div>
         </div>
       </div>
     </ModalShell>

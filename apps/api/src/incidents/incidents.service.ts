@@ -261,7 +261,6 @@ export class IncidentsService {
                       select: { fullName: true, avatarData: true },
                     },
                     ratings: {
-                      where: { visible: true },
                       select: { score: true },
                     },
                     franchise: {

@@ -363,15 +363,13 @@ model DriverRating {
   rideId          String   @unique
   score           Int
   comment         String?
-  visible         Boolean  @default(true)
-  moderationNotes String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   driver          Driver   @relation(fields: [driverId], references: [id], onDelete: Restrict)
   passenger       User     @relation("PassengerRatings", fields: [passengerId], references: [id], onDelete: Restrict)
   ride            Ride     @relation(fields: [rideId], references: [id], onDelete: Restrict)
 
-  @@index([driverId, visible, createdAt])
+  @@index([driverId, createdAt])
   @@index([passengerId, createdAt])
 }
 

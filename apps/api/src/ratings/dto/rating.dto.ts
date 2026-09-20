@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { Equals, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateRatingDto {
   @IsString() rideId!: string;
@@ -6,7 +6,6 @@ export class CreateRatingDto {
   @IsOptional() @IsString() @MaxLength(1000) comment?: string;
 }
 
-export class ModerateRatingDto {
-  @IsBoolean() visible!: boolean;
-  @IsOptional() @IsString() @MaxLength(1000) moderationNotes?: string;
+export class ResetDriverRatingsDto {
+  @IsString() @Equals('RESET') confirmation!: string;
 }

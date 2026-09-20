@@ -1,7 +1,11 @@
 .incident-workspace {
   border-color: #dce7e0;
   background:
-    radial-gradient(circle at 0% 100%, rgba(69, 189, 154, 0.07), transparent 30%),
+    radial-gradient(
+      circle at 0% 100%,
+      rgba(69, 189, 154, 0.07),
+      transparent 30%
+    ),
     #fbfdfc;
   box-shadow: 0 16px 42px rgba(19, 42, 33, 0.06);
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
@@ -30,7 +34,11 @@
   border-radius: 16px;
   padding: 15px 18px;
   background:
-    radial-gradient(circle at 83% 40%, rgba(70, 166, 92, 0.18), transparent 22%),
+    radial-gradient(
+      circle at 83% 40%,
+      rgba(70, 166, 92, 0.18),
+      transparent 22%
+    ),
     linear-gradient(120deg, #f8fcf9 0%, #eef8f1 60%, #e2f1e7 100%);
 }
 .incident-hero::after {
@@ -196,18 +204,8 @@
 .incident-status-filter select {
   min-width: 125px;
 }
-.incident-sort-filter select {
-  min-width: 145px;
-  appearance: none;
-  padding-right: 34px;
-}
-.incident-sort-filter > svg {
-  position: absolute;
-  right: 10px;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  color: #475467;
+.incident-sort-control .rating-list-control {
+  width: 100%;
 }
 .incident-view-reset {
   display: grid;
@@ -846,7 +844,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 39px;
   }
   .incident-status-filter select,
-  .incident-sort-filter select {
+  .incident-sort-control .rating-list-control {
     width: 100%;
     min-width: 0;
   }
@@ -882,5 +880,11 @@
   }
   .dismiss-confirm {
     justify-content: center;
+  }
+}
+@media (max-width: 600px) {
+  .incident-sort-control .rating-sort-menu {
+    right: 0;
+    left: auto;
   }
 }
