@@ -6,7 +6,7 @@ import {
   ChevronDown,
   Info,
   MessageSquareText,
-  RotateCcw,
+  SlidersHorizontal,
   Star,
   ThumbsUp,
   Trophy,
@@ -109,16 +109,13 @@ export function RatingManagement({
           </div>
           <div className="rating-list-controls">
             <button
-              className="rating-list-control"
+              className="rating-ranking-toggle"
               type="button"
-              onClick={() => {
-                setSortMode("default");
-                setSortOpen(false);
-              }}
-              disabled={loading || sortMode === "default"}
+              onClick={() => setRankingOpen(true)}
+              disabled={loading}
             >
-              <RotateCcw aria-hidden="true" />
-              Reset to default
+              <Trophy aria-hidden="true" />
+              Show ranking
             </button>
             <div className="rating-sort-control" ref={sortControlRef}>
               <button
@@ -166,13 +163,17 @@ export function RatingManagement({
               )}
             </div>
             <button
-              className="rating-ranking-toggle"
+              className="rating-list-control rating-view-reset"
               type="button"
-              onClick={() => setRankingOpen(true)}
-              disabled={loading}
+              title="Reset sorting to default"
+              aria-label="Reset driver ratings sorting to default"
+              onClick={() => {
+                setSortMode("default");
+                setSortOpen(false);
+              }}
+              disabled={loading || sortMode === "default"}
             >
-              <Trophy aria-hidden="true" />
-              Show ranking
+              <SlidersHorizontal aria-hidden="true" />
             </button>
           </div>
         </div>

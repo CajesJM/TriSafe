@@ -443,6 +443,14 @@
   color: #205e2b;
   background: #f4faf4;
 }
+.rating-view-reset {
+  width: 39px;
+  height: 39px;
+  min-height: 39px;
+  padding: 0;
+  border-color: #dfe4e8;
+  color: #344054;
+}
 .rating-list-control svg,
 .rating-ranking-toggle svg {
   width: 16px;
@@ -553,6 +561,9 @@
 @media (max-width: 600px) {
   .rating-list-controls {
     justify-content: flex-start;
+  }
+  .rating-view-reset {
+    margin-left: auto;
   }
   .rating-sort-menu {
     right: auto;
