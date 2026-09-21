@@ -9,6 +9,7 @@ import { displayPersonName } from "../../utils/personName";
 import { SuspendDriverModal } from "./SuspendDriverModal";
 import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { FilterListControl } from "../shared/FilterListControl";
 import {
   SortListControl,
   directorySortOptions,
@@ -186,38 +187,24 @@ export function DriverList({
         searchLabel="Search driver, owner, unit, plate, engine, or franchise"
         additionalFilter={
           <div className="driver-table-controls">
-            <label className="data-filter driver-vehicle-filter">
-              <span>Vehicle type</span>
-              <select
-                value={vehicleType}
-                onChange={(event) => {
-                  setVehicleType(event.target.value);
-                  setPage(1);
-                }}
-              >
-                {vehicleTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="data-filter driver-status-filter">
-              <span>Transport status</span>
-              <select
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value);
-                  setPage(1);
-                }}
-              >
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FilterListControl
+              label="Vehicle type"
+              value={vehicleType}
+              options={vehicleTypeOptions}
+              onChange={(value) => {
+                setVehicleType(value);
+                setPage(1);
+              }}
+            />
+            <FilterListControl
+              label="Transport status"
+              value={status}
+              options={statusOptions}
+              onChange={(value) => {
+                setStatus(value);
+                setPage(1);
+              }}
+            />
             <SortListControl
               label="Sort drivers"
               value={sort}

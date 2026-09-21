@@ -247,10 +247,6 @@
   white-space: nowrap;
 }
 
-.passenger-workspace .passenger-status-filter select {
-  min-width: 116px;
-}
-
 .passenger-workspace .passenger-view-reset {
   display: grid;
   width: 39px;

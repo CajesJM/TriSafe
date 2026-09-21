@@ -3,11 +3,18 @@ import { Incident, IncidentReviewInput } from "../../api";
 import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState } from "../shared/Feedback";
 import { IncidentReviewCard } from "./IncidentReviewCard";
-import { ArrowDownUp, Check, ChevronDown, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { ArrowDownUp, Check, ChevronDown, ListFilter, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import type { ToastMessage } from "../shared/ToastNotification";
 
 const pageSize = 6;
 type IncidentSort = "NEWEST" | "OLDEST";
+const statusOptions = [
+  { value: "", label: "All statuses" },
+  { value: "SUBMITTED", label: "Submitted" },
+  { value: "UNDER_REVIEW", label: "Under review" },
+  { value: "RESOLVED", label: "Resolved" },
+  { value: "DISMISSED", label: "Dismissed" },
+] as const;
 export function IncidentReview({
   incidents,
   onReview,
@@ -21,19 +28,27 @@ export function IncidentReview({
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState<IncidentSort>("NEWEST");
   const [sortOpen, setSortOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const statusLabel = statusOptions.find((option) => option.value === status)?.label ?? "All statuses";
+  const statusControlRef = useRef<HTMLDivElement>(null);
+  const statusButtonRef = useRef<HTMLButtonElement>(null);
+  const statusMenuId = useId();
   const sortControlRef = useRef<HTMLDivElement>(null);
   const sortButtonRef = useRef<HTMLButtonElement>(null);
   const sortMenuId = useId();
   useEffect(() => {
-    if (!sortOpen) return;
+    if (!sortOpen && !statusOpen) return;
     function handlePointerDown(event: PointerEvent) {
       if (!sortControlRef.current?.contains(event.target as Node)) setSortOpen(false);
+      if (!statusControlRef.current?.contains(event.target as Node)) setStatusOpen(false);
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setSortOpen(false);
-        sortButtonRef.current?.focus();
+        setStatusOpen(false);
+        if (statusOpen) statusButtonRef.current?.focus();
+        else sortButtonRef.current?.focus();
       }
     }
     document.addEventListener("pointerdown", handlePointerDown);
@@ -42,7 +57,7 @@ export function IncidentReview({
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [sortOpen]);
+  }, [sortOpen, statusOpen]);
   const filtered = useMemo(
     () =>
       incidents
@@ -110,19 +125,43 @@ export function IncidentReview({
         searchLabel="Search incident ID, passenger, driver, or unit number"
         additionalFilter={
           <div className="incident-table-controls">
-            <label className="data-filter incident-status-filter">
-              <span>Status</span>
-              <select
-                value={status}
-                onChange={(event) => updateStatus(event.target.value)}
+            <div className="rating-sort-control incident-status-filter" ref={statusControlRef}>
+              <button
+                ref={statusButtonRef}
+                className="rating-list-control"
+                type="button"
+                aria-label={`Filter incident status: ${statusLabel}`}
+                aria-expanded={statusOpen}
+                aria-controls={statusMenuId}
+                onClick={() => {
+                  setSortOpen(false);
+                  setStatusOpen((current) => !current);
+                }}
               >
-                <option value="">All statuses</option>
-                <option value="SUBMITTED">Submitted</option>
-                <option value="UNDER_REVIEW">Under review</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="DISMISSED">Dismissed</option>
-              </select>
-            </label>
+                <ListFilter aria-hidden="true" />
+                {statusLabel}
+                <ChevronDown className="rating-sort-chevron" aria-hidden="true" />
+              </button>
+              {statusOpen && (
+                <div className="rating-sort-menu" id={statusMenuId} aria-label="Filter incident status">
+                  {statusOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={status === option.value}
+                      onClick={() => {
+                        updateStatus(option.value);
+                        setStatusOpen(false);
+                        statusButtonRef.current?.focus();
+                      }}
+                    >
+                      {option.label}
+                      {status === option.value && <Check aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="rating-sort-control incident-sort-control" ref={sortControlRef}>
               <button
                 ref={sortButtonRef}
@@ -130,7 +169,10 @@ export function IncidentReview({
                 type="button"
                 aria-expanded={sortOpen}
                 aria-controls={sortMenuId}
-                onClick={() => setSortOpen((current) => !current)}
+                onClick={() => {
+                  setStatusOpen(false);
+                  setSortOpen((current) => !current);
+                }}
               >
                 <ArrowDownUp aria-hidden="true" />
                 {sort === "NEWEST" ? "Sort list" : "Oldest first"}
@@ -166,6 +208,7 @@ export function IncidentReview({
                 setStatus("");
                 setSort("NEWEST");
                 setSortOpen(false);
+                setStatusOpen(false);
                 setPage(1);
               }}
             >

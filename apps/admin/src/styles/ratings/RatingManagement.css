@@ -482,6 +482,14 @@
 .directory-sort-control > .rating-list-control {
   min-width: 146px;
 }
+.directory-filter-control > .rating-list-control {
+  min-width: 122px;
+}
+.directory-filter-control .rating-sort-menu {
+  right: auto;
+  left: 0;
+  transform-origin: top left;
+}
 .rating-sort-chevron {
   margin-left: 3px;
 }

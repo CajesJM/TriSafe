@@ -217,10 +217,6 @@
   white-space: nowrap;
 }
 
-.administrator-workspace .administrator-status-filter select {
-  min-width: 116px;
-}
-
 .administrator-workspace .administrator-view-reset {
   display: grid;
   width: 39px;

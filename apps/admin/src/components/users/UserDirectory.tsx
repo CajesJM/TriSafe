@@ -14,6 +14,7 @@ import { DataToolbar, Pagination } from "../shared/DataControls";
 import { EmptyState, ErrorMessage, LoadingState } from "../shared/Feedback";
 import type { ToastMessage } from "../shared/ToastNotification";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { FilterListControl } from "../shared/FilterListControl";
 import { UserForm } from "./UserForm";
 import {
   SortListControl,
@@ -32,6 +33,11 @@ import {
 import { ActionMenu, type ActionMenuGroup } from "../shared/ActionMenu";
 
 const pageSize = 10;
+const accountStatusOptions = [
+  { value: "", label: "All statuses" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Inactive" },
+];
 type DirectoryUser = AdminUser & { username?: string | null };
 type AccountStats = { registered: number; active: number; inactive: number };
 type UserSort = DirectorySort;
@@ -342,20 +348,15 @@ export function UserDirectory({
           additionalFilter={
             isAdministrator ? (
               <div className="administrator-table-controls">
-                <label className="data-filter administrator-status-filter">
-                  <span>Status</span>
-                  <select
-                    value={status}
-                    onChange={(event) => {
-                      setStatus(event.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All statuses</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </select>
-                </label>
+                <FilterListControl
+                  label="Administrator status"
+                  value={status}
+                  options={accountStatusOptions}
+                  onChange={(value) => {
+                    setStatus(value);
+                    setPage(1);
+                  }}
+                />
                 <SortListControl
                   label="Sort administrators"
                   value={sort}
@@ -390,20 +391,15 @@ export function UserDirectory({
               </div>
             ) : (
               <div className="passenger-table-controls">
-                <label className="data-filter passenger-status-filter">
-                  <span>Status</span>
-                  <select
-                    value={status}
-                    onChange={(event) => {
-                      setStatus(event.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="">All statuses</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </select>
-                </label>
+                <FilterListControl
+                  label="Passenger status"
+                  value={status}
+                  options={accountStatusOptions}
+                  onChange={(value) => {
+                    setStatus(value);
+                    setPage(1);
+                  }}
+                />
                 <SortListControl
                   label="Sort passengers"
                   value={sort}

@@ -189,20 +189,15 @@
   gap: 8px;
   margin-left: auto;
 }
-.incident-table-controls .data-filter {
-  position: relative;
-}
-.incident-table-controls .data-filter > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
+.incident-status-filter .rating-list-control {
+  width: 100%;
+  min-width: 145px;
   white-space: nowrap;
 }
-.incident-status-filter select {
-  min-width: 125px;
+.incident-status-filter .rating-sort-menu {
+  right: auto;
+  left: 0;
+  transform-origin: top left;
 }
 .incident-sort-control .rating-list-control {
   width: 100%;
@@ -843,10 +838,15 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 39px;
   }
-  .incident-status-filter select,
+  .incident-status-filter .rating-list-control,
   .incident-sort-control .rating-list-control {
     width: 100%;
     min-width: 0;
+  }
+  .incident-status-filter .rating-list-control {
+    gap: 5px;
+    padding: 8px 9px;
+    font-size: 11px;
   }
   .incident-card-header {
     grid-template-columns: minmax(0, 1fr) auto;

@@ -205,11 +205,6 @@
   margin-left: auto;
 }
 
-.driver-directory-workspace .driver-vehicle-filter select,
-.driver-directory-workspace .driver-status-filter select {
-  min-width: 122px;
-}
-
 .driver-directory-workspace .driver-view-reset {
   display: grid;
   width: 39px;
