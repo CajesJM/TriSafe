@@ -284,7 +284,7 @@
   border: 0;
   border-radius: 9px;
   padding: 0 10px;
-  color: #5d6b64;
+  color: #475a50;
   background: #f0f5f2;
 }
 
@@ -318,6 +318,7 @@
   border: 1px solid #eaecf0;
   border-radius: 11px;
   padding: 9px 10px;
+  color: #344054;
   background: #ffffff;
   transition:
     border-color 160ms ease,
@@ -346,7 +347,7 @@
 }
 
 .driver-directory-workspace .driver-table-row small {
-  color: #859087;
+  color: #586777;
   font-size: 8px;
 }
 

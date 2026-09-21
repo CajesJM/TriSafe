@@ -464,23 +464,16 @@ function DriverRow({
           icon: <FilePenLine />,
           onSelect: onEditAccount,
         },
-        {
-          label:
-            (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
-              ? "Deactivate account"
-              : "Activate account",
-          icon:
-            (driver.accountStatus ?? "ACTIVE") === "ACTIVE" ? (
-              <UserX />
-            ) : (
-              <UserCheck />
-            ),
-          onSelect: onChangeAccountStatus,
-          tone:
-            (driver.accountStatus ?? "ACTIVE") === "ACTIVE"
-              ? "warning"
-              : "success",
-        },
+        ...((driver.accountStatus ?? "ACTIVE") !== "ACTIVE"
+          ? [
+              {
+                label: "Activate account",
+                icon: <UserCheck />,
+                onSelect: onChangeAccountStatus,
+                tone: "success" as const,
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -533,6 +526,16 @@ function DriverRow({
     {
       label: "Danger zone",
       items: [
+        ...((driver.accountStatus ?? "ACTIVE") === "ACTIVE"
+          ? [
+              {
+                label: "Deactivate account",
+                icon: <UserX />,
+                onSelect: onChangeAccountStatus,
+                tone: "warning" as const,
+              },
+            ]
+          : []),
         {
           label: "Delete driver account",
           icon: <Trash2 />,

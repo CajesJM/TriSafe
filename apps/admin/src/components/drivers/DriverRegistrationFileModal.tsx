@@ -3,11 +3,8 @@ import {
   Check,
   ChevronDown,
   Download,
-  FileCheck2,
   FileText,
-  Info,
   Printer,
-  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import type { Driver } from "../../api";
@@ -19,6 +16,7 @@ import {
   type DriverFileFormat,
 } from "../../utils/driverRegistrationFile";
 import { displayPersonName } from "../../utils/personName";
+import { DriverRecordInfoButton } from "./DriverRecordInfoButton";
 import { ModalShell } from "../shared/ModalShell";
 
 export function DriverRegistrationFileModal({
@@ -61,10 +59,10 @@ export function DriverRegistrationFileModal({
     };
   }, [formatMenuOpen]);
 
-  function download() {
+  async function download() {
     setDownloading(true);
     try {
-      downloadDriverRegistrationFile(driver, format);
+      await downloadDriverRegistrationFile(driver, format);
       onDownloaded(format);
     } catch (error) {
       onError(
@@ -77,18 +75,30 @@ export function DriverRegistrationFileModal({
     }
   }
 
-  function preview() {
-    const url = URL.createObjectURL(
-      createDriverRegistrationFileBlob(file, "pdf"),
-    );
-    const target = window.open(url, "_blank");
+  async function preview() {
+    const target = window.open("", "_blank");
     if (!target) {
-      URL.revokeObjectURL(url);
       onError("Preview was blocked. Allow pop-ups and try again.");
       return;
     }
     target.opener = null;
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    setDownloading(true);
+    try {
+      const url = URL.createObjectURL(
+        await createDriverRegistrationFileBlob(file, "pdf"),
+      );
+      target.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      target.close();
+      onError(
+        error instanceof Error
+          ? error.message
+          : "Unable to preview the driver registration file.",
+      );
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const displayName = displayPersonName(driver.fullName);
@@ -102,6 +112,12 @@ export function DriverRegistrationFileModal({
       busy={downloading}
       size="large"
       className="driver-file-modal driver-receipt-modal"
+      headerAction={
+        <DriverRecordInfoButton title="About this record">
+          Use this record to verify the driver account, transport eligibility,
+          and franchise status.
+        </DriverRecordInfoButton>
+      }
     >
       <div className="driver-record-layout">
         <aside className="driver-record-sidebar">
@@ -200,56 +216,26 @@ export function DriverRegistrationFileModal({
               <span>Complete driver and vehicle details</span>
             </div>
           </div>
-          <div className="driver-record-note">
-            <Info aria-hidden="true" />
-            <p>
-              Use this record to verify the driver account, transport
-              eligibility, and franchise status.
-            </p>
-          </div>
-          <div
-            className="driver-record-brand"
-            aria-label="TriSafe BPLO Driver Registry"
-          >
-            <ShieldCheck aria-hidden="true" />
-            <strong>TRISAFE</strong>
-            <span>
-              Safe Transport
-              <br />A Stronger Trinidad
-            </span>
-          </div>
         </aside>
 
         <section className="driver-record-workspace">
-          <header className="driver-record-workspace-heading">
-            <span className="driver-record-file-icon" aria-hidden="true">
-              <FileCheck2 />
-            </span>
-            <div>
-              <h3>Driver registration file</h3>
-              <p>
-                Generated {formatDateTime(file.generatedAt)} from live registry
-                data
-              </p>
-            </div>
-          </header>
-
           <article
             className="driver-record-document"
             aria-label="Driver registration file preview"
           >
             <header className="driver-record-document-header">
               <div className="driver-record-document-brand">
-                <ShieldCheck aria-hidden="true" />
+                <img src="/Logo/app-logo-icon.webp" alt="" />
                 <div>
                   <strong>TRISAFE</strong>
                   <span>BPLO Driver Registry</span>
                 </div>
               </div>
-              <div className="driver-record-document-tagline">
-                Safe transport
-                <br />A stronger Trinidad
-              </div>
+              <img
+                className="driver-record-document-seal"
+                src="/Logo/LOGO-transparent.webp"
+                alt="BPLO Trinidad logo"
+              />
             </header>
             <h2>Driver Registration Record</h2>
             <p className="driver-record-document-meta">

@@ -139,7 +139,7 @@ export function createDriverRegistrationFileData(
   };
 }
 
-export function downloadDriverRegistrationFile(
+export async function downloadDriverRegistrationFile(
   driver: Driver,
   format: DriverFileFormat,
 ) {
@@ -149,21 +149,78 @@ export function downloadDriverRegistrationFile(
     driverFileFormats.find((item) => item.value === format)?.extension ??
     ".html";
   downloadBlob(
-    createDriverRegistrationFileBlob(data, format),
+    await createDriverRegistrationFileBlob(data, format),
     `${baseName}${extension}`,
   );
 }
 
-export function createDriverRegistrationFileBlob(
+export async function createDriverRegistrationFileBlob(
   data: DriverRegistrationFileData,
   format: DriverFileFormat,
-) {
-  if (format === "pdf") return createPdf(data);
-  if (format === "docx") return createDocx(data);
-  return new Blob([createHtml(data)], { type: "text/html;charset=utf-8" });
+): Promise<Blob> {
+  const logos = await loadRegistrationLogos();
+  if (format === "pdf") return createPdf(data, logos);
+  if (format === "docx") return createDocx(data, logos);
+  return new Blob([createHtml(data, logos)], {
+    type: "text/html;charset=utf-8",
+  });
 }
 
-function createHtml(data: DriverRegistrationFileData) {
+type RegistrationLogos = {
+  triSafe: {
+    dataUrl: string;
+    bytes: Uint8Array;
+    width: number;
+    height: number;
+  };
+  bplo: { dataUrl: string; bytes: Uint8Array; width: number; height: number };
+};
+
+async function loadRegistrationLogos(): Promise<RegistrationLogos> {
+  const load = (src: string) =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () =>
+        reject(new Error(`Unable to load registration-file logo: ${src}`));
+      image.src = src;
+    });
+  const [triSafeImage, bploImage] = await Promise.all([
+    load("/Logo/app-logo-icon.webp"),
+    load("/Logo/LOGO-transparent.webp"),
+  ]);
+  const toJpeg = (image: HTMLImageElement) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Unable to prepare registration-file logos.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, 256, 256);
+    const scale = Math.min(256 / image.width, 256 / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    context.drawImage(
+      image,
+      (256 - width) / 2,
+      (256 - height) / 2,
+      width,
+      height,
+    );
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    const binary = atob(dataUrl.split(",")[1]);
+    const bytes = Uint8Array.from(binary, (character) =>
+      character.charCodeAt(0),
+    );
+    return { dataUrl, bytes, width: 256, height: 256 };
+  };
+  return { triSafe: toJpeg(triSafeImage), bplo: toJpeg(bploImage) };
+}
+
+function createHtml(
+  data: DriverRegistrationFileData,
+  logos: RegistrationLogos,
+) {
   const sections = data.sections
     .map(
       (section, index) => `
@@ -179,12 +236,12 @@ function createHtml(data: DriverRegistrationFileData) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(data.title)}</title>
 <style>
   *{box-sizing:border-box}body{margin:0;padding:32px;background:#f4f7f5;color:#151b17;font-family:Inter,"Segoe UI",Arial,sans-serif}.page{max-width:760px;margin:0 auto;border:1px solid #d8ded9;border-radius:12px;padding:34px 38px;background:#fff;box-shadow:0 18px 46px rgba(29,47,34,.12)}
-  .document-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:10px;color:#287b37}.brand svg{width:40px;height:40px}.brand div{display:grid;gap:2px}.brand strong{font-size:17px;letter-spacing:.08em}.brand span,.tagline{color:#34463b;font-size:9px;font-weight:700;letter-spacing:.05em;line-height:1.45;text-transform:uppercase}.tagline{text-align:right}
+  .document-header{display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:10px;color:#287b37}.brand img,.document-seal{width:44px;height:44px;object-fit:contain}.brand div{display:grid;gap:2px}.brand strong{font-size:17px;letter-spacing:.08em}.brand span{color:#34463b;font-size:9px;font-weight:700;letter-spacing:.05em;line-height:1.45;text-transform:uppercase}
   h1{margin:24px 0 4px;font-size:27px;letter-spacing:-.025em}.meta{margin:0 0 18px;color:#627069;font-size:11px;font-weight:500}.record-section{overflow:hidden;margin-top:14px;border:1px solid #dce4de;border-radius:7px}.record-section h2{display:flex;align-items:center;gap:9px;margin:0;padding:8px 10px;color:#1a642b;background:linear-gradient(90deg,#e4f2e4,#f1f8f1);font-size:11px}.record-section h2 b{display:grid;width:21px;height:21px;place-items:center;border-radius:50%;color:#fff;background:#4ca65b;font-size:10px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.field{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.2fr);min-height:42px;border-top:1px solid #e1e6e2}.field:nth-child(odd){border-right:1px solid #e1e6e2}.field>span,.field>strong{display:flex;align-items:center;min-width:0;padding:9px 10px;font-size:10px;overflow-wrap:anywhere}.field>span{color:#4f5a53;font-weight:500}.field>strong{border-left:1px solid #e1e6e2;color:#151b17;font-weight:700}.status{display:inline-flex!important;align-items:center;gap:6px}.status i{flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:currentColor}.status.positive{color:#17652a}.status.negative{color:#cb2d3e}.document-footer{display:flex;justify-content:space-between;gap:24px;margin-top:24px;border-top:1px solid #dce3de;padding-top:15px;color:#69756e;font-size:9px;line-height:1.5}.document-footer strong{flex:0 0 auto;color:#25362c}
   @media print{body{padding:0;background:#fff}.page{max-width:none;border:0;border-radius:0;padding:14mm;box-shadow:none}@page{size:A4;margin:0}}
   @media(max-width:650px){body{padding:0}.page{border:0;border-radius:0;padding:24px 16px;box-shadow:none}.field-grid{grid-template-columns:1fr}.field:nth-child(odd){border-right:0}.document-footer{flex-direction:column}}
 </style></head><body><main class="page">
-  <header class="document-header"><div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.9 8.2 7 10 4.1-1.8 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg><div><strong>TRISAFE</strong><span>BPLO Driver Registry</span></div></div><div class="tagline">Safe transport<br>A stronger Trinidad</div></header>
+  <header class="document-header"><div class="brand"><img src="${logos.triSafe.dataUrl}" alt="TriSafe logo"><div><strong>TRISAFE</strong><span>BPLO Driver Registry</span></div></div><img class="document-seal" src="${logos.bplo.dataUrl}" alt="BPLO Trinidad logo"></header>
   <h1>Driver Registration Record</h1><p class="meta">Generated ${escapeHtml(formatDateTime(data.generatedAt))} from the live TriSafe registry</p>
   ${sections}
   <footer class="document-footer"><span>This record was generated from the live TriSafe registry. Verify all information before relying on a downloaded copy.</span><strong>TriSafe · BPLO Trinidad, Bohol</strong></footer>
@@ -198,7 +255,7 @@ function htmlFieldValue(field: { label: string; value: string }) {
   return `<strong class="status ${tone}"><i></i>${escapeHtml(titleCase(field.value))}</strong>`;
 }
 
-function createPdf(data: DriverRegistrationFileData) {
+function createPdf(data: DriverRegistrationFileData, logos: RegistrationLogos) {
   const commands: string[] = [];
   const text = (
     value: string,
@@ -212,17 +269,32 @@ function createPdf(data: DriverRegistrationFileData) {
       `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${x} ${y} Td (${pdfEscape(value)}) Tj ET`,
     );
   };
-  const fillRect = (x: number, y: number, width: number, height: number, color: string) =>
-    commands.push(`${color} rg ${x} ${y} ${width} ${height} re f`);
-  const strokeRect = (x: number, y: number, width: number, height: number, color = "0.86 0.89 0.87") =>
-    commands.push(`${color} RG ${x} ${y} ${width} ${height} re S`);
-  const line = (x1: number, y1: number, x2: number, y2: number, color = "0.88 0.9 0.89") =>
-    commands.push(`${color} RG ${x1} ${y1} m ${x2} ${y2} l S`);
+  const fillRect = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: string,
+  ) => commands.push(`${color} rg ${x} ${y} ${width} ${height} re f`);
+  const strokeRect = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color = "0.86 0.89 0.87",
+  ) => commands.push(`${color} RG ${x} ${y} ${width} ${height} re S`);
+  const line = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color = "0.88 0.9 0.89",
+  ) => commands.push(`${color} RG ${x1} ${y1} m ${x2} ${y2} l S`);
 
-  text("TRISAFE", 48, 794, 13, true, "0.12 0.45 0.19");
-  text("BPLO DRIVER REGISTRY", 48, 781, 6.5, true, "0.2 0.28 0.23");
-  text("SAFE TRANSPORT", 472, 794, 7, true, "0.2 0.28 0.23");
-  text("A STRONGER TRINIDAD", 451, 783, 7, true, "0.2 0.28 0.23");
+  commands.push("q 38 0 0 38 48 775 cm /TriSafeLogo Do Q");
+  commands.push("q 42 0 0 42 505 773 cm /BploLogo Do Q");
+  text("TRISAFE", 96, 794, 13, true, "0.12 0.45 0.19");
+  text("BPLO DRIVER REGISTRY", 96, 781, 6.5, true, "0.2 0.28 0.23");
   text("Driver Registration Record", 48, 746, 21, true);
   text(
     `Generated ${formatDateTime(data.generatedAt)} from the live TriSafe registry`,
@@ -243,36 +315,63 @@ function createPdf(data: DriverRegistrationFileData) {
     fillRect(pageX, headerBottom, pageWidth, 22, "0.89 0.95 0.89");
     strokeRect(pageX, headerBottom, pageWidth, 22);
     fillRect(pageX + 8, headerBottom + 4, 14, 14, "0.3 0.65 0.36");
-    text(String(sectionIndex + 1), pageX + 13, headerBottom + 8, 7, true, "1 1 1");
+    text(
+      String(sectionIndex + 1),
+      pageX + 13,
+      headerBottom + 8,
+      7,
+      true,
+      "1 1 1",
+    );
     text(section.title, pageX + 29, headerBottom + 8, 8, true, "0.1 0.39 0.17");
     y = headerBottom;
 
-    for (let fieldIndex = 0; fieldIndex < section.fields.length; fieldIndex += 2) {
+    for (
+      let fieldIndex = 0;
+      fieldIndex < section.fields.length;
+      fieldIndex += 2
+    ) {
       const rowBottom = y - 28;
       strokeRect(pageX, rowBottom, pageWidth, 28);
       line(pageX + cellWidth, rowBottom, pageX + cellWidth, y);
-      section.fields.slice(fieldIndex, fieldIndex + 2).forEach((field, columnIndex) => {
-        const cellX = pageX + cellWidth * columnIndex;
-        line(cellX + labelWidth, rowBottom, cellX + labelWidth, y);
-        text(shorten(field.label, 28), cellX + 7, rowBottom + 10, 5.6, false, "0.3 0.35 0.32");
-        const valueX = cellX + labelWidth + 8;
-        if (isStatusField(field.label)) {
-          const negative = isNegativeStatus(field.value);
-          const color = negative ? "0.78 0.16 0.22" : "0.09 0.4 0.16";
-          fillRect(valueX, rowBottom + 12, 4, 4, color);
-          text(shorten(titleCase(field.value), 28), valueX + 8, rowBottom + 10, 7.2, true, color);
-        } else {
-          const isPasswordGuidance =
-            field.label === "Initial password" && field.value.length > 30;
+      section.fields
+        .slice(fieldIndex, fieldIndex + 2)
+        .forEach((field, columnIndex) => {
+          const cellX = pageX + cellWidth * columnIndex;
+          line(cellX + labelWidth, rowBottom, cellX + labelWidth, y);
           text(
-            shorten(field.value, isPasswordGuidance ? 48 : 30),
-            valueX,
+            shorten(field.label, 28),
+            cellX + 7,
             rowBottom + 10,
-            isPasswordGuidance ? 5.8 : 7.2,
-            true,
+            5.6,
+            false,
+            "0.3 0.35 0.32",
           );
-        }
-      });
+          const valueX = cellX + labelWidth + 8;
+          if (isStatusField(field.label)) {
+            const negative = isNegativeStatus(field.value);
+            const color = negative ? "0.78 0.16 0.22" : "0.09 0.4 0.16";
+            fillRect(valueX, rowBottom + 12, 4, 4, color);
+            text(
+              shorten(titleCase(field.value), 28),
+              valueX + 8,
+              rowBottom + 10,
+              7.2,
+              true,
+              color,
+            );
+          } else {
+            const isPasswordGuidance =
+              field.label === "Initial password" && field.value.length > 30;
+            text(
+              shorten(field.value, isPasswordGuidance ? 48 : 30),
+              valueX,
+              rowBottom + 10,
+              isPasswordGuidance ? 5.8 : 7.2,
+              true,
+            );
+          }
+        });
       y = rowBottom;
     }
     y -= 10;
@@ -287,40 +386,94 @@ function createPdf(data: DriverRegistrationFileData) {
     false,
     "0.4 0.46 0.42",
   );
-  text("TriSafe  |  BPLO Trinidad, Bohol", 416, 27, 6.5, true, "0.15 0.23 0.18");
-  return pdfBlob(commands.join("\n"));
+  text(
+    "TriSafe  |  BPLO Trinidad, Bohol",
+    416,
+    27,
+    6.5,
+    true,
+    "0.15 0.23 0.18",
+  );
+  return pdfBlob(commands.join("\n"), logos);
 }
 
-function pdfBlob(stream: string) {
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [5 0 R] /Count 1 >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>",
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+function pdfBlob(stream: string, logos: RegistrationLogos) {
+  const encoder = new TextEncoder();
+  const content = encoder.encode(stream);
+  const objects: Uint8Array[] = [
+    encoder.encode("<< /Type /Catalog /Pages 2 0 R >>"),
+    encoder.encode("<< /Type /Pages /Kids [5 0 R] /Count 1 >>"),
+    encoder.encode("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"),
+    encoder.encode(
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+    ),
+    encoder.encode(
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /TriSafeLogo 7 0 R /BploLogo 8 0 R >> >> /Contents 6 0 R >>",
+    ),
+    pdfStream(
+      encoder.encode(`<< /Length ${content.length} >>\nstream\n`),
+      content,
+    ),
+    pdfImage(logos.triSafe),
+    pdfImage(logos.bplo),
   ];
-  let pdf = "%PDF-1.4\n%TriSafe\n";
+  const parts: Uint8Array[] = [];
+  let offset = 0;
+  const append = (bytes: Uint8Array) => {
+    parts.push(bytes);
+    offset += bytes.length;
+  };
+  append(encoder.encode("%PDF-1.4\n%TriSafe\n"));
   const offsets = [0];
   objects.forEach((object, index) => {
-    offsets.push(pdf.length);
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    offsets.push(offset);
+    append(encoder.encode(`${index + 1} 0 obj\n`));
+    append(object);
+    append(encoder.encode("\nendobj\n"));
   });
-  const xref = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  pdf += offsets
-    .slice(1)
-    .map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`)
-    .join("");
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new Blob([pdf], { type: "application/pdf" });
+  const xref = offset;
+  append(
+    encoder.encode(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`),
+  );
+  append(
+    encoder.encode(
+      offsets
+        .slice(1)
+        .map((value) => `${String(value).padStart(10, "0")} 00000 n \n`)
+        .join(""),
+    ),
+  );
+  append(
+    encoder.encode(
+      `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`,
+    ),
+  );
+  return new Blob(parts.map(toArrayBuffer), { type: "application/pdf" });
+}
+
+function pdfStream(header: Uint8Array, data: Uint8Array) {
+  const footer = new TextEncoder().encode("\nendstream");
+  const result = new Uint8Array(header.length + data.length + footer.length);
+  result.set(header);
+  result.set(data, header.length);
+  result.set(footer, header.length + data.length);
+  return result;
+}
+
+function pdfImage(image: RegistrationLogos["triSafe"]) {
+  const header = new TextEncoder().encode(
+    `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>\nstream\n`,
+  );
+  return pdfStream(header, image.bytes);
 }
 
 function docxFieldRows(fields: { label: string; value: string }[]) {
   const rows: string[] = [];
   for (let index = 0; index < fields.length; index += 2) {
     const pair = fields.slice(index, index + 2);
-    rows.push(`<w:tr><w:trPr><w:cantSplit/></w:trPr>${pair.map(docxFieldCells).join("")}${pair.length === 1 ? docxEmptyFieldCells() : ""}</w:tr>`);
+    rows.push(
+      `<w:tr><w:trPr><w:cantSplit/></w:trPr>${pair.map(docxFieldCells).join("")}${pair.length === 1 ? docxEmptyFieldCells() : ""}</w:tr>`,
+    );
   }
   return rows.join("");
 }
@@ -338,7 +491,19 @@ function docxEmptyFieldCells() {
   return `<w:tc><w:tcPr><w:tcW w:w="1680" w:type="dxa"/><w:shd w:fill="FAFCFA"/></w:tcPr><w:p/></w:tc><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
 }
 
-function createDocx(data: DriverRegistrationFileData) {
+function docxImageRun(relationship: string, id: number, name: string) {
+  const size = 381000;
+  return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${size}" cy="${size}"/><wp:docPr id="${id}" name="${name}"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${id}" name="${name}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationship}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${size}" cy="${size}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+}
+
+function docxHeader() {
+  return `<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="850"/><w:gridCol w:w="6150"/><w:gridCol w:w="2360"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="850" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p>${docxImageRun("rId2", 1, "TriSafe logo")}</w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="6150" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="287B37"/><w:sz w:val="28"/><w:spacing w:val="20"/></w:rPr><w:t>TRISAFE</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>BPLO DRIVER REGISTRY</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2360" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr>${docxImageRun("rId3", 2, "BPLO Trinidad logo")}</w:p></w:tc></w:tr></w:tbl>`;
+}
+
+function createDocx(
+  data: DriverRegistrationFileData,
+  logos: RegistrationLogos,
+) {
   const sectionXml = data.sections
     .map(
       (section, index) => `
@@ -348,8 +513,8 @@ function createDocx(data: DriverRegistrationFileData) {
     </w:tbl><w:p><w:pPr><w:spacing w:after="70"/></w:pPr></w:p>`,
     )
     .join("");
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
-    <w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="nil"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="6000"/><w:gridCol w:w="3360"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="6000" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="287B37"/><w:sz w:val="28"/><w:spacing w:val="20"/></w:rPr><w:t>TRISAFE</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>BPLO DRIVER REGISTRY</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="3360" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>SAFE TRANSPORT</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="right"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="34463B"/><w:sz w:val="14"/></w:rPr><w:t>A STRONGER TRINIDAD</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>
+    ${docxHeader()}
     <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>Driver Registration Record</w:t></w:r></w:p>
     <w:p><w:pPr><w:pStyle w:val="Subtitle"/></w:pPr><w:r><w:t>Generated ${xml(formatDateTime(data.generatedAt))} from the live TriSafe registry</w:t></w:r></w:p>
     ${sectionXml}
@@ -360,7 +525,7 @@ function createDocx(data: DriverRegistrationFileData) {
   const files = [
     {
       name: "[Content_Types].xml",
-      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`,
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`,
     },
     {
       name: "_rels/.rels",
@@ -370,8 +535,10 @@ function createDocx(data: DriverRegistrationFileData) {
     { name: "word/styles.xml", data: stylesXml },
     {
       name: "word/_rels/document.xml.rels",
-      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/trisafe-logo.jpeg"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/bplo-logo.jpeg"/></Relationships>`,
     },
+    { name: "word/media/trisafe-logo.jpeg", data: logos.triSafe.bytes },
+    { name: "word/media/bplo-logo.jpeg", data: logos.bplo.bytes },
     {
       name: "docProps/core.xml",
       data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xml(data.title)}</dc:title><dc:creator>TriSafe LGU Admin Portal</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${data.generatedAt}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${data.generatedAt}</dcterms:modified></cp:coreProperties>`,
@@ -384,14 +551,15 @@ function createDocx(data: DriverRegistrationFileData) {
   return zipBlob(files);
 }
 
-function zipBlob(files: { name: string; data: string }[]) {
+function zipBlob(files: { name: string; data: string | Uint8Array }[]) {
   const encoder = new TextEncoder();
   const localParts: Uint8Array[] = [];
   const centralParts: Uint8Array[] = [];
   let offset = 0;
   for (const file of files) {
     const name = encoder.encode(file.name);
-    const data = encoder.encode(file.data);
+    const data =
+      typeof file.data === "string" ? encoder.encode(file.data) : file.data;
     const crc = crc32(data);
     const localHeader = new Uint8Array(30 + name.length);
     const localView = new DataView(localHeader.buffer);

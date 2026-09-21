@@ -646,9 +646,16 @@
   font-family: inherit;
 }
 .driver-receipt-modal .dashboard-modal-header {
+  position: relative;
+  z-index: 2;
   grid-column: 2;
   grid-row: 1;
+  gap: 8px;
   padding: 20px 26px 17px;
+}
+.driver-receipt-modal .dashboard-modal-header > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 .driver-receipt-modal .dashboard-modal-header h2 {
   font-size: 21px;
@@ -676,7 +683,16 @@
   overflow-y: auto;
   border-right: 1px solid #dce6df;
   padding: 24px 22px;
-  background: linear-gradient(180deg, #fbfdfb 0%, #f8fcf8 68%, #eaf6eb 100%);
+  background:
+    linear-gradient(
+      180deg,
+      #fbfdfb 0%,
+      rgba(248, 252, 248, 0.98) 54%,
+      rgba(248, 252, 248, 0.52) 78%,
+      rgba(234, 246, 235, 0.68) 100%
+    ),
+    url("/images/dashboard/TRI-Hall.webp") center bottom / 100% auto no-repeat,
+    linear-gradient(180deg, #fbfdfb 0%, #f8fcf8 68%, #eaf6eb 100%);
 }
 .driver-record-person {
   display: flex;
@@ -942,48 +958,67 @@
   color: #5b6861;
   font-size: 8px;
 }
-.driver-record-note {
+.driver-record-info-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+.driver-record-info-control > button {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 10px;
-  margin-top: 24px;
-  border-radius: 10px;
-  padding: 13px;
-  color: #247536;
-  background: #edf7ed;
+  width: 33px;
+  height: 33px;
+  place-items: center;
+  border: 1px solid #d6e5d9;
+  border-radius: 9px;
+  color: #26753c;
+  background: #f2f9f3;
+  cursor: pointer;
 }
-.driver-record-note svg {
-  width: 18px;
-  height: 18px;
+.driver-record-info-control > button:hover,
+.driver-record-info-control > button[aria-expanded="true"] {
+  border-color: #9fc9a8;
+  background: #e5f4e9;
 }
-.driver-record-note p {
-  margin: 0;
-  color: #405048;
-  font-size: 8px;
-  font-weight: 500;
-  line-height: 1.6;
+.driver-record-info-control > button:focus-visible {
+  outline: 3px solid #69bd7c;
+  outline-offset: 2px;
 }
-.driver-record-brand {
-  display: grid;
-  justify-items: center;
-  margin: auto 0 4px;
-  padding-top: 28px;
-  color: var(--forest);
-  text-align: center;
+.driver-record-info-control > button svg {
+  width: 17px;
+  height: 17px;
 }
-.driver-record-brand svg {
-  width: 38px;
-  height: 38px;
+.driver-record-info-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  right: -41px;
+  width: min(320px, calc(100vw - 48px));
+  border: 1px solid #bbd9c2;
+  border-radius: 12px;
+  padding: 13px 15px;
+  color: #283b2e;
+  background: #f8fcf9;
+  box-shadow: 0 10px 24px rgba(24, 69, 37, 0.16);
+  animation: franchise-info-in 140ms ease-out both;
 }
-.driver-record-brand strong {
-  margin-top: 6px;
-  font-size: 17px;
-  letter-spacing: 0.06em;
+.driver-record-info-popover.closing {
+  pointer-events: none;
+  animation: franchise-info-out 140ms ease-in both;
 }
-.driver-record-brand span {
-  margin-top: 3px;
-  font-size: 8px;
-  line-height: 1.35;
+.driver-record-info-popover strong {
+  color: #1e6c35;
+  font-size: 12px;
+}
+.driver-record-info-popover p {
+  margin: 6px 0 0 !important;
+  color: #42584a !important;
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .driver-record-info-popover,
+  .driver-record-info-popover.closing {
+    animation-duration: 0.01ms;
+  }
 }
 .driver-record-workspace {
   grid-column: 2;
@@ -1045,9 +1080,10 @@
   gap: 10px;
   color: var(--forest);
 }
-.driver-record-document-brand svg {
+.driver-record-document-brand img {
   width: 35px;
   height: 35px;
+  object-fit: contain;
 }
 .driver-record-document-brand div {
   display: grid;
@@ -1057,8 +1093,7 @@
   font-size: 14px;
   letter-spacing: 0.07em;
 }
-.driver-record-document-brand span,
-.driver-record-document-tagline {
+.driver-record-document-brand span {
   color: #34463b;
   font-size: 7px;
   font-weight: 700;
@@ -1066,8 +1101,10 @@
   line-height: 1.4;
   text-transform: uppercase;
 }
-.driver-record-document-tagline {
-  text-align: right;
+.driver-record-document-seal {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
 }
 .driver-record-document > h2 {
   margin: 18px 0 3px;
@@ -1995,9 +2032,6 @@
     overflow: visible;
     border-right: 0;
     border-bottom: 1px solid #dce6df;
-  }
-  .driver-record-brand {
-    display: none;
   }
   .driver-record-workspace {
     grid-column: auto;
